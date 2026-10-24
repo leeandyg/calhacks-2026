@@ -234,7 +234,7 @@ The Freesound candidates move to `assets/raw/<sound>/_unused/`; move them back a
 
 ### Sounds on command
 
-The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one: a pack sound when the tags match well, otherwise `gen:<kind>:<query>`, which the audio engine generates with ElevenLabs (v2 for 15 s loops, v3 for 2 s one-shots). Generated sounds are converted to mono, matched to pack loudness and cached, and fall back to the closest pack sound if generation fails.
+The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one, **library first**: a pack sound when the tags match well; otherwise the sound the Claude agent composed for that object with chirp (`managed:…`); otherwise `gen:<kind>:<query>`. A `gen:` id plays the closest pack sound unless live ElevenLabs generation is switched on with `VITE_ELEVENLABS_SOUNDS=on` (then v2 for 15 s loops, v3 for 2 s one-shots). Generated and agent sounds are converted to mono and matched to pack loudness, and fall back to the closest pack sound if they can't load, including after a reload, when the page no longer has an agent's file.
 
 With Convex connected (see **Save and load rooms with Convex**), each generated sound is stored once in Convex file storage (`convex/sounds.ts`) and shared by every browser and deployment, so a description is paid for once. Two browsers asking for the same new sound at once wait for one generation. Set the key in the Convex deployment, not just `.env`:
 

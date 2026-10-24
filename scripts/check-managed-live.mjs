@@ -22,7 +22,8 @@ try {
   await page.getByLabel('Prompt', { exact: true }).fill('A peaceful forest clearing with uneven mossy ground and exactly three animated sound sources: a tree rustling in wind, sparrows on a branch, and a small flowing stream');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await page.waitForFunction(() => window.__pixelRoom?.().scene.room.art?.startsWith('agent-'), { timeout: 60000 });
-  await page.waitForFunction(() => window.__pixelRoom().scene.objects.every(object => object.sound.assetId?.startsWith('managed:')));
+  // Library first: each source plays a pack sound when the library has a good match, else Claude's chirp file.
+  await page.waitForFunction(() => window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
   await page.waitForFunction(() => !window.__spawnBusy);
   for (let i=0;i<10;i++) { progress.push(await page.evaluate(() => window.__pixelRoom().objects.map(object => ({ id: object.id, frame: object.artFrame })))); await page.waitForTimeout(150); }
   const scene = await page.evaluate(() => window.__pixelRoom().scene);
