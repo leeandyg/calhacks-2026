@@ -13,12 +13,15 @@ const held = new Map();
 const failures = new Set();
 const originals = { fetch, setTimeout, clearTimeout, AudioBufferSourceNode: globalThis.AudioBufferSourceNode, GainNode: globalThis.GainNode, PannerNode: globalThis.PannerNode };
 class Param { value = 0; setTargetAtTime(value) { this.value = value; } }
-class Node { connect(node) { return node; } disconnect() { this.disconnected = true; } }
+class Node { connect(node) { this.output = node; return node; } disconnect() { this.disconnected = true; } }
 class Gain extends Node { gain = new Param(); constructor(_ctx, options) { super(); this.gain.value = options?.gain ?? 1; } }
 class Panner extends Node { positionX = new Param(); positionY = new Param(); positionZ = new Param(); }
 class Source extends Node {
-  constructor(_ctx, options) { super(); Object.assign(this, options); sources.push(this); }
-  start() { this.started = true; }
+  constructor(_ctx, options) { super(); this.loop = false; Object.assign(this, options); sources.push(this); }
+  start(_when = 0, offset = 0) {
+    this.started = true; this.startedAt = now; this.offset = offset;
+    this.naturalEnd = this.loop ? Infinity : now + this.buffer.duration / 2 ** ((this.detune ?? 0) / 1200);
+  }
   stop(at = now) { this.stopsAt = at; }
 }
 class Convolver extends Node { buffer = null; normalize = true; }
@@ -33,19 +36,24 @@ const context = {
   listener: Object.fromEntries(["positionX", "positionY", "positionZ", "forwardX", "forwardY", "forwardZ", "upX", "upY", "upZ"].map((key) => [key, new Param()])),
   decodeAudioData: async (data) => ({ duration: 10, asset: new TextDecoder().decode(data) }),
 };
-const active = () => sources.filter((source) => source.started && (source.stopsAt === undefined || source.stopsAt > now));
+const endTime = (source) => Math.min(source.stopsAt ?? Infinity, source.naturalEnd ?? Infinity);
+const active = () => sources.filter((source) => source.started && !source.ended && endTime(source) > now);
 async function flush() { await setImmediate(); }
 async function advance(seconds) {
   const end = now + seconds;
   for (;;) {
     const next = [...timers].filter(([, timer]) => timer.at <= end).sort((a, b) => a[1].at - b[1].at)[0];
-    if (!next) break;
-    now = next[1].at; timers.delete(next[0]); next[1].fn(); await flush();
+    const ending = sources.filter((source) => source.started && !source.ended && endTime(source) <= end)
+      .sort((a, b) => endTime(a) - endTime(b))[0];
+    if (!next && !ending) break;
+    if (ending && endTime(ending) <= (next?.[1].at ?? Infinity)) {
+      now = endTime(ending); ending.ended = true; ending.endedAt = now; ending.onended?.();
+    } else {
+      now = next[1].at; timers.delete(next[0]); next[1].fn();
+    }
+    await flush();
   }
   now = end;
-  for (const source of sources) if (source.stopsAt <= now && !source.ended) {
-    source.ended = true; source.onended?.();
-  }
   await flush();
 }
 
@@ -75,10 +83,10 @@ try {
   globalThis.AudioBufferSourceNode = Source;
   globalThis.GainNode = Gain;
   globalThis.PannerNode = Panner;
-  function setSound(assetId, kind = "bed", id = "same-object") {
+  function setSound(assetId, kind = "bed", id = "same-object", intervalSec = [1, 1]) {
     useSceneStore.getState().setScene({ ...bedroom, objects: [{
       id, label: assetId ?? "Unresolved", kind, sound: { query: "test sound", assetId },
-      position: [1, 1.6, 0], volume: 0.5, ...(kind === "event" ? { intervalSec: [1, 1] } : {}),
+      position: [1, 1.6, 0], volume: 0.5, ...(kind === "event" ? { intervalSec } : {}),
     }] });
   }
   let passed = 0;
@@ -121,6 +129,58 @@ try {
     assert.equal(active().length, 0);
     await advance(0.3);
     assert.deepEqual(active().map((source) => source.buffer.asset), ["page_flip"]);
+  });
+  await check("one-shots finish before fresh random gaps, with varied gain/pitch and unchanged placement", async () => {
+    const random = Math.random;
+    let seed = 41;
+    Math.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+    try {
+      const first = sources.length;
+      setSound("cup_clink", "event", "natural-cups", [2, 5]);
+      const scene = structuredClone(useSceneStore.getState().scene);
+      const started = now;
+      await flush(); await advance(100);
+      const hits = sources.slice(first);
+      assert.ok(hits.length >= 5);
+      assert.ok(hits[0].startedAt - started >= 2 && hits[0].startedAt - started <= 5);
+      for (const [index, hit] of hits.entries()) {
+        assert.equal(hit.loop, false); assert.equal(hit.offset, 0);
+        assert.ok(Math.abs(hit.detune) <= 100);
+        assert.ok(hit.output.gain.value >= 0.75 && hit.output.gain.value <= 1);
+        if (index) {
+          const gap = hit.startedAt - hits[index - 1].endedAt;
+          assert.ok(gap >= 2 - 1e-8 && gap <= 5 + 1e-8, `Gap ${gap} is outside intervalSec`);
+        }
+      }
+      assert.ok(new Set(hits.map((hit) => hit.output.gain.value)).size > 1);
+      assert.ok(new Set(hits.map((hit) => hit.detune)).size > 1);
+      assert.deepEqual(useSceneStore.getState().scene, scene);
+      assert.equal(requests.get("cup_clink"), 1, "Reuse the decoded clip for every hit");
+    } finally { Math.random = random; }
+  });
+  await check("moving an event during a slow download does not stack pending copies", async () => {
+    let release; const promise = new Promise((resolve) => { release = resolve; });
+    held.set("bird_chirp", { promise });
+    setSound("bird_chirp", "event", "loading-bird"); await flush(); await advance(1);
+    const first = sources.length;
+    for (let index = 0; index < 5; index++) {
+      useSceneStore.getState().applyOps([{ op: "move", id: "loading-bird", position: [index / 5, 1.6, 0] }]);
+      await advance(2);
+    }
+    release(); held.delete("bird_chirp"); await flush();
+    assert.equal(sources.length - first, 1);
+    assert.equal(active().length, 1);
+  });
+  await check("changing intervals during a one-shot preserves it and uses the new gap after its end", async () => {
+    setSound("page_flip", "event", "interval-change"); await flush(); await advance(1);
+    const hit = active()[0];
+    setSound("page_flip", "event", "interval-change", [4, 4]); await flush();
+    assert.equal(active()[0], hit);
+    await advance(endTime(hit) - now);
+    assert.equal(active().length, 0);
+    await advance(3.99); assert.equal(active().length, 0);
+    await advance(0.02);
+    assert.ok(Math.abs(active()[0].startedAt - hit.endedAt - 4) < 1e-8);
   });
   await check("removing an event prevents an in-flight download from starting later", async () => {
     let release; const promise = new Promise((resolve) => { release = resolve; });

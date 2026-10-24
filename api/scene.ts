@@ -70,6 +70,13 @@ Focus sound placement defaults:
 Describe each sound in sound.query. Never supply assetId, a filename, or a URL.
 Object kind must be exactly "bed" for a continuous loop or "event" for a one-shot.
 Every event must include intervalSec: [minimum, maximum] positive seconds, with minimum <= maximum.
+Isolated cup or cutlery clinks, page turns, door creaks, and individual bird calls are
+events, not continuous beds. Describe one occurrence with a natural decay in sound.query;
+the player adds the random gaps. Do not ask for a rhythmic sequence, repeated clinks,
+or a looping recording of an isolated event. Use a varied interval range unless the
+user requests a fixed cadence: normally [8, 25] seconds for cafe cup clinks and
+[20, 60] seconds for distant bird calls. These are silent gaps after a clip finishes.
+Rain, wind, and indistinct room murmur remain continuous beds.
 If validation feedback is supplied, fix the error and call the tool again.`;
 
 export async function POST(request: Request): Promise<Response> {

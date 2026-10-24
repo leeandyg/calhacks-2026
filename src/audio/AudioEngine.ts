@@ -20,6 +20,7 @@ const FADE_SEC = 0.3; // fade for starting, stopping and swapping sounds
 const LOOP_TRIM_SEC = 0.03; // skip the silence mp3 encoders add at each end, or loops gap
 const MAX_HRTF = 12; // HRTF is expensive; quieter voices beyond this use equal-power panning
 const EVENT_DETUNE_CENTS = 100; // random pitch spread so repeated events don't sound identical
+const EVENT_MIN_GAIN = 0.75; // vary each occurrence below the user's chosen volume
 
 export class AudioEngine {
   private voices = new Map<string, Voice>();
@@ -105,7 +106,7 @@ export class AudioEngine {
  * One sound object: source(s) -> gain -> HRTF panner -> master, plus gain -> send -> reverb.
  * The send is taken before the panner, so the reverb doesn't fade with distance (see reverb.ts).
  * Beds loop one source (with its own fade gain so sound swaps crossfade).
- * Events start a fresh one-shot source on a random timer within intervalSec.
+ * Events play once, then wait a fresh random silent gap within intervalSec.
  */
 type Playback = { source: AudioBufferSourceNode; fade: GainNode };
 
@@ -115,6 +116,7 @@ class Voice {
   private send: GainNode;
   private bed?: Playback;
   private events = new Set<Playback>();
+  private eventLoading = false;
   private timer?: ReturnType<typeof setTimeout>;
   private loadedAssetId?: string;
   private loadVersion = 0;
@@ -156,13 +158,15 @@ class Voice {
       if (changedAsset) {
         this.loadedAssetId = object.sound.assetId;
         this.loadVersion++;
+        this.eventLoading = false;
         this.stopEvents();
       }
-      if (!this.timer || changedAsset || previous.kind !== "event" ||
+      if (changedAsset || previous.kind !== "event" ||
           previous.intervalSec[0] !== object.intervalSec[0] || previous.intervalSec[1] !== object.intervalSec[1]) {
         clearTimeout(this.timer);
-        this.scheduleEvent();
+        this.timer = undefined;
       }
+      this.scheduleEvent();
     }
   }
 
@@ -228,26 +232,37 @@ class Voice {
   }
 
   private scheduleEvent() {
-    if (this.object.kind !== "event" || this.disposed) return;
+    if (this.object.kind !== "event" || this.disposed || this.timer !== undefined || this.eventLoading || this.events.size) return;
     const [a, b] = this.object.intervalSec;
     const delaySec = randomBetween(Math.min(a, b), Math.max(a, b));
     this.timer = setTimeout(() => {
+      this.timer = undefined;
       void this.playEvent();
-      this.scheduleEvent();
     }, delaySec * 1000);
   }
 
   private async playEvent() {
     const version = this.loadVersion;
+    this.eventLoading = true;
     const buffer = await loadBuffer(this.ctx, this.object.sound.assetId);
-    if (!buffer || this.disposed || this.loadVersion !== version) return;
+    if (this.disposed || this.loadVersion !== version) return;
+    this.eventLoading = false;
+    if (!buffer) {
+      this.scheduleEvent();
+      return;
+    }
     const detune = randomBetween(-EVENT_DETUNE_CENTS, EVENT_DETUNE_CENTS);
-    const source = new AudioBufferSourceNode(this.ctx, { buffer, detune });
-    const fade = new GainNode(this.ctx, { gain: 1 });
+    const source = new AudioBufferSourceNode(this.ctx, { buffer, detune, loop: false });
+    const fade = new GainNode(this.ctx, { gain: randomBetween(EVENT_MIN_GAIN, 1) });
     const playback = { source, fade };
     source.connect(fade).connect(this.gain);
     this.events.add(playback);
-    source.onended = () => { source.disconnect(); fade.disconnect(); this.events.delete(playback); };
+    source.onended = () => {
+      source.disconnect();
+      fade.disconnect();
+      this.events.delete(playback);
+      if (this.loadVersion === version) this.scheduleEvent();
+    };
     source.start();
   }
 }
