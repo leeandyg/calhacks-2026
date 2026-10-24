@@ -1,12 +1,12 @@
 import { setEventPlaying } from './activity.js';
-import { isManagedSound, loadManagedSound } from './managed.js';
+import { isManagedSound, loadManagedSound, parseManagedAssetId } from './managed.js';
 import { useEffect } from "react";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useHeadPose } from "../sensors/headPose.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
 import { addMeter, removeMeter } from "./levels.js";
-import { isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
+import { elevenLabsEnabled, isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
 import { loadManifest } from "./manifest.js";
 import { matchSound, startResolver } from "./resolve.js";
 import { Reverb } from "./reverb.js";
@@ -317,10 +317,10 @@ function loadBuffer(ctx: AudioContext, assetId: string | undefined): Promise<Aud
   if (!assetId) return Promise.resolve(undefined); // not resolved yet (see resolve.ts)
   let buffer = buffers.get(assetId);
   if (!buffer) {
-    buffer = (isManagedSound(assetId) ? loadManagedSound(ctx, assetId) : isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
-      // Retry pack files after transient network/decode failures. A failed generation is not
-      // retried: each scene update (every drag frame) would otherwise call /api/sound again.
-      if (!isGenerated(assetId)) buffers.delete(assetId);
+    buffer = (isManagedSound(assetId) ? loadManagedOrFallback(ctx, assetId) : isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
+      // Retry pack files after transient network/decode failures. A failed generated or agent sound
+      // is not retried: each scene update (every drag frame) would otherwise fetch it again.
+      if (!isGenerated(assetId) && !isManagedSound(assetId)) buffers.delete(assetId);
       console.warn(`audio: could not load "${assetId}"`, err);
       return undefined;
     });
@@ -337,16 +337,36 @@ async function loadPackSound(ctx: AudioContext, assetId: string) {
   return ctx.decodeAudioData(await res.arrayBuffer());
 }
 
-/** If generation fails (no key, no credits, offline), play the closest pack sound so something still plays. */
+/**
+ * A sound the library lacks: generate it with ElevenLabs when that's enabled, otherwise (or if
+ * generation fails: no key, no credits, offline) play the closest pack sound so something still plays.
+ */
 async function loadGeneratedOrFallback(ctx: AudioContext, assetId: string): Promise<AudioBuffer | undefined> {
+  const { kind, query } = parseGeneratedAssetId(assetId);
+  if (!elevenLabsEnabled) return closestPackSound(ctx, kind, query, "live generation is off");
   try {
     return await loadGenerated(ctx, assetId);
   } catch (err) {
-    const { kind, query } = parseGeneratedAssetId(assetId);
-    const fallback = matchSound(query, kind, (await loadManifest()).values());
-    console.warn(`audio: generating "${query}" failed; ${fallback ? `using "${fallback.assetId}"` : "no fallback"}`, err);
-    return fallback ? loadBuffer(ctx, fallback.assetId) : undefined;
+    console.warn(`audio: generating "${query}" failed`, err);
+    return closestPackSound(ctx, kind, query, "generation failed");
   }
+}
+
+/** The Claude agent's chirp sound, or the closest pack sound if this page can't load it. */
+async function loadManagedOrFallback(ctx: AudioContext, assetId: string): Promise<AudioBuffer | undefined> {
+  try {
+    return await loadManagedSound(ctx, assetId);
+  } catch (err) {
+    const { kind, query } = parseManagedAssetId(assetId);
+    console.warn(`audio: the agent's sound for "${query}" is unavailable`, err);
+    return closestPackSound(ctx, kind, query, "agent sound unavailable");
+  }
+}
+
+async function closestPackSound(ctx: AudioContext, kind: SoundObject["kind"], query: string, reason: string) {
+  const fallback = matchSound(query, kind, (await loadManifest()).values());
+  console.info(`audio: ${reason} for "${query}"; ${fallback ? `playing "${fallback.assetId}"` : "no close pack sound"}`);
+  return fallback ? loadBuffer(ctx, fallback.assetId) : undefined;
 }
 
 /** Runs the engine and resolver after the user's first room has been created. */

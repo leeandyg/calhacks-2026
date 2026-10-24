@@ -17,7 +17,7 @@ const grid={mode:'Square',columns:4,rows:4,wallHeight:4};
 const terrain=Array.from({length:4},()=>[0,.25,.5,.75]);
 const scene={room:{preset:'forest',grid,openings:[],reverb:'outdoor',art:'agent-test',terrain},listener:{position:[0,1.6,0],yaw:0},objects:[
  {id:'oak',label:'Old oak',kind:'bed',sound:{query:'wind in oak leaves'},position:[1,1.5,0],volume:.3,model:'speaker',wall:null,scale:1,muted:false},
- {id:'birds',label:'Sparrows on branch',kind:'event',sound:{query:'sparrow chirps'},position:[0,2,-1.775],volume:.2,intervalSec:[20,30],model:'birds',wall:'north',scale:1,muted:false},
+ {id:'birds',label:'Woodpecker on branch',kind:'event',sound:{query:'a woodpecker tapping on bark'},position:[0,2,-1.775],volume:.2,intervalSec:[20,30],model:'birds',wall:'north',scale:1,muted:false},
 ]};
 const url=file=>`/api/world?action=asset&token=test-run-1&file=${file}`;
 const result={response:{kind:'create',scene},assets:{envId:'agent-test',environment:{concept:'A forest clearing',shell:'#324d35',colors:['#324d35','#91a56c','#72503b','#4b372d','#ff55cc'],openAir:true,terrain,textures:{floor:{url:url('floor'),w:64,h:64,frames:1,fps:10},north:{url:url('wall'),w:64,h:64,frames:1,fps:10},west:{url:url('wall'),w:64,h:64,frames:1,fps:10}}},sprites:scene.objects.map(o=>({objectId:o.id,label:o.label,query:o.sound.query,wall:o.wall,url:url('strip'),w:8,h:8,frames:4,fps:10})),sounds:scene.objects.map(o=>({objectId:o.id,query:o.sound.query,kind:o.kind,fileId:`file_${o.id}`,url:url(o.id)}))}};
@@ -58,7 +58,10 @@ try{
  await page.getByLabel('Prompt',{exact:true}).fill('An open forest');await page.getByRole('button',{name:'Send',exact:true}).click();
  await page.getByRole('status').filter({hasText:'Claude'}).waitFor();
  assert.equal(await page.locator('canvas').count(),0,'room stays hidden while Claude is working');
- await page.waitForFunction(()=>window.__pixelRoom?.().scene.objects.every(o=>o.sound.assetId?.startsWith('managed:')));
+ // Library first: the oak's wind has a good pack match; the woodpecker uses the agent's chirp file.
+ await page.waitForFunction(()=>window.__pixelRoom?.().scene.objects.every(o=>o.sound.assetId));
+ const assetIds=Object.fromEntries((await page.evaluate(()=>window.__pixelRoom().scene.objects)).map(o=>[o.id,o.sound.assetId]));
+ assert.equal(assetIds.oak,'wind_trees');assert.ok(assetIds.birds.startsWith('managed:file_birds:event:'),assetIds.birds);
  await page.waitForFunction(()=>!window.__spawnBusy);
  assert.ok(streamCount>=2,'client reconnects without starting a second run');assert.equal(requests.length,1);assert.equal(requests[0].scene,null);
  assert.equal(legacyCalls,0,'managed output never calls the Gemini art pipeline');

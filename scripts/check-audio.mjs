@@ -260,6 +260,19 @@ try {
     useHeadPose.setState({ yaw: 0, status: "off" });
     assert.deepEqual(forward(), [0, -1]);
   });
+  await check("with ElevenLabs off, a sound the library lacks plays the closest pack sound, with no /api/sound call", async () => {
+    const realFetch = globalThis.fetch, urls = [];
+    globalThis.fetch = (url, ...rest) => { urls.push(String(url)); return realFetch(url, ...rest); };
+    try {
+      setSound("gen:bed:rain drumming on an old tin roof", "bed", "tin-roof"); await flush(); await advance(1);
+      assert.ok(active().some((source) => source.buffer.asset.startsWith("rain")), "a rain loop from the pack");
+      assert.ok(!urls.some((url) => url.includes("/api/sound")), "no generation request");
+    } finally { globalThis.fetch = realFetch; }
+  });
+  await check("an agent sound this page can't load (e.g. after a reload) plays the closest pack sound", async () => {
+    setSound("managed:file_gone:event:sparrow chirps", "event", "reloaded-birds"); await flush(); await advance(3);
+    assert.deepEqual(active().map((source) => source.buffer.asset), ["sparrow"]);
+  });
   await check("engine stop cancels loops and future event callbacks", async () => {
     setSound("ocean"); await flush(); engine.stop(); await advance(3);
     assert.equal(active().length, 0); assert.equal(timers.size, 0);

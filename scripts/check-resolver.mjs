@@ -45,7 +45,7 @@ const CASES = [
 
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
 try {
-  const { resolveSound } = await server.ssrLoadModule("/src/audio/resolve.ts");
+  const { chooseSound, resolveSound } = await server.ssrLoadModule("/src/audio/resolve.ts");
   const manifest = JSON.parse(readFileSync("public/sounds/manifest.json", "utf8"));
   const failures = [];
   for (const [query, kind, expected] of CASES) {
@@ -59,11 +59,23 @@ try {
   const second = resolveSound("rain on the roof", "bed", manifest, taken);
   if (taken.has(second)) failures.push(`second rain bed reused ${second}`);
 
+  // Library first: the Claude agent's chirp sound is used only where the pack has no good match.
+  const chirp = "managed:file_test:bed:a sound";
+  const choices = [
+    ["wind in oak leaves", "bed", chirp, "wind_trees"],
+    ["a woodpecker tapping on bark", "event", "managed:file_test:event:a woodpecker tapping on bark", "managed:file_test:event:a woodpecker tapping on bark"],
+    ["a woodpecker tapping on bark", "event", undefined, "gen:event:a woodpecker tapping on bark"],
+  ];
+  for (const [query, kind, managed, expected] of choices) {
+    const got = chooseSound(query, kind, manifest, new Set(), managed);
+    if (got !== expected) failures.push(`choose ${kind} "${query}" (agent ${managed ? "has" : "has no"} sound): expected ${expected}, got ${got}`);
+  }
+
   if (failures.length) {
     console.error(failures.map((f) => `FAIL ${f}`).join("\n"));
     process.exitCode = 1;
   } else {
-    console.log(`Passed ${CASES.length + 1} resolver checks against ${manifest.length} pack sounds.`);
+    console.log(`Passed ${CASES.length + 1 + choices.length} resolver checks against ${manifest.length} pack sounds.`);
   }
 } finally {
   await server.close();

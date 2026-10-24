@@ -20,6 +20,12 @@ const TARGET_LUFS: Record<Kind, number> = { bed: -20, event: -18 };
 const MAX_GAIN_DB = 30; // don't blow a near-silent generation up into pure noise
 const LIMIT = 0.8; // above this, peaks are softly rounded instead of stopping the boost
 
+/**
+ * Live ElevenLabs generation for sounds the library lacks. Off unless VITE_ELEVENLABS_SOUNDS=on: the
+ * Claude agent composes missing sounds with chirp, and anything else plays the closest pack sound.
+ */
+export const elevenLabsEnabled = import.meta.env?.VITE_ELEVENLABS_SOUNDS === "on";
+
 export function generatedAssetId(kind: Kind, query: string): string {
   return `${PREFIX}${kind}:${query.replace(/\s+/g, " ").trim().slice(0, MAX_QUERY)}`;
 }

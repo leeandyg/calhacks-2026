@@ -90,20 +90,16 @@ try {
   current = await scene();
   assert.equal(current.objects[0].muted, true);
   assert.equal(await input.inputValue(), '');
-  // A sound the pack lacks shows "generating…" over its prop until ElevenLabs answers (#38).
-  let releaseSound;
-  const soundHeld = new Promise(resolve => { releaseSound = resolve; });
-  await page.route('**/api/sound*', async route => { await soundHeld; await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: 'not audio' }); });
+  // A sound the pack lacks, with ElevenLabs off (the default, #97): no /api/sound request and no
+  // "generating…" label; it plays the closest pack sound, or the Claude agent's chirp file when there is one.
+  let soundRequests = 0;
+  await page.route('**/api/sound*', route => { soundRequests++; return route.fulfill({ status: 503, json: { error: 'off' } }); });
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'add', object: { id: 'cat-1', label: 'Cat purring', kind: 'bed', sound: { query: 'a cat purring softly' }, position: [1.5, 1, -1.5], volume: 0.4 } }]));
-  const label = page.locator('.sound-status');
-  await label.waitFor({ state: 'visible' });
-  assert.equal(await label.innerText(), 'Cat purring · generating…');
-  const box = await label.boundingBox();
-  assert.ok(box.x > 0 && box.y > 0 && box.x + box.width < 1440, 'the label sits over the room');
-  releaseSound();
-  await page.waitForFunction(() => document.querySelector('.sound-status')?.textContent.includes('using the closest sound'));
+  await page.waitForFunction(() => window.__pixelRoom().scene.objects.find(o => o.id === 'cat-1')?.sound.assetId);
+  await page.waitForTimeout(1000);
+  assert.equal(soundRequests, 0, 'live generation is off by default');
+  assert.equal(await page.locator('.sound-status').count(), 0);
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'remove', id: 'cat-1' }]));
-  await label.waitFor({ state: 'detached' });
   // Live failures preserve the generated room rather than silently loading a preset.
   const beforeFailure = await scene();
   reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Scene generation unavailable' } }), { outage: true });
