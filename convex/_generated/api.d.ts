@@ -9,8 +9,10 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as elevenlabs from "../elevenlabs.js";
 import type * as http from "../http.js";
 import type * as savedScenes from "../savedScenes.js";
+import type * as sounds from "../sounds.js";
 
 import type {
   ApiFromModules,
@@ -20,8 +22,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  elevenlabs: typeof elevenlabs;
   http: typeof http;
   savedScenes: typeof savedScenes;
+  sounds: typeof sounds;
 }>;
 
 /**

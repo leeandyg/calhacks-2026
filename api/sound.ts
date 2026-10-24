@@ -1,22 +1,15 @@
 import { z } from "zod";
+import { requestSound } from "../convex/elevenlabs.js";
 
 // GET /api/sound?kind=bed|event&q=<description> -> audio/mpeg
 // Generates a sound with ElevenLabs when the local pack has no good match (see src/audio/resolve.ts).
+// The browser uses it when the Convex sound cache (convex/sounds.ts) isn't configured or reachable.
 // The response for a given (kind, q) never changes, so it is marked immutable: the browser and
 // Vercel's CDN cache it and a repeated description doesn't spend credits again.
 // Runs as a Vercel function in production and through the Vite dev middleware locally.
 // Server-only: read keys from process.env here, never in src/.
 
 const Params = z.object({ kind: z.enum(["bed", "event"]), q: z.string().trim().min(1).max(300) });
-
-// From the listening test (scripts/test-elevenlabs.mjs): v2 made better loops, v3 better one-shots
-const MODEL = { bed: "eleven_text_to_sound_v2", event: "eleven_text_to_sound_v3" } as const;
-const DURATION_SEC = { bed: 15, event: 2 } as const; // billed at 40 credits per second
-// Kept minimal, like the listening-test winners: "continuous background ambience" seemed to make loops drone
-const STYLE = {
-  bed: "no speech, no music",
-  event: "a single short sound effect, no speech, no music",
-} as const;
 
 export async function GET(request: Request): Promise<Response> {
   const params = new URL(request.url).searchParams;
@@ -33,17 +26,7 @@ export async function GET(request: Request): Promise<Response> {
   const { kind, q } = parsed.data;
   let res: Response;
   try {
-    res = await fetch("https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128", {
-      method: "POST",
-      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: `${q}. ${STYLE[kind]}`,
-        model_id: MODEL[kind],
-        duration_seconds: DURATION_SEC[kind],
-        loop: kind === "bed",
-      }),
-      signal: AbortSignal.timeout(25_000),
-    });
+    res = await requestSound(kind, q, apiKey);
   } catch (error) {
     console.warn("ElevenLabs request failed:", error instanceof Error ? error.name : "unknown error");
     return Response.json({ error: "ElevenLabs took too long or could not be reached." }, { status: 504 });

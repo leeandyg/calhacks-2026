@@ -1,15 +1,20 @@
+import type { ConvexReactClient } from "convex/react";
 import { create } from "zustand";
+import { api } from "../../convex/_generated/api.js";
+import { convex } from "../scene/convex.js";
 import type { SoundObject } from "../scene/scene.js";
 
-// Sounds generated on demand (ElevenLabs, via GET /api/sound) when the pack has no good match.
-// Their assetId is "gen:<kind>:<query>", so the id alone says what to generate and doubles as the
-// cache key: the same description is fetched once per session, and the browser and Vercel's CDN
-// cache the response across sessions.
+// Sounds generated on demand (ElevenLabs) when the pack has no good match. Their assetId is
+// "gen:<kind>:<query>", so the id alone says what to generate and doubles as the cache key: the same
+// description is fetched once per session. The Convex sound cache (convex/sounds.ts) stores each one
+// once for every browser and deployment; without Convex, GET /api/sound generates it, cached only by
+// the browser and Vercel's CDN.
 
 type Kind = SoundObject["kind"];
 
 const PREFIX = "gen:";
-const MAX_QUERY = 300; // api/sound.ts rejects longer queries
+const MAX_QUERY = 300; // api/sound.ts and convex/sounds.ts reject longer queries
+const CONVEX_WAIT_MS = 35_000; // generation times out at 25 s on the server
 // Loudness targets match scripts/pack.mjs, so generated and pack sounds sit at the same level
 const TARGET_LUFS: Record<Kind, number> = { bed: -20, event: -18 };
 const MAX_GAIN_DB = 30; // don't blow a near-silent generation up into pure noise
@@ -47,8 +52,7 @@ export async function loadGenerated(ctx: AudioContext, assetId: string): Promise
   const { kind, query } = parseGeneratedAssetId(assetId);
   setStatus(assetId, "generating");
   try {
-    const res = await fetch(`/api/sound?${new URLSearchParams({ kind, q: query })}`);
-    if (!res.ok) throw new Error(`/api/sound ${res.status}: ${await res.text()}`);
+    const res = await fetchGenerated(kind, query);
     const buffer = await normalize(await ctx.decodeAudioData(await res.arrayBuffer()), kind);
     setStatus(assetId, undefined);
     return buffer;
@@ -56,6 +60,55 @@ export async function loadGenerated(ctx: AudioContext, assetId: string): Promise
     setStatus(assetId, "failed");
     throw err;
   }
+}
+
+/** The sound's mp3: from the Convex sound cache when it's connected, otherwise (or if that fails) GET /api/sound. */
+async function fetchGenerated(kind: Kind, query: string): Promise<Response> {
+  if (convex?.connectionState().isWebSocketConnected) {
+    try {
+      const res = await fetch(await storedSoundUrl(convex, kind, query));
+      if (res.ok) return res;
+      throw new Error(`stored sound ${res.status}`);
+    } catch (err) {
+      console.warn(`audio: Convex sound cache failed for "${query}"; generating through /api/sound`, err);
+    }
+  }
+  const res = await fetch(`/api/sound?${new URLSearchParams({ kind, q: query })}`);
+  if (!res.ok) throw new Error(`/api/sound ${res.status}: ${await res.text()}`);
+  return res;
+}
+
+/** Asks Convex for the sound (generating it if nobody has), or waits for whoever is generating it. */
+function storedSoundUrl(client: ConvexReactClient, kind: Kind, query: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let stop: (() => void) | undefined;
+    let finished = false;
+    const done = (err: unknown, url?: string) => {
+      finished = true;
+      stop?.();
+      clearTimeout(timer);
+      if (url) resolve(url);
+      else reject(err);
+    };
+    const timer = setTimeout(() => done(new Error("timed out")), CONVEX_WAIT_MS);
+    client.action(api.sounds.request, { kind, query }).then((url) => {
+      if (finished) return;
+      if (url) return done(undefined, url);
+      // Someone else is generating it: wait for theirs instead of paying again
+      const watch = client.watchQuery(api.sounds.get, { kind, query });
+      const check = () => {
+        try {
+          const sound = watch.localQueryResult();
+          if (sound?.status === "ready" && sound.url) done(undefined, sound.url);
+          else if (sound?.status === "failed") done(new Error("generation failed"));
+        } catch (err) {
+          done(err);
+        }
+      };
+      stop = watch.onUpdate(check);
+      check();
+    }, done);
+  });
 }
 
 /**

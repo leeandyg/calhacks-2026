@@ -172,7 +172,16 @@ The Freesound candidates move to `assets/raw/<sound>/_unused/`; move them back a
 
 ### Sounds on command
 
-The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one: a pack sound when the tags match well, otherwise `gen:<kind>:<query>`, which the audio engine generates through `GET /api/sound?kind=bed|event&q=...` (ElevenLabs: v2 for 15 s loops, v3 for 2 s one-shots). Generated sounds are converted to mono, matched to pack loudness and cached, and fall back to the closest pack sound if generation fails. `useSoundStatus` in `src/audio/generated.ts` says which sounds are still generating.
+The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one: a pack sound when the tags match well, otherwise `gen:<kind>:<query>`, which the audio engine generates with ElevenLabs (v2 for 15 s loops, v3 for 2 s one-shots). Generated sounds are converted to mono, matched to pack loudness and cached, and fall back to the closest pack sound if generation fails.
+
+With Convex connected (see **Save and load rooms with Convex**), each generated sound is stored once in Convex file storage (`convex/sounds.ts`) and shared by every browser and deployment, so a description is paid for once. Two browsers asking for the same new sound at once wait for one generation. Set the key in the Convex deployment, not just `.env`:
+
+```sh
+grep '^ELEVENLABS_API_KEY=' .env | cut -d= -f2- | npx convex env set ELEVENLABS_API_KEY        # dev deployment
+grep '^ELEVENLABS_API_KEY=' .env | cut -d= -f2- | npx convex env set ELEVENLABS_API_KEY --prod # production
+```
+
+Without Convex, or if it fails, the browser generates through `GET /api/sound?kind=bed|event&q=...`, which only the browser and Vercel's CDN cache. `useSoundStatus` in `src/audio/generated.ts` says which sounds are still generating.
 
 Run `npm run check:resolver` to see which descriptions use a pack sound and which get generated; it reads the local manifest and makes no API calls. Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
 

@@ -32,7 +32,7 @@ Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an
 - Folder owners are listed in README "Layout". Stay in your folder; changes to `src/scene/scene.ts` (the shared contract) need a PR the AI owner reviews.
 - The room view and the audio engine only render the scene store (`src/scene/store.ts`). Change the scene through `setScene` / `applyOps` (both all-or-nothing, returning `{ ok }` or `{ ok: false, error }`), never by mutating objects or reading positions from meshes. The store snaps positions onto the room grid with `src/scene/layout.ts`.
 - The room grid is fixed (1 block = 1 m, default 10 × 10 × 7); Gemini never chooses it. Camera and rotation are view-only state in `src/room/useRoomStore.ts`.
-- API keys are read only in `api/` (server side). Nothing in `src/` may use a secret.
+- API keys are read only server side: in `api/` (from `.env` or Vercel) or in `convex/` (from the Convex deployment's environment). Nothing in `src/` may use a secret.
 - Never set `sound.assetId` outside the resolver (`src/audio/resolve.ts`), except in hand-made presets or recordings. Objects without one are resolved automatically: a pack sound, or a `gen:` id that is generated with ElevenLabs (each generation costs credits).
 - Relative imports use `.js` extensions (`./scene.js`) so `api/` works on Vercel.
 - Check with `npm run build` before opening a PR.
