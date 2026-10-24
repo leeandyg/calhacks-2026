@@ -107,3 +107,59 @@ button:disabled {
   pointer-events: none;
   text-shadow: 0 1px 2px black;
 }
+
+.demo-controls {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  font-size: 13px;
+}
+
+.demo-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-controls input[type="checkbox"] {
+  flex: none;
+  margin: 0;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.demo-controls select {
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: #0f1115;
+  color: var(--text);
+  font: inherit;
+}
+
+.demo-controls details,
+.prompt-bar .demo-notice {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+
+.demo-controls summary {
+  cursor: pointer;
+}
+
+.demo-controls ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+.prompt-bar .demo-notice {
+  margin: 0;
+  padding: 0 4px 4px;
+  font-size: 13px;
+}
