@@ -1,7 +1,7 @@
 import type { Scene, SoundObject } from '../scene/scene.js';
 import { normalize } from './generated.js';
 
-type GeneratedSound = { objectId: string; query: string; kind: SoundObject['kind']; fileId: string; url: string };
+type GeneratedSound = { objectId: string; query: string; kind: Exclude<SoundObject['kind'], 'live'>; fileId: string; url: string };
 const bindings = new Map<string, string>();
 const sounds = new Map<string, GeneratedSound>();
 const key = (env: string, id: string, query: string) => JSON.stringify([env, id, query]);
@@ -20,7 +20,7 @@ export function managedSoundFor(scene: Scene, object: SoundObject): string | und
   return scene.room.art ? bindings.get(key(scene.room.art, object.id, object.sound.query)) : undefined;
 }
 export function isManagedSound(id: string): boolean { return id.startsWith(PREFIX); }
-export function parseManagedAssetId(id: string): { kind: SoundObject['kind']; query: string } {
+export function parseManagedAssetId(id: string): { kind: Exclude<SoundObject['kind'], 'live'>; query: string } {
   const [, kind = 'bed', ...query] = id.slice(PREFIX.length).split(':');
   return { kind: kind === 'event' ? 'event' : 'bed', query: query.join(':') };
 }

@@ -10,7 +10,7 @@ import type { SoundObject } from "../scene/scene.js";
 // once for every browser and deployment; without Convex, GET /api/sound generates it, cached only by
 // the browser and Vercel's CDN.
 
-type Kind = SoundObject["kind"];
+type Kind = Exclude<SoundObject["kind"], "live">; // only beds and events are files
 
 const PREFIX = "gen:";
 const MAX_QUERY = 300; // api/sound.ts and convex/sounds.ts reject longer queries

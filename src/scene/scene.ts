@@ -99,7 +99,16 @@ export const EventObject = z.object({
   intervalSec: z.tuple([z.number().positive(), z.number().positive()])
     .refine(([min, max]) => min <= max, "The minimum interval must not exceed the maximum."),
 });
-export const SoundObject = z.discriminatedUnion("kind", [BedObject, EventObject]);
+/** Audio playing in another app on this Mac (e.g. Spotify), streamed by the Swift helper (#28). */
+export const LiveObject = z.object({
+  ...objectFields,
+  kind: z.literal("live"),
+  sound: SoundRef.extend({
+    /** The helper's stream, e.g. "app:com.spotify.client". Never resolved to an asset. */
+    stream: z.string().min(1),
+  }),
+});
+export const SoundObject = z.discriminatedUnion("kind", [BedObject, EventObject, LiveObject]);
 export type SoundObject = z.infer<typeof SoundObject>;
 
 export const MAX_OBJECTS = 12;
