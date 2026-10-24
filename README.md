@@ -148,6 +148,60 @@ In dev, the scene store is on `window.sceneStore`, so you can try edits from the
 sceneStore.getState().applyOps([{ op: "move", id: "rain-1", position: [3, 1.5, 0] }])
 ```
 
+## Voice agent and environment memory
+
+Enter the room, then click **Talk to agent** to start listening and **Stop & send**
+to submit the final transcript. Alternatively, hold **Ctrl+Shift+Space** while the
+page is focused and the cursor is outside text fields; releasing any key in the
+shortcut ends the turn. **Esc** or leaving the page cancels it. The microphone is
+off between turns, and a turn is limited to 30 seconds. This shortcut works within
+the active tab; a system-wide shortcut and an always-listening wake word are later work.
+Allow the site's microphone permission when you first use it. No raw recordings
+are saved. Ink-2 streaming transcription feeds the same command path as typed input.
+
+Add `CARTESIA_API_KEY`, `MOSS_PROJECT_ID`, and `MOSS_PROJECT_KEY` to ignored `.env`,
+then restart the dev server and reload the page. Obtain Moss project credentials
+from its portal; the old `MOSS_API_KEY` placeholder is unused. Optionally set
+`CARTESIA_VOICE_ID` from the Cartesia voice library, then enable **Spoken replies**
+for short Sonic acknowledgements. API keys stay on the server; the browser receives
+only a short-lived STT token. Configure the same variables on Vercel for a deployment.
+This feature also needs the existing authenticated Convex connection. Push the new
+`preferences` backend functions with `npx convex dev --once` on your configured
+development project; this does not require a new production deployment.
+
+Under **Environment memory**, choose a task and a local time bucket. Tune the room,
+optionally describe what you like, and click **Remember this room**. Saving the same
+task/time replaces the preference, so you can teach it a correction. Click **Use my
+usual setup** to generate an environment from those preferences, and **Forget** to
+remove a memory. **Current local time** uses the browser's timezone; explicit
+morning/evening choices are useful when testing the demo.
+
+You can also type or say **“Remember this for coding in the morning”**, then later
+**“Set up my usual coding environment in the morning”** or **“Forget my coding
+morning preference.”** Remember commands save the current room and the supplied
+preference notes; they do not edit the room. Manual changes become lasting preferences
+only when you explicitly remember the result. The automatic mic-noise/Pomodoro
+agent (#20) and automatic feedback suggestions remain separate work.
+
+Convex stores the user's preference records; Moss reconciles a per-user persistent
+index and searches it alongside a temporary index of recent spoken commands. A
+fresh Convex check excludes deleted or superseded search results. During a Moss
+outage, exact task/time matches still work and the UI labels semantic recall as
+unavailable. If scene AI is down, an explicit request for a usual setup can restore
+its exact task/time snapshot; unrelated edits never use that replacement fallback.
+Requests for an unknown “usual setup” keep the room unchanged. Ordinary
+typed prompts and local presets continue if memory or voice cannot connect. Offline
+demo mode makes no voice or memory calls. Delayed scene replacements are discarded
+if the room changed while they were running. Safe edits use the latest scene,
+preserving manual moves and mute changes; conflicting moves and removals are rejected.
+
+Run `npm run check:agent` for provider-free memory, fallback and mic lifecycle checks.
+Run `npm run check:preferences` for persistence and isolation on a local Convex backend.
+To use the configured cloud development backend explicitly, append `-- --cloud-dev`;
+this creates separate anonymous test identities and removes their test preference records.
+With Moss credentials configured, `npm run check:moss` verifies real semantic recall,
+persistence and filtered reload, then deletes its isolated test index.
+
 ## Sound pack
 
 `public/sounds/` holds the sound pack: 30 s seamless mono loops (beds), short one-shots (events), `manifest.json` and `CREDITS.md`. To rebuild it (needs ffmpeg and `FREESOUND_API_KEY` in `.env`):

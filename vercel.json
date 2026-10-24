@@ -1,6 +1,8 @@
 {
   "buildCommand": "node scripts/vercel-build.mjs",
   "functions": {
+    "api/agent.ts": { "maxDuration": 60 },
+    "api/voice.ts": { "maxDuration": 30 },
     "api/sound.ts": { "maxDuration": 30 }
   }
 }
