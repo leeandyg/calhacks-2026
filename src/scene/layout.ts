@@ -4,6 +4,8 @@ import { DEFAULT_GRID, ModelId, WallId, type RoomGrid, type RoomOpening, type Sc
 // and the room view: modular grid snapping, wall mounting, window openings and camera framing.
 
 export const SEGMENT_SIZE = 1;
+/** Painted environments and props (api/environment.ts, api/sprite.ts) use this many pixels per block. */
+export const ART_PX_PER_BLOCK = 16;
 export const DEFAULT_ROOM_GRID = DEFAULT_GRID;
 export const VIEW_ELEVATION = Math.PI / 6;
 /** The fixed camera looks in from +x/+z, so "into the screen" is yaw π/4 (forward -x/-z). */
@@ -23,6 +25,29 @@ export const WALL_ROTATIONS: Record<WallId, number> = { north: 0, east: -Math.PI
 
 export function getRoomDimensions(grid: RoomGrid): RoomDimensions { return [grid.columns * SEGMENT_SIZE, grid.wallHeight * SEGMENT_SIZE, grid.rows * SEGMENT_SIZE]; }
 export function wallLength(wall: WallId, grid: RoomGrid) { return wall === 'north' || wall === 'south' ? grid.columns : grid.rows; }
+/** Canonical ground under a source; both audio placement and the view use this height. */
+export function groundHeight(position: Position, room: Pick<Scene['room'], 'grid' | 'terrain'>): number {
+  const column = Math.max(0, Math.min(room.grid.columns - 1, Math.floor(position[0] + room.grid.columns / 2)));
+  const row = Math.max(0, Math.min(room.grid.rows - 1, Math.floor(position[2] + room.grid.rows / 2)));
+  return room.terrain?.[row]?.[column] ?? 0;
+}
+export function placeInRoom(object: SoundObject, room: Scene['room']): SoundObject {
+  const placed = placeObject(object, room.grid);
+  if (room.art && placed.wall) {
+    // Painted wall props are planes growing out of the actual inner wall face, not the
+    // thick stock model's floor footprint. Audio receives this same mounted position.
+    const position: Position = [...placed.position];
+    const inset = SLAB_THICKNESS / 2 + 0.015;
+    if (placed.wall === 'north') position[2] = -room.grid.rows / 2 + inset;
+    if (placed.wall === 'south') position[2] = room.grid.rows / 2 - inset;
+    if (placed.wall === 'east') position[0] = room.grid.columns / 2 - inset;
+    if (placed.wall === 'west') position[0] = -room.grid.columns / 2 + inset;
+    return position.every((value, i) => value === object.position[i]) && placed.scale === object.scale && placed.wall === object.wall ? object : { ...placed, position };
+  }
+  const minimum = groundHeight(placed.position, room) + 0.75 * placed.scale;
+  if (!room.terrain || placed.wall || placed.position[1] >= minimum) return placed;
+  return { ...placed, position: [placed.position[0], Math.ceil(minimum * 2) / 2, placed.position[2]] };
+}
 export function getModelId(object: Pick<SoundObject, 'model' | 'sound'>): ModelId {
   if (object.model) return object.model;
   const query = object.sound.query.toLowerCase();
@@ -112,15 +137,10 @@ export function roomProjectionEnvelope([width, height, depth]: RoomDimensions) {
 }
 
 export interface WallSegment { column: number; level: number; position: Position }
-export function sourceWindowOpening(object: SoundObject, grid: RoomGrid): RoomOpening | null {
-  if (getModelId(object) !== 'rain' || !object.wall) return null;
-  const { columns, height } = gridFootprint(object);
-  const wall = object.wall;
-  const tangent = wall === 'north' ? object.position[0] : wall === 'east' ? object.position[2] : wall === 'south' ? -object.position[0] : -object.position[2];
-  return { id: `source-${object.id}`, kind: 'window', wall, column: Math.round(tangent + wallLength(wall, grid) / 2 - columns / 2), level: Math.round(object.position[1] - height / 2), span: columns, height };
-}
-export function getWallOpenings(room: Scene['room'], objects: SoundObject[], wall: WallId): RoomOpening[] {
-  return [...room.openings, ...objects.map(object => sourceWindowOpening(object, room.grid)).filter((opening): opening is RoomOpening => opening !== null)].filter(opening => opening.wall === wall);
+// Sources never cut the wall slab: a wall-mounted source (a rain window, a branch) sits on the
+// intact inner face as a prop/painting. The only wall holes are the room's explicit openings.
+export function getWallOpenings(room: Scene['room'], wall: WallId): RoomOpening[] {
+  return room.openings.filter(opening => opening.wall === wall);
 }
 export function buildWallSegments(wall: WallId, grid: RoomGrid, openings: RoomOpening[]): WallSegment[] {
   const length = wallLength(wall, grid);

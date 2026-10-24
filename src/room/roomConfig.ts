@@ -1,6 +1,7 @@
 import type { RoomConfig, RoomTheme, WallConfig } from './types.js';
 import type { Scene } from '../scene/scene.js';
 import { DEFAULT_ROOM_GRID, getRoomDimensions, SLAB_THICKNESS } from '../scene/layout.js';
+import { useArtStore } from '../art/store.js';
 
 export const ROOM_THEMES: Record<Scene['room']['preset'], RoomTheme> = {
   bedroom: { surface: '#969aa3', detailPalette: [], accent: '#b8d59c' },
@@ -29,9 +30,10 @@ export const roomConfig: RoomConfig = {
 
 export function getRoomConfig(room: Scene['room']): RoomConfig {
   const [width, height, depth] = getRoomDimensions(room.grid);
+  const art = room.art ? useArtStore.getState().envs[room.art] : undefined;
   return {
     ...roomConfig, grid: room.grid, dimensions: { width, depth, height, wallThickness: SLAB_THICKNESS },
-    theme: ROOM_THEMES[room.preset],
+    theme: art ? { ...ROOM_THEMES[room.preset], surface: art.shell, detailPalette: [] } : ROOM_THEMES[room.preset],
     walls: createWalls(width, depth),
   };
 }

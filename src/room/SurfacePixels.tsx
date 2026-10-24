@@ -24,6 +24,6 @@ export function SurfacePixels({ width, height, palette, seed, openings, position
   if (!pixels.length) return null;
   return <instancedMesh ref={ref} name="surface-pixels" args={[undefined, undefined, pixels.length]} position={position} rotation={rotation} userData={{ pixels: pixels.length }}>
     <planeGeometry/>
-    <meshStandardMaterial roughness={1} flatShading transparent polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1}/>
+    <meshStandardMaterial roughness={1} flatShading polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1}/>
   </instancedMesh>;
 }

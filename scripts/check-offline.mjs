@@ -79,27 +79,25 @@ try {
     await assert.rejects(requestScene("something without a saved response", scene, true), /kept unchanged/);
     assert.deepEqual(scene, before);
   });
-  await check("network outage falls back to a local preset with a visible notice", async () => {
-    const result = await requestScene("forest study space", presets[0].scene);
-    assert.equal(result.kind, "create"); playable(result.scene);
-    assert.match(result.notice, /AI unavailable/);
+  await check("a live outage never loads a dummy room or recorded edit", async () => {
+    const scene = structuredClone(presets[0].scene), before = structuredClone(scene);
+    for (const current of [null, scene]) await assert.rejects(requestScene("forest study space", current), /kept unchanged/);
+    assert.deepEqual(scene, before);
   });
-  for (const status of [429, 502, 503, 504]) await check(`HTTP ${status} replays the recorded rain edit`, async () => {
+  for (const status of [429, 502, 503, 504]) await check(`HTTP ${status} preserves the live room`, async () => {
     globalThis.fetch = async () => Response.json({ error: "Unavailable" }, { status });
-    const scene = presets[0].scene;
-    const result = await requestScene("make it rainier", scene);
-    assert.equal(result.kind, "edit");
-    assert.deepEqual(result.ops.reduce(applyOp, scene).objects.map((object) => object.position), scene.objects.map((object) => object.position));
-    assert.match(result.notice, /AI unavailable/);
+    const scene = structuredClone(presets[0].scene), before = structuredClone(scene);
+    await assert.rejects(requestScene("make it rainier", scene), /kept unchanged/);
+    assert.deepEqual(scene, before);
   });
-  await check("timeout, malformed JSON, and invalid output fall back locally", async () => {
+  await check("timeouts and invalid live responses never load fixtures", async () => {
     for (const fetch of [
       async () => { throw new DOMException("Timed out", "TimeoutError"); },
       async () => new Response("not JSON", { status: 200 }),
       async () => Response.json({ invalid: true }),
     ]) {
       globalThis.fetch = fetch;
-      playable((await requestScene("bedroom", presets[0].scene)).scene);
+      await assert.rejects(requestScene("bedroom", null), /kept unchanged/);
     }
   });
   await check("bad requests surface an error without a fallback", async () => {

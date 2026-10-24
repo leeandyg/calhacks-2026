@@ -103,6 +103,50 @@ The agent only emits edit ops into the store. The 3D room and the audio engine s
 
 ### Scene contract
 
+**Managed World Director (#86):** the supplied Claude Managed Agent now owns live scene planning,
+pxl artwork/animation and chirp audio generation when `ANTHROPIC_API_KEY` is configured. The
+backend starts/continues its managed session, streams safe progress across bounded connections,
+validates a per-turn manifest, and proxies the resulting images/audio with signed session access.
+The agent runs code in Anthropic's sandbox; the application only consumes compiled assets. All
+objects still use the existing scene store and resolver. Generated media metadata lives alongside
+the browser art store, without adding fields to the shared scene JSON. `room.art` identifies that
+world; terrain and positions remain canonical. All generated themes retain the fixed volumetric shell, with 0.42-block wall/floor slabs
+and complete flush corners. Legacy `openAir` metadata cannot remove structural panels; paintings
+cover existing surfaces, including outdoors/cities. Bed sprite motion loops; event motion follows playback,
+and muting freezes it. First creation remains hidden until the manifest and images are ready.
+Follow-up edits receive the latest scene and reuse the session, preserving manual placement.
+`AGENT_CONFIG.yaml` holds the supplied system prompt; the configured agent resource supplies
+its model/tools. Gemini and offline/demo paths remain available. See README for setup and checks.
+
+**First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
+The canonical store initially contains only the fixed structure and listener, with no fixture
+objects, artwork, terrain or session. The first request sends `scene: null`. Live failures keep
+the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden during creation or errors, then reveal
+it with its rotation arrows and move the prompt below it after successful creation. Prompt
+submission supplies the audio gesture; the engine starts when the created room is revealed.
+
+**Live pxl environments (#76):** new live scenes stage the environment before revealing sources.
+`POST /api/environment` reasons about the actual place and streams a plan plus five separately
+painted PNGs (floor, north, east, south, west). Natural ground can be uneven; indoor floors remain
+flat. A source-planning pass then uses the concept and canonical terrain, and `/api/sprite` paints
+each physical source. Waiting portals occupy the chosen positions until art arrives, then sources
+emerge. All generated geometry remains structural surfaces or canonical sound objects. Offline
+presets retain their existing rendering.
+
+The optional `room.art` string names browser-cached environment PNGs; optional `room.terrain`
+stores ground heights as `[row][column]` in blocks, north to south and west to east, matching the
+fixed grid, from 0 to 1.5. Missing terrain means flat ground. Placement lifts sources above the
+ground in the shared store, so audio and drawing share canonical positions. Changing the preset
+or grid clears incompatible art and terrain. These optional contract additions need AI-owner
+review in the #76 PR. PNGs never enter scene JSON or Gemini scene requests.
+
+Art code executes with pxl's platform-independent core in QuickJS/WASM in a separate process,
+without host APIs, with memory and wall-clock limits. Gemini receives pxl's skill/reference,
+render failures, lint findings and a preview when time allows (at most three painting calls).
+The routes have separate Vercel duration budgets (120 seconds environment, 90 seconds sprite),
+and use a bounded warm-instance cache keyed by the description and art context. This cache is
+not durable across server instances. See README “Live environment art” for setup and checks.
+
 Units are meters (1 grid block = 1 m), y is up, the floor is centered on the origin, and the listener faces −z at yaw 0 (three.js defaults). The room is a fixed grid drawn by the room view (default 10 × 10 blocks, walls 7 high); the agent picks only its `preset` and `reverb`, never its size (#57).
 
 ```json

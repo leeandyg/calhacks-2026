@@ -1,3 +1,4 @@
+import { createFixtureRoom } from './create-fixture-room.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -15,8 +16,9 @@ const settle = async () => {
 };
 try {
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
+  await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => object.model));
+  await page.getByRole('status').waitFor({ state: 'detached' });
   const initial = await inspect();
   const verify = async turn => {
     const current = await inspect();
@@ -44,9 +46,8 @@ try {
   assert.ok(Math.abs(offset[0] - offset[2]) < 1e-9);
   assert.ok(Math.abs(Math.atan2(offset[1], Math.hypot(offset[0], offset[2])) - Math.PI / 6) < 1e-9);
   assert.equal(await page.getByRole('button', { name: 'Rotate Right', exact: true }).evaluate(el => getComputedStyle(el).boxShadow), 'none');
-  assert.equal((await page.locator('body').innerText()).replace(await page.locator('.demo-controls').innerText(), '').trim(), '', 'besides the demo controls, controls have icons and a placeholder only');
-  assert.equal(await page.locator('header,nav,footer,textarea,h1,h2').count(), 0);
-  assert.equal(await page.locator('label,select').count(), await page.locator('.demo-controls label, .demo-controls select').count(), 'labels and selects only in the demo controls');
+  assert.equal((await page.locator('body').innerText()).trim(), '', 'controls have icons and a placeholder only');
+  assert.equal(await page.locator('header,nav,footer,label,textarea,select,h1,h2').count(), 0);
   assert.deepEqual(initial.objects.map(object => object.model).sort(), ['birds', 'fan', 'rain']);
   const canvas = await page.locator('canvas').boundingBox();
   assert.deepEqual([canvas.x, canvas.y, canvas.width, canvas.height], [0, 0, 1440, 900], 'full-viewport canvas');
