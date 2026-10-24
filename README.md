@@ -189,6 +189,8 @@ Run `npm run check:agent` for provider-free memory, fallback and mic lifecycle c
 Run `npm run check:preferences` for persistence and isolation on a local Convex backend.
 To use the configured cloud development backend explicitly, append `-- --cloud-dev`;
 this creates separate anonymous test identities and removes their test preference records.
+With Moss credentials configured, `npm run check:moss` verifies real semantic recall,
+persistence and filtered reload, then deletes its isolated test index.
 
 ## Sound pack
 
