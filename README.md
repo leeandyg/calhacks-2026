@@ -282,7 +282,7 @@ QuickJS/WASM in a separate process, without host functions, module imports, envi
 filesystem or network APIs. Each render has a 96 MB interpreter heap, an 8-second interrupt and a
 12-second process kill limit. The trusted parent only encodes bounded pixel data as PNG.
 
-`npm run dev` and `npm run build` generate the sandbox bundle automatically. Art uses
+`npm install`, `npm install`, `npm run dev` and `npm run build` generate the sandbox bundle automatically. Art uses
 `GEMINI_API_KEY`; optional `GEMINI_ART_MODEL` overrides its default `gemini-3.8-flash`.
 `vercel.json` reserves 120 seconds for environment planning/painting and 90 seconds for a sprite,
 and includes the renderer, pxl documentation and WASM dependencies in each function bundle.
