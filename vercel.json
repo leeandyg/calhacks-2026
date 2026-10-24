@@ -1,4 +1,5 @@
 {
+  "buildCommand": "node scripts/vercel-build.mjs",
   "functions": {
     "api/sound.ts": { "maxDuration": 30 }
   }
