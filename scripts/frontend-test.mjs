@@ -1,3 +1,4 @@
+import { createFixtureRoom } from './create-fixture-room.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -27,7 +28,7 @@ async function dragTo(id, position, release = true) {
 }
 try {
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
+  await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => typeof object.opacity === 'number') && window.__spawnBusy === false);
   const initial = await inspect();
   assert.ok(!page.url().includes('/pixel-room/'), 'the original app is the only frontend');
@@ -88,7 +89,7 @@ try {
   console.log('PASS: every source, including the window, reaches all four walls through real pointer drags');
 
   // A sustained edge hold must never rotate; the former delay was 750ms.
-  await page.reload(); await page.getByRole('button', { name: 'Enter room' }).click(); await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => typeof object.opacity === 'number') && window.__spawnBusy === false);
+  await page.reload(); await createFixtureRoom(page); await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => typeof object.opacity === 'number') && window.__spawnBusy === false);
   const fan = await source('fan-1');
   await dragTo('fan-1', [3.7, fan.position[1], 0], false);
   const edgePosition = (await source('fan-1')).position;
@@ -110,7 +111,7 @@ try {
   assert.equal((await inspect()).orientation, 3);
   console.log('PASS: no auto-rotation on sustained edge hold, manual-only turns, rotated grid dragging and cancellation');
 
-  await page.reload(); await page.getByRole('button', { name: 'Enter room' }).click(); await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => typeof object.opacity === 'number') && window.__spawnBusy === false);
+  await page.reload(); await createFixtureRoom(page); await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => typeof object.opacity === 'number') && window.__spawnBusy === false);
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(200);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
@@ -131,6 +132,7 @@ try {
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
   assert.equal(await page.getByRole('button').count(), 3);
+  await page.getByRole('status').waitFor({ state: 'detached' });
   assert.equal((await page.locator('body').innerText()).trim(), 'Head tracking');
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');

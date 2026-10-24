@@ -15,8 +15,6 @@ page.on('console', message => { if (message.type() === 'error' && !(reply?.outag
 try {
   await mkdir('test-results', { recursive: true });
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
-  await page.waitForFunction(() => window.__pixelRoom?.().rendering);
   const input = page.getByLabel('Prompt', { exact: true }); // a combobox while the offline demo suggests prompts
   const send = page.getByRole('button', { name: 'Send', exact: true });
   const rotate = page.getByRole('button', { name: 'Rotate Right', exact: true });
@@ -24,15 +22,29 @@ try {
   assert.equal(await page.locator('form').count(), 1);
   assert.equal(await page.locator('input[type=text]').count(), 1);
   assert.equal(await page.locator('textarea').count(), 0);
-  assert.equal(await rotate.innerText(), '');
   const left = page.getByRole('button', { name: 'Rotate Left', exact: true });
-  assert.equal(await left.innerText(), '');
-  assert.equal(await page.getByRole('button').count(), 3);
+  assert.equal(await page.getByRole('button').count(), 1);
+  assert.equal(await page.locator('canvas, .room-rotation, .overlay').count(), 0);
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const rect = await page.locator('.prompt-bar').boundingBox();
+    assert.ok(Math.abs(rect.x + rect.width / 2 - viewport.width / 2) < 1);
+    assert.ok(Math.abs(rect.y + rect.height / 2 - viewport.height / 2) < 1);
+    await page.screenshot({ path: `test-results/empty-${viewport.width}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   assert.equal(await input.getAttribute('placeholder'), 'Generate anything...');
   assert.ok(await send.isDisabled());
   await input.fill('   '); await input.press('Enter');
   assert.ok(await send.isDisabled());
   assert.equal(requests.length, 0);
+  // A failed first creation leaves the page empty and the original prompt editable.
+  reply = route => route.fulfill({ json: { kind: 'edit', ops: [] } });
+  await input.fill('Make it quieter'); await send.click();
+  await page.getByRole('alert').filter({ hasText: 'Describe a place' }).waitFor();
+  assert.equal(requests[0].scene, null);
+  assert.equal(await input.inputValue(), 'Make it quieter');
+  assert.equal(await page.locator('canvas, .room-rotation').count(), 0);
   const scene = () => page.evaluate(() => window.__pixelRoom().scene);
   // A live create reply, as /api/scene returns it: the fixed grid, unresolved sounds and the agent's
   // props. The resolver binds the sounds; the store keeps the fixed room.
@@ -44,11 +56,25 @@ try {
       { id: 'rain-1', label: 'Rain on window', kind: 'bed', sound: { query: 'steady rain on glass' }, position: [4.79, 2.5, 0], volume: 0.4, model: 'rain', wall: 'east' },
       { id: 'birds-1', label: 'Birds', kind: 'event', sound: { query: 'sparrow chirps' }, position: [4, 1.5, -3], volume: 0.2, intervalSec: [8, 25], model: 'birds' },
     ] } } });
+  const createReply = reply;
+  let releaseCreation;
+  const pendingCreation = new Promise(resolve => { releaseCreation = resolve; });
+  reply = async route => { await pendingCreation; await createReply(route); };
   await input.fill('  A quiet forest room  '); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
+  await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'true');
+  assert.equal(await page.locator('canvas, .room-rotation').count(), 0,'no starter room while creating');
+  const pendingRect = await page.locator('.prompt-bar').boundingBox();
+  assert.ok(Math.abs(pendingRect.y + pendingRect.height / 2 - 450) < 1,'progress leaves the prompt centered');
+  releaseCreation();
+  await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
+  assert.equal(await rotate.innerText(), '');
+  assert.equal(await left.innerText(), '');
+  assert.equal(await page.getByRole('button').count(), 3);
   assert.equal(await input.inputValue(), '');
-  assert.equal(requests[0].prompt, 'A quiet forest room');
-  assert.deepEqual(requests[0].scene.room.grid, grid, 'the agent sees the current room');
+  assert.equal(requests[1].prompt, 'A quiet forest room');
+  assert.equal(requests[1].scene, null, 'the first room has no dummy scene context');
+  const completedRect = await page.locator('.prompt-bar').boundingBox();
+  assert.ok(completedRect.y > 700,'the prompt moves below the created room');
   let current = await scene();
   assert.deepEqual(current.room.grid, grid);
   assert.deepEqual(current.objects.map(object => object.sound.assetId), ['creek', 'rain_window', 'sparrow']);
@@ -123,10 +149,10 @@ try {
   // No preset or demo controls; ?demo replays saved responses without AI requests.
   assert.equal(await page.locator('select, input[type=checkbox]:not(.head-tracking input)').count(), 0);
   await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
-  await page.getByRole('button', { name: 'Enter room' }).click();
+  assert.equal(await page.locator('canvas').count(), 0,'demo also starts empty');
   const sent = requests.length;
   await input.fill("Rainy Tokyo cafe, I'm writing an essay."); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'cafe');
+  await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'cafe');
   assert.match(await page.getByRole('status').innerText(), /Demo mode/);
   assert.equal(requests.length, sent, '?demo sends no AI requests');
   assert.deepEqual(errors, []);

@@ -63,7 +63,7 @@ not trigger offline replay. Open the app with `?demo` when you want saved respon
 ## Offline demo
 
 Run `npm run dev` locally before disconnecting from the internet, open
-http://localhost:5173/?demo and click **Enter room**. The app and sound pack are served
+http://localhost:5173/?demo and submit a preset or recorded prompt. The app and sound pack are served
 from your computer; with `?demo` the prompt bar makes no Gemini requests. The deployed site still needs connectivity
 to load its page and sound files; this is not a service-worker offline cache.
 
@@ -115,7 +115,7 @@ configures a deployment and writes `CONVEX_DEPLOYMENT` and the public
 a Convex account. In another terminal, run `npm run convex:auth` once to configure
 the deployment's signing keys, then start/restart `npm run dev`.
 
-After **Enter room**, name the current room and click **Save room**. Saving the same
+After creating a room with the prompt, name the current room and click **Save room**. Saving the same
 name updates that snapshot. Choose an entry under **Saved room**, then click
 **Load room** to replace the active scene. Snapshots include positions, volumes,
 sound references, event intervals, listener orientation, room settings and session
@@ -258,7 +258,7 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | `src/audio/` | Store-driven audio engine, AudioContext, sound manifest, resolver (`resolve.ts`), generated sounds (`generated.ts`) | @leeandyg |
 | `src/sensors/` | Head pose store (`headPose.ts`); webcam head tracking with MediaPipe (`webcamHeadTracking.ts`, `headYaw.ts`) | @leeandyg |
 | `src/room/` | Pixel room view, view-only camera/rotation store (`useRoomStore.ts`), "generating…" labels (see [LAYOUT.md](LAYOUT.md)) | @coinleftt |
-| `src/ui/` | Enter-room gate, prompt bar, demo controls, rotation arrows | @coinleftt |
+| `src/ui/` | Prompt-first creation flow, prompt bar and rotation arrows | @coinleftt |
 | `src/ai/`, `api/scene.ts` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
 | `api/sound.ts` | `GET /api/sound`: ElevenLabs generation for sounds the pack lacks | @leeandyg |
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
@@ -266,6 +266,11 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 `api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
 
 ## Live environment art (#76)
+
+The page starts with only a centered prompt, including in `?demo`. The first request sends no
+current scene. While creation runs, progress stays above that prompt. Successful creation reveals
+the room and rotation arrows and moves the prompt below the room; errors leave the centered
+prompt editable. Submitting the prompt unlocks audio, so no Enter-room overlay is needed.
 
 Live creation first drafts the soundscape through `/api/scene`, then calls `POST /api/environment`.
 Gemini reasons about the place, its materials, light and ground height, then five painters generate

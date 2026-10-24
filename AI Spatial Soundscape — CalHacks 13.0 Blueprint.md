@@ -144,6 +144,11 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
+**First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
+The first request sends `scene: null`. Keep the room hidden during creation or errors, then reveal
+it with its rotation arrows and move the prompt below it after successful creation. Prompt
+submission supplies the audio gesture; the engine starts when the created room is revealed.
+
 **Live pxl environments (#76):** new live scenes stage the environment before revealing sources.
 `POST /api/environment` reasons about the actual place and streams a plan plus five separately
 painted PNGs (floor, north, east, south, west). Natural ground can be uneven; indoor floors remain

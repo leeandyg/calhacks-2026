@@ -1,3 +1,4 @@
+import { createFixtureRoom } from './create-fixture-room.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -15,8 +16,9 @@ const settle = async () => {
 };
 try {
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
+  await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => object.model));
+  await page.getByRole('status').waitFor({ state: 'detached' });
   const initial = await inspect();
   const verify = async turn => {
     const current = await inspect();
