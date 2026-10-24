@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { requestScene } from "../ai/client.js";
 import { useSceneStore } from "../scene/store.js";
+import { SavedRooms } from "../scene/SavedRooms.js";
 import { DemoControls } from "./DemoControls.js";
 
 // TODO(#18): stream objects in as the agent places them
@@ -42,6 +43,10 @@ export function PromptBar() {
         useSceneStore.getState().setScene(scene);
         setError(undefined);
         setNotice(`Loaded the ${label} local preset.`);
+      }} />
+      <SavedRooms disabled={busy} onLoad={(name) => {
+        setError(undefined);
+        setNotice(`Loaded “${name}” from saved rooms.`);
       }} />
       <input
         value={prompt}

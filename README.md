@@ -88,6 +88,41 @@ distance audible.
 
 Wear headphones. The spatial effect depends on them.
 
+## Save and load rooms with Convex
+
+Run `npm run convex:dev` in a separate terminal and keep it running. The first run
+configures a deployment and writes `CONVEX_DEPLOYMENT` and the public
+`VITE_CONVEX_URL` to ignored `.env.local`. You can choose local development without
+a Convex account. In another terminal, run `npm run convex:auth` once to configure
+the deployment's signing keys, then start/restart `npm run dev`.
+
+After **Enter room**, name the current room and click **Save room**. Saving the same
+name updates that snapshot. Choose an entry under **Saved room**, then click
+**Load room** to replace the active scene. Snapshots include positions, volumes,
+sound references, event intervals, listener orientation, room settings and session
+state. The existing Zod scene contract validates saves and loads.
+
+An anonymous Convex Auth session keeps each browser's library separate. Its tokens
+persist across refreshes in browser storage; clearing that storage or using another
+browser starts a new library. Save/load stores scene data, while sound files keep
+using the existing pack, generation and cache paths.
+
+Listing and saving never change the playing scene. A delayed load is discarded if
+the room changes while it is in flight. Missing configuration or a disconnected
+Convex deployment leaves local presets, AI prompts and playback available.
+
+For cloud storage, sign in using `npx convex login`, then run
+`npx convex dev --configure` and select a cloud project. Run `npm run convex:auth`
+for that development deployment. For production, run
+`npm run convex:auth -- --prod` and `npx convex deploy`; set `VITE_CONVEX_URL` on
+Vercel to the production deployment's public `.convex.cloud` URL and rebuild the
+frontend. Convex Auth's `JWT_PRIVATE_KEY` and `JWKS` stay in the Convex deployment;
+the setup script generates them without printing them and preserves existing keys.
+
+`npm run check:convex` checks round-trip persistence, named updates, validation,
+unauthenticated rejection and isolation between two anonymous users. It requires a
+running local deployment configured in `.env.local` and creates isolated test data.
+
 In dev, the scene store is on `window.sceneStore`, so you can try edits from the browser console:
 
 ```js
@@ -127,6 +162,7 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | Path | What | Owner |
 | --- | --- | --- |
 | `src/scene/` | Scene schema (`scene.ts`), store with `applyOps` (`store.ts`), sample scenes (`fixtures.ts`) | @OakleySun |
+| `src/scene/SavedRooms.tsx`, `convex/` | Named scene save/load and anonymous session ownership | @OakleySun |
 | `src/audio/` | Store-driven audio engine, AudioContext, sound manifest, resolver (`resolve.ts`), generated sounds (`generated.ts`) | @leeandyg |
 | `src/room/` | R3F room view | @coinleftt |
 | `src/ui/` | Enter-room gate, prompt bar | @coinleftt |

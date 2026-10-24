@@ -89,7 +89,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 - **AI:** Gemini 3.8 Flash through the Google GenAI SDK's Interactions API with tool use, called from the backend so keys stay server-side.
 - **Sounds:** local pack (Freesound today) plus live ElevenLabs Sound Effects fallback through the resolver; word-overlap scoring now, with [Moss](https://github.com/usemoss/moss) (sponsor, sub-10 ms search, TypeScript SDK) as a possible upgrade.
 - **Voice (optional):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Sonic TTS for a spoken focus coach.
-- **Realtime state (pick one):** SpacetimeDB if you build shared rooms, Convex if you only need saved scenes and personalization.
+- **Saved state:** Convex stores named scene snapshots (#51), scoped to an anonymous authenticated browser session. Explicit Save/Load preserves the existing scene contract; Zustand remains the active room. Personalization is a later step. SpacetimeDB remains an alternative if shared rooms become the priority.
 - **Swift helper (planned, after core):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
 - **Hosting:** Vercel for the frontend; the backend wherever your realtime choice lives.
 
@@ -100,6 +100,13 @@ Everything reads and writes one scene JSON, so the agent, your drags and the ada
 &#91;embedded content: architecture · 10 components around one scene store\]
 
 The agent only emits edit ops into the store. The 3D room and the audio engine simply render whatever the store holds, so manual and AI edits can never drift apart.
+
+**Saved scenes (#51):** Convex persists the same scene JSON, including manual placements,
+volumes, listener and session. Saving or updating the reactive library never changes
+the active room; only an explicit Load validates a snapshot and calls `setScene`.
+Each anonymous authenticated session can read and update only its own saves. Local
+presets and playback continue when Convex is unavailable. Generated audio files
+remain on the existing resolver/cache path; they are not copied into scene records.
 
 ### Scene contract
 
