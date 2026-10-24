@@ -34,5 +34,5 @@ Each was converted to mono and loudness-normalized; recorded loops were also tri
 | `thunder_clap` | [loud thunder 02](https://freesound.org/people/mokasza/sounds/810746/) | mokasza | CC-BY 4.0 |
 | `thunder_distant` | [Distant Thunder and Rain from Half Open Window 1.aif](https://freesound.org/people/RutgerMuller/sounds/158692/) | RutgerMuller | CC0 |
 | `traffic_distant` | [Roof top: distant traffic.WAV](https://freesound.org/people/Splushionsindasky/sounds/428844/) | Splushionsindasky | CC-BY 4.0 |
-| `wind` | [Ambience, Wind Chimes, B.wav](https://freesound.org/people/InspectorJ/sounds/411577/) | InspectorJ | CC-BY 4.0 |
-| `wind_trees` | [Wind Through Trees 3b](https://freesound.org/people/spoonbender/sounds/244942/) | spoonbender | CC-BY 4.0 |
+| `wind` | [Soft Wind](https://freesound.org/people/florianreichelt/sounds/459977/) | florianreichelt | CC0 |
+| `wind_trees` | [Forest, close up of trees rustling in the wind.wav](https://freesound.org/people/Anya_Media/sounds/523389/) | Anya_Media | CC0 |

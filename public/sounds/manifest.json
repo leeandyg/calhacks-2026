@@ -441,7 +441,7 @@
       "storm"
     ],
     "kind": "bed",
-    "license": "CC-BY 4.0"
+    "license": "CC0"
   },
   {
     "id": "wind_trees",
@@ -456,6 +456,6 @@
       "outdoor"
     ],
     "kind": "bed",
-    "license": "CC-BY 4.0"
+    "license": "CC0"
   }
 ]
