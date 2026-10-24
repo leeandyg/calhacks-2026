@@ -2,19 +2,21 @@ import { GoogleGenAI, type Interactions } from "@google/genai";
 import { z } from "zod";
 import {
   BedObject, DEFAULT_GRID, EditOp, EventObject, Room as RoomSchema, Scene, SceneRequest, SceneResponse, SoundRef,
-  roomSize, type Room, type SoundObject,
+  roomSize,
 } from "../src/scene/scene.js";
-import { applyOp, clampPosition } from "../src/scene/store.js";
+import { applyOp, clampScene } from "../src/scene/store.js";
 
 // POST /api/scene: { prompt, scene } -> { kind: "create", scene } | { kind: "edit", ops }
 // Runs as a Vercel function in production and through the Vite dev middleware locally.
 // Server-only: read keys from process.env here, never in src/.
 //
 // The agent describes sounds; resolving queries to playable assets belongs to #17.
+// The agent may pick the prop (model); mute, wall mounting and scale belong to the room view.
 const agentSound = SoundRef.omit({ assetId: true }).strict();
+const viewFields = { muted: true, wall: true, scale: true } as const;
 const agentObject = z.discriminatedUnion("kind", [
-  BedObject.extend({ sound: agentSound }),
-  EventObject.extend({ sound: agentSound }),
+  BedObject.omit(viewFields).extend({ sound: agentSound }),
+  EventObject.omit(viewFields).extend({ sound: agentSound }),
 ]);
 // The room's grid and openings are fixed by the room view; the agent only picks preset and reverb.
 const agentRoom = RoomSchema.omit({ grid: true, openings: true });
@@ -25,7 +27,8 @@ const editArgs = z.object({
   ops: z.array(z.discriminatedUnion("op", [
     EditOp.options[0].extend({ object: agentObject }),
     ...EditOp.options.slice(1).map((option) =>
-      option.shape.op.value === "set_room" ? (option as typeof EditOp.options[4]).omit({ grid: true, openings: true }) : option,
+      option.shape.op.value === "set_room" ? (option as typeof EditOp.options[4]).omit({ grid: true, openings: true })
+        : option.shape.op.value === "move" ? (option as typeof EditOp.options[2]).omit({ wall: true }) : option,
     ),
   ])),
 });
@@ -86,6 +89,12 @@ or a looping recording of an isolated event. Use a varied interval range unless 
 user requests a fixed cadence: normally [8, 25] seconds for cafe cup clinks and
 [20, 60] seconds for distant bird calls. These are silent gaps after a clip finishes.
 Rain, wind, and indistinct room murmur remain continuous beds.
+Always set each object's model, the prop the room draws for it: "fan" (fans, air conditioning,
+steady machine hum), "birds" (birdsong, chirps), "rain" (a window), or "speaker" (anything else).
+A "rain" window always hangs on the room's outer wall, about 5 meters from the listener, so never
+use it for a masking bed that must stay close: give close rain beds "speaker". Use "rain" only for
+a distant or quiet rain sound, or when the user asks for a window.
+Use set_muted only when the user asks to mute or unmute a sound.
 If validation feedback is supplied, fix the error and call the tool again.`;
 
 export async function POST(request: Request): Promise<Response> {
@@ -159,35 +168,33 @@ export async function POST(request: Request): Promise<Response> {
       let response: SceneResponse;
       if (call.name === "create_scene") {
         const { scene: created } = createArgs.parse(call.arguments);
-        const scene: Scene = { ...created, room: { ...created.room, grid, openings } };
+        // Parsing fills the room-view defaults (unmuted, on the floor, scale 1); clampScene then snaps
+        // every object onto the grid (windows onto a wall), exactly as the browser's store keeps it.
+        const scene = clampScene(Scene.parse({ ...created, room: { ...created.room, grid, openings } }));
         validateScene(scene);
-        response = {
-          kind: "create",
-          scene: {
-            ...scene,
-            listener: { ...scene.listener, position: clampPosition(scene.listener.position, scene.room) },
-            objects: scene.objects.map((object) => clampObject(object, scene.room)),
-          },
-        };
+        response = { kind: "create", scene };
       } else if (call.name === "edit_scene" && parsed.data.scene) {
         const { ops } = editArgs.parse(call.arguments);
         let scene = parsed.data.scene;
-        const normalized = ops.map((op): EditOp => {
+        const normalized = ops.map((agentOp): EditOp => {
+          let op = EditOp.parse(agentOp);
           if (op.op === "add") {
             const id = op.object.id;
             if (scene.objects.some((object) => object.id === id)) {
               throw new Error(`Added object ID ${id} already exists. Use a new ID.`);
             }
-            op = { ...op, object: clampObject(op.object, scene.room) };
           } else if (op.op !== "set_room") {
             const id = op.id;
             if (!scene.objects.some((object) => object.id === id)) {
               throw new Error(`No object has ID ${id}. Use an existing ID.`);
             }
-            if (op.op === "move") op = { ...op, position: clampPosition(op.position, scene.room) };
           }
           scene = applyOp(scene, op);
           validateScene(scene);
+          // Return what was applied (clamped and snapped to the grid), so the store gets the same result.
+          const applied = (id: string) => scene.objects.find((object) => object.id === id)!;
+          if (op.op === "add") return { ...op, object: applied(op.object.id) };
+          if (op.op === "move") return { ...op, position: applied(op.id).position, wall: applied(op.id).wall };
           return op;
         });
         response = { kind: "edit", ops: normalized };
@@ -203,9 +210,6 @@ export async function POST(request: Request): Promise<Response> {
   return Response.json({ error: "Gemini returned an invalid scene twice. Please rephrase your request." }, { status: 502 });
 }
 
-function clampObject(object: SoundObject, room: Room): SoundObject {
-  return { ...object, position: clampPosition(object.position, room) };
-}
 
 function validateScene(scene: Scene) {
   if (scene.objects.length > 12) throw new Error("Use at most 12 objects.");

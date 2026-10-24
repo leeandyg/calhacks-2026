@@ -1,9 +1,11 @@
-import { DEFAULT_GRID, type Scene } from "./scene.js";
+import { snapScene } from "./layout.js";
+import { DEFAULT_GRID, Scene } from "./scene.js";
 
 // Hand-written scenes so the room and audio can be built before the agent exists.
-// Asset ids are files in the sound pack (public/sounds/manifest.json).
+// Asset ids are files in the sound pack (public/sounds/manifest.json). Positions are snapped onto the
+// room grid here, so they are exactly what the store keeps and the room draws.
 
-export const cafe: Scene = {
+export const cafe = snapScene(Scene.parse({
   room: { preset: "cafe", grid: DEFAULT_GRID, openings: [], reverb: "small-room" },
   listener: { position: [0, 1.6, 0], yaw: 0 },
   objects: [
@@ -34,9 +36,9 @@ export const cafe: Scene = {
     },
   ],
   session: { task: "writing an essay", mode: "focus", minutesLeft: 50 },
-};
+}));
 
-export const bedroom: Scene = {
+export const bedroom = snapScene(Scene.parse({
   room: { preset: "bedroom", grid: DEFAULT_GRID, openings: [], reverb: "small-room" },
   listener: { position: [0, 1.6, 0], yaw: 0 },
   objects: [
@@ -58,9 +60,9 @@ export const bedroom: Scene = {
       volume: 0.35,
     },
   ],
-};
+}));
 
-export const forest: Scene = {
+export const forest = snapScene(Scene.parse({
   room: { preset: "forest", grid: DEFAULT_GRID, openings: [], reverb: "outdoor" },
   listener: { position: [0, 1.6, 0], yaw: 0 },
   objects: [
@@ -90,6 +92,33 @@ export const forest: Scene = {
       intervalSec: [8, 25],
     },
   ],
-};
+}));
 
-export const fixtures = { cafe, bedroom, forest };
+/**
+ * The room you start in: rain at a west window, a fan and birds, one of each room-view prop. Its
+ * sounds are bound to pack files so it plays without generating anything.
+ */
+export const starter = snapScene(Scene.parse({
+  room: { preset: "bedroom", grid: DEFAULT_GRID, openings: [], reverb: "small-room" },
+  listener: { position: [0, 1.6, 0], yaw: 0 },
+  objects: [
+    {
+      id: "rain-1", model: "rain", label: "Rain on window", kind: "bed",
+      sound: { query: "steady rain on glass", assetId: "rain_window" },
+      position: [-DEFAULT_GRID.columns / 2, 3.5, -1.5], volume: 0.55, wall: "west",
+    },
+    {
+      id: "fan-1", model: "fan", label: "Gentle fan", kind: "bed",
+      sound: { query: "soft fan hum", assetId: "pink_noise" },
+      position: [1.5, 1.5, 1.5], volume: 0.25, scale: 1.1,
+    },
+    {
+      id: "birds-1", model: "birds", label: "Distant birds", kind: "event",
+      sound: { query: "sparrow chirps", assetId: "sparrow" },
+      position: [-2.5, 1.5, 1.5], volume: 0.25, intervalSec: [20, 60], scale: 1.1,
+    },
+  ],
+  session: { task: "A quiet focus session", mode: "focus", minutesLeft: 50 },
+}));
+
+export const fixtures = { cafe, bedroom, forest, starter };

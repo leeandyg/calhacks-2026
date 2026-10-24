@@ -156,7 +156,9 @@ Edits from the agent (and from voice commands) are a list of ops applied in orde
 ]
 ```
 
-Objects can also carry room-view fields: `model` (the prop drawn: `rain`, `fan`, `birds`, `speaker`), `muted` (silences without changing `volume`), `wall` (for window-mounted props) and `scale`. Missing means no specific prop, not muted, on the floor, scale 1.
+Objects also carry room-view fields: `model` (the prop drawn: `rain`, `fan`, `birds`, `speaker`; the agent picks it, otherwise the room derives it from `sound.query`), `muted` (default `false`; silences without changing `volume`), `wall` (default `null`; the wall a prop is mounted on or snapped against) and `scale` (default `1`). `add` with an existing id replaces that object in place (the resolver relies on this); the agent itself may only add new ids. `move` takes an optional `wall`.
+
+The store snaps every position onto the grid (`src/scene/layout.ts`): floor props by their whole footprint, `rain` windows onto a wall. `api/scene.ts` returns positions already snapped, so what you hear is where the prop is drawn. Turning the room with the arrows turns the listener with it: a sound on the left of the screen is on your left.
 
 `assetId` is filled in by the resolver, never by the agent. That keeps the agent describing sounds in words and the resolver owning files. An `assetId` is either a pack id from `manifest.json` (`rain_window`) or a generated sound, `gen:<kind>:<query>` (`gen:bed:a cat purring softly`).
 

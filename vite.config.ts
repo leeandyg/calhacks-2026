@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
@@ -6,7 +7,7 @@ export default defineConfig(({ mode }) => {
   // Server-side code in api/ reads keys from process.env, same as on Vercel.
   // Only VITE_-prefixed variables ever reach the browser.
   Object.assign(process.env, loadEnv(mode, process.cwd(), ""));
-  return { plugins: [react(), apiRoutes()] };
+  return { plugins: [react(), tailwindcss(), apiRoutes()] };
 });
 
 /**

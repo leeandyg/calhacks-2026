@@ -12,8 +12,8 @@ const requests = new Map();
 const held = new Map();
 const failures = new Set();
 const originals = { fetch, setTimeout, clearTimeout, AudioBufferSourceNode: globalThis.AudioBufferSourceNode, GainNode: globalThis.GainNode, PannerNode: globalThis.PannerNode };
-class Param { value = 0; setTargetAtTime(value) { this.value = value; } }
-class Node { connect(node) { this.output = node; return node; } disconnect() { this.disconnected = true; } }
+class Param { value = 0; setTargetAtTime(value, _at, timeConstant) { this.value = value; this.timeConstant = timeConstant; } }
+class Node { connect(node) { this.output = node; (this.outputs ??= []).push(node); return node; } disconnect() { this.disconnected = true; } }
 class Gain extends Node { gain = new Param(); constructor(_ctx, options) { super(); this.gain.value = options?.gain ?? 1; } }
 class Panner extends Node { positionX = new Param(); positionY = new Param(); positionZ = new Param(); }
 class Source extends Node {
@@ -63,6 +63,7 @@ try {
   const { AudioEngine } = await server.ssrLoadModule("/src/audio/AudioEngine.ts");
   const { useSceneStore } = await server.ssrLoadModule("/src/scene/store.ts");
   const { bedroom } = await server.ssrLoadModule("/src/scene/fixtures.ts");
+  const { useRoomStore } = await server.ssrLoadModule("/src/room/useRoomStore.ts");
   const manifest = JSON.parse(readFileSync("public/sounds/manifest.json", "utf8"));
   const assets = new Map(manifest.map((entry) => [`/sounds/${entry.file}`, entry.id]));
   let manifestFailure = true;
@@ -189,6 +190,25 @@ try {
     useSceneStore.getState().setScene({ ...bedroom, objects: [] });
     release(); held.delete("owl"); await flush(); await advance(2);
     assert.equal(active().length, 0);
+  });
+  await check("muting fades the voice out and unmuting restores its volume", async () => {
+    setSound("ocean"); await flush();
+    const voiceGain = () => active()[0].outputs[0].outputs[0].gain;
+    const mute = (muted) => useSceneStore.getState().applyOps([{ op: "set_muted", id: "same-object", muted }]);
+    mute(true);
+    assert.equal(voiceGain().value, 0);
+    assert.ok(voiceGain().timeConstant >= 0.08, "a fade, not a cut");
+    mute(false);
+    assert.equal(voiceGain().value, 0.5);
+  });
+  await check("turning the room turns the listener: screen-left stays left", async () => {
+    const forward = () => [context.listener.forwardX.value, context.listener.forwardZ.value].map((v) => Math.round(v * 1000) / 1000);
+    // At rest the listener looks into the screen, from the camera's +x/+z corner toward -x/-z
+    assert.deepEqual(forward(), [-0.707, -0.707]);
+    useRoomStore.setState({ viewAngle: Math.PI / 2 }); // the room turned a quarter counterclockwise
+    assert.deepEqual(forward(), [0.707, -0.707]);
+    useRoomStore.setState({ viewAngle: 0 });
+    assert.deepEqual(forward(), [-0.707, -0.707]);
   });
   await check("engine stop cancels loops and future event callbacks", async () => {
     setSound("ocean"); await flush(); engine.stop(); await advance(3);

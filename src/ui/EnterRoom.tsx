@@ -7,7 +7,7 @@ export function EnterRoom({ onEnter }: { onEnter: () => void }) {
     <div className="overlay">
       <h1>Spatial Soundscape</h1>
       <p>Put on headphones. The sound is placed around your head.</p>
-      <button onClick={() => void resumeAudio().then(onEnter)}>Enter room</button>
+      <button type="button" className="enter-room" onClick={() => void resumeAudio().then(onEnter)}>Enter room</button>
     </div>
   );
 }

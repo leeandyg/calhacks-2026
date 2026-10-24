@@ -8,7 +8,7 @@ See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluepr
 
 ## Stack
 
-- Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod
+- Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room with the arrows (your ears turn with it), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
 - Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
 - AI: Gemini 3.8 Flash via the Google GenAI SDK (tool use), called from the backend
 
@@ -20,7 +20,11 @@ cp .env.example .env   # PowerShell: Copy-Item .env.example .env
 npm run check:gemini   # after adding GEMINI_API_KEY to .env
 npm run dev            # http://localhost:5173, serves api/ too
 npm run build          # typecheck + production build
+npm test               # scene store, layout and room unit tests (vitest)
 ```
+
+Browser tests need the dev server running (set `TEST_URL` if it isn't on :5173; `PLAYWRIGHT_CHANNEL=chrome`
+uses installed Chrome): `npm run test:browser`, `test:frontend`, `test:window` and `test:prompt`.
 
 Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
 `GEMINI_API_KEY` in `.env`. For sounds the pack doesn't have, also set `ELEVENLABS_API_KEY`
@@ -166,11 +170,11 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 
 | Path | What | Owner |
 | --- | --- | --- |
-| `src/scene/` | Scene schema (`scene.ts`), store with `applyOps` (`store.ts`), sample scenes (`fixtures.ts`) | @OakleySun |
+| `src/scene/` | Scene schema (`scene.ts`), store with `setScene` / `applyOps` (`store.ts`), grid placement rules (`layout.ts`), presets and fixtures | @OakleySun |
 | `src/scene/SavedRooms.tsx`, `convex/` | Named scene save/load and anonymous session ownership | @OakleySun |
 | `src/audio/` | Store-driven audio engine, AudioContext, sound manifest, resolver (`resolve.ts`), generated sounds (`generated.ts`) | @leeandyg |
-| `src/room/` | R3F room view | @coinleftt |
-| `src/ui/` | Enter-room gate, prompt bar | @coinleftt |
+| `src/room/` | Pixel room view, view-only camera/rotation store (`useRoomStore.ts`), "generating…" labels (see [LAYOUT.md](LAYOUT.md)) | @coinleftt |
+| `src/ui/` | Enter-room gate, prompt bar, demo controls, rotation arrows | @coinleftt |
 | `src/ai/`, `api/scene.ts` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
 | `api/sound.ts` | `GET /api/sound`: ElevenLabs generation for sounds the pack lacks | @leeandyg |
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
