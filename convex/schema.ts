@@ -13,4 +13,12 @@ export default defineSchema({
   })
     .index("by_user_name", ["userId", "name"])
     .index("by_user_updated", ["userId", "updatedAt"]),
+  // Generated sounds (convex/sounds.ts), stored once in file storage and shared by every browser.
+  sounds: defineTable({
+    kind: v.union(v.literal("bed"), v.literal("event")),
+    query: v.string(),
+    status: v.union(v.literal("generating"), v.literal("ready"), v.literal("failed")),
+    storageId: v.optional(v.id("_storage")),
+    updatedAt: v.number(),
+  }).index("by_key", ["kind", "query"]),
 });
