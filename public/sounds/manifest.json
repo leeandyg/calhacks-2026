@@ -2,22 +2,488 @@
   {
     "id": "brown_noise",
     "file": "brown_noise.mp3",
-    "tags": ["brown noise", "steady", "masking", "hum", "murmur"],
+    "tags": [
+      "brown noise",
+      "noise",
+      "deep",
+      "rumble",
+      "masking",
+      "steady",
+      "focus"
+    ],
     "kind": "bed",
-    "license": "CC0 (generated placeholder)"
+    "license": "CC0 (generated)"
   },
   {
-    "id": "rain_placeholder",
-    "file": "rain_placeholder.mp3",
-    "tags": ["rain", "water", "steady", "hiss"],
+    "id": "pink_noise",
+    "file": "pink_noise.mp3",
+    "tags": [
+      "pink noise",
+      "noise",
+      "soft",
+      "masking",
+      "steady",
+      "focus"
+    ],
     "kind": "bed",
-    "license": "CC0 (generated placeholder)"
+    "license": "CC0 (generated)"
   },
   {
-    "id": "chirp_placeholder",
-    "file": "chirp_placeholder.mp3",
-    "tags": ["chirp", "bird", "short", "one-shot"],
+    "id": "white_noise",
+    "file": "white_noise.mp3",
+    "tags": [
+      "white noise",
+      "noise",
+      "hiss",
+      "static",
+      "masking",
+      "bright"
+    ],
+    "kind": "bed",
+    "license": "CC0 (generated)"
+  },
+  {
+    "id": "ac_hum",
+    "file": "ac_hum.mp3",
+    "tags": [
+      "air conditioner",
+      "hum",
+      "hvac",
+      "drone",
+      "steady",
+      "masking",
+      "office"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "bird_chirp",
+    "file": "bird_chirp.mp3",
+    "tags": [
+      "bird",
+      "chirp",
+      "tweet",
+      "songbird",
+      "outdoor",
+      "forest"
+    ],
     "kind": "event",
-    "license": "CC0 (generated placeholder)"
+    "license": "CC0"
+  },
+  {
+    "id": "cafe_murmur",
+    "file": "cafe_murmur.mp3",
+    "tags": [
+      "cafe",
+      "coffee shop",
+      "murmur",
+      "chatter",
+      "crowd",
+      "indoor",
+      "busy"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 3.0"
+  },
+  {
+    "id": "chair_creak",
+    "file": "chair_creak.mp3",
+    "tags": [
+      "chair",
+      "creak",
+      "wood",
+      "indoor",
+      "furniture"
+    ],
+    "kind": "event",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "clock",
+    "file": "clock.mp3",
+    "tags": [
+      "clock",
+      "ticking",
+      "tick tock",
+      "quiet",
+      "indoor",
+      "library"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "creek",
+    "file": "creek.mp3",
+    "tags": [
+      "creek",
+      "stream",
+      "water",
+      "brook",
+      "flowing",
+      "forest",
+      "river"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "crickets",
+    "file": "crickets.mp3",
+    "tags": [
+      "crickets",
+      "night",
+      "insects",
+      "outdoor",
+      "summer",
+      "countryside"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 3.0"
+  },
+  {
+    "id": "cup_clink",
+    "file": "cup_clink.mp3",
+    "tags": [
+      "cup",
+      "clink",
+      "ceramic",
+      "mug",
+      "cafe",
+      "dishes"
+    ],
+    "kind": "event",
+    "license": "CC0"
+  },
+  {
+    "id": "dog_distant",
+    "file": "dog_distant.mp3",
+    "tags": [
+      "dog",
+      "bark",
+      "distant",
+      "neighborhood",
+      "outdoor"
+    ],
+    "kind": "event",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "door_distant",
+    "file": "door_distant.mp3",
+    "tags": [
+      "door",
+      "close",
+      "distant",
+      "indoor",
+      "building"
+    ],
+    "kind": "event",
+    "license": "CC0"
+  },
+  {
+    "id": "espresso",
+    "file": "espresso.mp3",
+    "tags": [
+      "espresso",
+      "coffee machine",
+      "steam",
+      "hiss",
+      "cafe",
+      "barista"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "fan",
+    "file": "fan.mp3",
+    "tags": [
+      "fan",
+      "electric fan",
+      "hum",
+      "steady",
+      "masking",
+      "bedroom"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "fire_pop",
+    "file": "fire_pop.mp3",
+    "tags": [
+      "fire",
+      "crack",
+      "pop",
+      "wood",
+      "fireplace",
+      "campfire"
+    ],
+    "kind": "event",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "fireplace",
+    "file": "fireplace.mp3",
+    "tags": [
+      "fire",
+      "fireplace",
+      "crackling",
+      "cozy",
+      "cabin",
+      "warm"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "forest",
+    "file": "forest.mp3",
+    "tags": [
+      "forest",
+      "birds",
+      "nature",
+      "woods",
+      "outdoor",
+      "morning"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "keyboard",
+    "file": "keyboard.mp3",
+    "tags": [
+      "keyboard",
+      "typing",
+      "computer",
+      "office",
+      "clicks"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "library",
+    "file": "library.mp3",
+    "tags": [
+      "library",
+      "quiet",
+      "room tone",
+      "indoor",
+      "study"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 3.0"
+  },
+  {
+    "id": "ocean",
+    "file": "ocean.mp3",
+    "tags": [
+      "ocean",
+      "waves",
+      "sea",
+      "beach",
+      "surf",
+      "shore"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "office",
+    "file": "office.mp3",
+    "tags": [
+      "office",
+      "workplace",
+      "murmur",
+      "indoor",
+      "typing"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "owl",
+    "file": "owl.mp3",
+    "tags": [
+      "owl",
+      "hoot",
+      "night",
+      "forest",
+      "bird"
+    ],
+    "kind": "event",
+    "license": "CC0"
+  },
+  {
+    "id": "page_flip",
+    "file": "page_flip.mp3",
+    "tags": [
+      "page",
+      "turn",
+      "book",
+      "paper",
+      "library",
+      "study"
+    ],
+    "kind": "event",
+    "license": "CC0"
+  },
+  {
+    "id": "rain_heavy",
+    "file": "rain_heavy.mp3",
+    "tags": [
+      "rain",
+      "heavy",
+      "downpour",
+      "storm",
+      "steady",
+      "masking",
+      "outdoor"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "rain_roof",
+    "file": "rain_roof.mp3",
+    "tags": [
+      "rain",
+      "roof",
+      "patter",
+      "steady",
+      "indoor",
+      "cabin",
+      "attic"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "rain_window",
+    "file": "rain_window.mp3",
+    "tags": [
+      "rain",
+      "window",
+      "glass",
+      "steady",
+      "indoor",
+      "cozy",
+      "cafe",
+      "bedroom"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "songbird",
+    "file": "songbird.mp3",
+    "tags": [
+      "songbird",
+      "bird",
+      "song",
+      "call",
+      "forest",
+      "morning"
+    ],
+    "kind": "event",
+    "license": "CC0"
+  },
+  {
+    "id": "sparrow",
+    "file": "sparrow.mp3",
+    "tags": [
+      "sparrow",
+      "bird",
+      "chirp",
+      "tweet",
+      "outdoor"
+    ],
+    "kind": "event",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "spoon_stir",
+    "file": "spoon_stir.mp3",
+    "tags": [
+      "spoon",
+      "stir",
+      "cup",
+      "tea",
+      "coffee",
+      "cafe"
+    ],
+    "kind": "event",
+    "license": "CC0"
+  },
+  {
+    "id": "thunder_clap",
+    "file": "thunder_clap.mp3",
+    "tags": [
+      "thunder",
+      "clap",
+      "storm",
+      "lightning"
+    ],
+    "kind": "event",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "thunder_distant",
+    "file": "thunder_distant.mp3",
+    "tags": [
+      "thunder",
+      "storm",
+      "rain",
+      "distant",
+      "rumble"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "traffic_distant",
+    "file": "traffic_distant.mp3",
+    "tags": [
+      "traffic",
+      "city",
+      "cars",
+      "urban",
+      "distant",
+      "street"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "wind",
+    "file": "wind.mp3",
+    "tags": [
+      "wind",
+      "gusts",
+      "howling",
+      "outdoor",
+      "storm"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
+  },
+  {
+    "id": "wind_trees",
+    "file": "wind_trees.mp3",
+    "tags": [
+      "wind",
+      "trees",
+      "leaves",
+      "rustling",
+      "forest",
+      "breeze",
+      "outdoor"
+    ],
+    "kind": "bed",
+    "license": "CC-BY 4.0"
   }
 ]
