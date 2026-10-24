@@ -5,6 +5,8 @@ import { mkdir } from 'node:fs/promises';
 const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [], requests = [];
+// This suite tests prompts and the standard-room fallback. The art pipeline has its own suite.
+await page.route('**/api/environment', route => route.fulfill({ json: { error: 'Art disabled for prompt test' } }));
 // /api/scene is stubbed: a live agent reply, then an outage that must fall back to a local preset.
 let reply;
 await page.route('**/api/scene', async route => { requests.push(route.request().postDataJSON()); await reply(route); });
@@ -75,17 +77,6 @@ try {
   await page.waitForFunction(() => document.querySelector('.sound-status')?.textContent.includes('using the closest sound'));
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'remove', id: 'cat-1' }]));
   await label.waitFor({ state: 'detached' });
-  // The offline demo checkbox and local presets (OakleySun's demo controls) sit above the prompt.
-  await page.getByRole('combobox', { name: 'Local preset' }).selectOption('library');
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'library');
-  assert.match(await page.getByRole('status').innerText(), /Library local preset/);
-  await page.getByRole('checkbox', { name: 'Offline demo' }).check();
-  await input.fill("Rainy Tokyo cafe, I'm writing an essay."); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'cafe');
-  assert.match(await page.getByRole('status').innerText(), /Demo mode/);
-  const sent = requests.length;
-  await page.getByRole('checkbox', { name: 'Offline demo' }).uncheck();
-  assert.equal(requests.length, sent, 'the offline demo sends no AI requests');
   // Without the AI, a supported prompt loads its local preset and says so.
   reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Set GEMINI_API_KEY' } }), { outage: true });
   await input.fill('cabin'); await send.click();
@@ -106,6 +97,7 @@ try {
   await input.fill('Hover check'); await send.hover(); await page.waitForTimeout(180);
   assert.ok(await send.evaluate(button => new DOMMatrix(getComputedStyle(button).transform).m42 < 0));
   await input.fill(''); await page.mouse.move(10, 10);
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.prompt-send')).opacity === '0.45');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 360, height: 780 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport); await page.waitForTimeout(180);
     const layout = await page.evaluate(() => {
@@ -128,6 +120,15 @@ try {
     assert.equal(layout.overflow, false);
     await page.screenshot({ path: `test-results/prompt-${viewport.width}.png` });
   }
+  // No preset or demo controls; ?demo replays saved responses without AI requests.
+  assert.equal(await page.locator('select, input[type=checkbox]:not(.head-tracking input)').count(), 0);
+  await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
+  await page.getByRole('button', { name: 'Enter room' }).click();
+  const sent = requests.length;
+  await input.fill("Rainy Tokyo cafe, I'm writing an essay."); await send.click();
+  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'cafe');
+  assert.match(await page.getByRole('status').innerText(), /Demo mode/);
+  assert.equal(requests.length, sent, '?demo sends no AI requests');
   assert.deepEqual(errors, []);
   console.log('PASS: one BorderBeam pill, specified dimensions/colors, blank input guard, live create/edit and offline-fallback prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
 } finally { await browser.close(); }

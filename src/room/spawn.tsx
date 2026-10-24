@@ -4,6 +4,7 @@ import { DoubleSide, Group } from 'three';
 import { useSceneStore } from '../scene/store.js';
 import type { RoomPreset } from '../scene/scene.js';
 import { playSwoosh } from './swoosh.js';
+import { spriteFor, useArtStore } from '../art/store.js';
 
 // Objects do not just appear: a pixel portal opens at each one's spot and the sound pops out of it
 // with a swoosh. On load the existing objects spawn one by one; new objects spawn the same way.
@@ -56,15 +57,23 @@ export function SpawnController() {
   const schedule = useSpawnSchedule();
   const swooshed = useRef<Set<string>>(new Set());
   const lastStart = useRef(0);
+  const environment = useRef<string | undefined>(undefined);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    const objects = useSceneStore.getState().scene.objects;
+    const { objects, room } = useSceneStore.getState().scene;
+    if (environment.current !== room.art) {
+      schedule.current.clear(); swooshed.current.clear(); lastStart.current = 0;
+      environment.current = room.art;
+    }
     const ids = new Set(objects.map(o => o.id));
     for (const id of [...schedule.current.keys()]) {
       if (!ids.has(id)) { schedule.current.delete(id); swooshed.current.delete(id); }
     }
     for (const o of objects) {
-      if (!schedule.current.has(o.id)) {
+      if (spriteFor(room.art, o)?.status === 'painting') {
+        schedule.current.set(o.id, Infinity);
+        swooshed.current.delete(o.id);
+      } else if (!schedule.current.has(o.id) || !Number.isFinite(schedule.current.get(o.id))) {
         const start = Math.max(t, lastStart.current + SPAWN_STAGGER);
         schedule.current.set(o.id, start);
         lastStart.current = start;
@@ -98,18 +107,21 @@ export function SpawnPortal({ id, position, scale, preset }: {
 }) {
   const group = useRef<Group>(null);
   const schedule = useSpawnSchedule();
-  const colors = portalColors(preset);
+  const envId = useSceneStore(state => state.scene.room.art);
+  const palette = useArtStore(state => envId ? state.envs[envId]?.colors : undefined);
+  const colors = palette?.length ? { core: palette[0], mid: palette[Math.floor(palette.length / 2)], rim: palette[palette.length - 1] } : portalColors(preset);
   useFrame(({ clock, camera }) => {
     const g = group.current;
     if (!g) return;
     const start = schedule.current.get(id);
-    const t = start === undefined ? undefined : clock.elapsedTime - start;
+    const waiting = start === Infinity;
+    const t = waiting ? PORTAL_OPEN : start === undefined ? undefined : clock.elapsedTime - start;
     if (t === undefined || t > SPAWN_TOTAL) { g.visible = false; return; }
     g.visible = true;
     g.quaternion.copy(camera.quaternion); // billboard toward the iso camera
     const open = easeOutBack(clamp01(t / PORTAL_OPEN));
-    const closing = clamp01((t - PORTAL_CLOSE_START) / PORTAL_CLOSE_SPAN);
-    const s = open * (1 + closing * 0.35);
+    const closing = waiting ? 0 : clamp01((t - PORTAL_CLOSE_START) / PORTAL_CLOSE_SPAN);
+    const s = open * (1 + closing * 0.35) * (waiting ? 1 + Math.sin(clock.elapsedTime * 3) * 0.04 : 1);
     g.scale.set(s * scale, s * 1.25 * scale, s * scale);
     const opacity = clamp01(t / 0.14) * (1 - closing);
     g.traverse(child => {

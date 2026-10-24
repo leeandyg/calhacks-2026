@@ -52,23 +52,23 @@ speech restrictions, and preservation of existing positions and unrelated object
 The agent only supplies `sound.query`. Valid live scenes and additions go into the
 scene store without an `assetId`; the active resolver fills it with a pack sound or
 a `gen:` ID for ElevenLabs. Existing resolved objects keep their assets during edits.
-The prompt bar offers six local presets and an **Offline demo** checkbox. Presets
-use bundled sounds and do not need an API key. If an AI request fails, returns bad
+Six local presets (Rainy café, Bedroom, Forest, Library, Cabin, Coast) use bundled
+sounds and do not need an API key. If an AI request fails, returns bad
 output, or takes longer than 15 seconds, supported prompts use a local preset or a
 saved edit and show an **AI unavailable** notice. Unsupported edits keep the current
 room intact and ask you to choose a preset or a supported demo prompt.
 Missing asset IDs in a valid AI response are part of normal live resolution and do
-not trigger offline replay. Enable **Offline demo** when you want saved responses.
+not trigger offline replay. Open the app with `?demo` when you want saved responses.
 
 ## Offline demo
 
-Run `npm run dev` locally before disconnecting from the internet, click **Enter room**,
-and enable **Offline demo**. The app and sound pack are served from your computer;
-the demo does not make Gemini requests. The deployed site still needs connectivity
+Run `npm run dev` locally before disconnecting from the internet, open
+http://localhost:5173/?demo and click **Enter room**. The app and sound pack are served
+from your computer; with `?demo` the prompt bar makes no Gemini requests. The deployed site still needs connectivity
 to load its page and sound files; this is not a service-worker offline cache.
 
-Use **Local preset** to load Rainy café, Bedroom, Forest, Library, Cabin, or Coast.
-For the recorded agent sequence, enter these prompts in order (also listed in the UI):
+Type a preset name (Rainy café, Bedroom, Forest, Library, Cabin, or Coast) to load it.
+For the recorded agent sequence, enter these prompts in order:
 
 1. `Rainy Tokyo cafe, I'm writing an essay.`
 2. `Make it rainier.`
@@ -77,7 +77,7 @@ For the recorded agent sequence, enter these prompts in order (also listed in th
 `src/ai/recordings.ts` contains real Gemini responses captured on October 24, 2026,
 with fixed local sound bindings. Replay adapts object IDs and the rain volume increase
 to the current room so manual placements survive. It supports these saved interactions,
-not arbitrary offline AI requests. Uncheck **Offline demo** to resume live AI requests.
+not arbitrary offline AI requests. Drop `?demo` from the URL to resume live AI requests.
 
 Run `npm run check:offline` for preset asset checks, the recorded sequence, preservation
 of manual edits, and simulated API/timeout failures. This check makes no real API calls.
@@ -264,3 +264,34 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
 
 `api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
+
+## Live environment art (#76)
+
+Live creation first drafts the soundscape through `/api/scene`, then calls `POST /api/environment`.
+Gemini reasons about the place, its materials, light and ground height, then five painters generate
+distinct pxl paintings for the floor and each wall. An NDJSON stream delivers the plan and each PNG
+as it finishes. The interactive room displays the terrain and paintings before a second scene pass
+places the physical sound sources in that environment. `/api/sprite` paints each source, while a
+portal and a “generating…” label hold its position; the finished prop emerges through that portal.
+Follow-up edits preserve the environment. `?demo` and offline fallbacks use the stock room and props.
+
+The art agents receive the pinned [pxl skill and reference](https://github.com/uilianks/pxl)
+(MIT), render their code, and get errors, lint coordinates and a PNG preview for up to two further
+calls when the deadline allows. All model code and pxl's platform-independent core run inside
+QuickJS/WASM in a separate process, without host functions, module imports, environment variables,
+filesystem or network APIs. Each render has a 96 MB interpreter heap, an 8-second interrupt and a
+12-second process kill limit. The trusted parent only encodes bounded pixel data as PNG.
+
+`npm run dev` and `npm run build` generate the sandbox bundle automatically. Art uses
+`GEMINI_API_KEY`; optional `GEMINI_ART_MODEL` overrides its default `gemini-3.8-flash`.
+`vercel.json` reserves 120 seconds for environment planning/painting and 90 seconds for a sprite,
+and includes the renderer, pxl documentation and WASM dependencies in each function bundle.
+These routes require a deployment that supports those durations; streaming alone does not extend
+a function's deadline. Five textures are painted concurrently, then up to four sprites at a time.
+
+Matching descriptions, mounting, palette and environment reuse a bounded seven-day `/tmp` cache,
+including matching concurrent requests. This cache is local to a warm server instance; it does not
+prevent regeneration on other Vercel instances or after a cold start. Cross-instance storage remains
+future work. Partial surface failures retain the paintings that succeeded; failed sprites use stock
+props. Run `npm run check:art` for renderer isolation/cache checks and `npm run test:art` with the
+dev server running for the environment/terrain/portal browser flow (no live generation).

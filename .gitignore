@@ -10,6 +10,7 @@ dist/
 dist-ssr/
 build/
 out/
+server/pxl-core.generated.js
 .vite/
 *.tsbuildinfo
 

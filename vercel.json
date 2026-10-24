@@ -1,8 +1,34 @@
 {
   "buildCommand": "node scripts/vercel-build.mjs",
   "functions": {
-    "api/agent.ts": { "maxDuration": 60 },
-    "api/voice.ts": { "maxDuration": 30 },
-    "api/sound.ts": { "maxDuration": 30 }
+    "api/agent.ts": {
+      "maxDuration": 60
+    },
+    "api/voice.ts": {
+      "maxDuration": 30
+    },
+    "api/sound.ts": {
+      "maxDuration": 30
+    },
+    "api/sprite.ts": {
+      "maxDuration": 90,
+      "includeFiles": [
+        "server/pxl-runner.mjs",
+        "server/pxl-core.generated.js",
+        "node_modules/pxl-pixelart/**",
+        "node_modules/quickjs-emscripten*/**",
+        "node_modules/@jitl/quickjs-*/**"
+      ]
+    },
+    "api/environment.ts": {
+      "maxDuration": 120,
+      "includeFiles": [
+        "server/pxl-runner.mjs",
+        "server/pxl-core.generated.js",
+        "node_modules/pxl-pixelart/**",
+        "node_modules/quickjs-emscripten*/**",
+        "node_modules/@jitl/quickjs-*/**"
+      ]
+    }
   }
 }
