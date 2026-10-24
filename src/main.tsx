@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { App } from "./App.js";
+import { convex } from "./scene/convex.js";
 import { useSceneStore } from "./scene/store.js";
 import "./styles.css";
 
@@ -10,6 +12,6 @@ if (import.meta.env.DEV) Object.assign(window, { sceneStore: useSceneStore });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    {convex ? <ConvexAuthProvider client={convex}><App /></ConvexAuthProvider> : <App />}
   </StrictMode>,
 );

@@ -163,3 +163,36 @@ button:disabled {
   padding: 0 4px 4px;
   font-size: 13px;
 }
+
+.saved-rooms {
+  flex-basis: 100%;
+  min-width: 0;
+  padding: 4px;
+  border-top: 1px solid #343844;
+  font-size: 13px;
+}
+
+.saved-rooms fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.saved-rooms legend { padding: 6px 0; }
+.saved-rooms input { flex: 1 1 140px; }
+.saved-rooms select {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #0f1115;
+  color: var(--text);
+  font: inherit;
+}
+.saved-rooms button { padding: 8px 12px; }
+.saved-rooms p { margin: 6px 0 0; color: var(--muted); }
