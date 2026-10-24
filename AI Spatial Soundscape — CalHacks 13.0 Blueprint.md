@@ -22,11 +22,11 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 
 | Option | How it works | Trade-off | Use it for |
 | --- | --- | --- | --- |
-| Curated local pack | 35 sounds today (23 seamless 30 s loops, 12 one-shots) tagged in `public/sounds/manifest.json`, built by `scripts/pack.mjs` | Only what's in the pack, but zero latency and works on bad Wi-Fi | **Built (#4).** The instant, offline layer |
-| Freesound API | Tag search, download the HQ preview MP3 with an API token (`scripts/fetch-freesound.mjs`) | Slow CDN; quality varies; licenses vary (we keep CC0 and CC-BY only) | **Source of most of the pack** (28 of 35), auto-picked by download count |
+| Curated local pack | 33 sounds today (21 seamless loops, 12 one-shots) tagged in `public/sounds/manifest.json`, built by `scripts/pack.mjs` | Only what's in the pack, but zero latency and works on bad Wi-Fi | **Built (#4).** The instant, offline layer |
+| Freesound API | Tag search, download the HQ preview MP3 with an API token (`scripts/fetch-freesound.mjs`) | Slow CDN; quality varies; licenses vary (we keep CC0 and CC-BY only) | **Source of most of the pack** (26 of 33), auto-picked by download count |
 | ElevenLabs Sound Effects | Text prompt to audio; `loop: true` makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | 15 s loop in ~4–7 s, 2 s one-shot in ~1.5–2.5 s; 40 credits per second | **Built (#17): the live fallback** for anything the pack lacks ("a cat purring") |
 
-**Pack source is moving to generated.** In a side-by-side listening test, ElevenLabs beat the auto-picked Freesound sound for every prompt we compared, so those four (rain_window, fireplace, cup_clink, sparrow) are now generated (`scripts/generate-pack.mjs`, #40). The rest stay on Freesound until someone listens through them; any weak one can be regenerated the same way (about 600 credits per 15 s loop, 80 per one-shot).
+**Pack source is moving to generated.** In a side-by-side listening test, ElevenLabs beat the auto-picked Freesound sound for every prompt we compared, so those four (rain_window, fireplace, cup_clink, sparrow) are now generated (`scripts/generate-pack.mjs`, #40). The rest stay on Freesound until someone listens through them; any weak one can be regenerated the same way (about 600 credits per 15 s loop, 80 per one-shot). `fan` and `espresso` were removed for strong electrical hum (60 Hz and 100 Hz) until better recordings are found; requests for them are generated instead.
 
 **Resolver (`src/audio/resolve.ts`, built):** the agent writes a description per sound object (`sound.query`). The browser's resolver fills in `assetId` for any object that arrives without one:
 

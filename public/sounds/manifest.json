@@ -183,34 +183,6 @@
     "license": "CC0"
   },
   {
-    "id": "espresso",
-    "file": "espresso.mp3",
-    "tags": [
-      "espresso",
-      "coffee machine",
-      "steam",
-      "hiss",
-      "cafe",
-      "barista"
-    ],
-    "kind": "bed",
-    "license": "CC-BY 4.0"
-  },
-  {
-    "id": "fan",
-    "file": "fan.mp3",
-    "tags": [
-      "fan",
-      "electric fan",
-      "hum",
-      "steady",
-      "masking",
-      "bedroom"
-    ],
-    "kind": "bed",
-    "license": "CC0"
-  },
-  {
     "id": "fire_pop",
     "file": "fire_pop.mp3",
     "tags": [

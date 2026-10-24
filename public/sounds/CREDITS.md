@@ -16,8 +16,6 @@ Each was converted to mono and loudness-normalized; recorded loops were also tri
 | `cup_clink` | "a single ceramic coffee cup set down on a saucer" (v3) | ElevenLabs (generated) | Generated (ElevenLabs) |
 | `dog_distant` | [Distant Dog Barks](https://freesound.org/people/andersmmg/sounds/518976/) | andersmmg | CC-BY 4.0 |
 | `door_distant` | [dorm door close.wav](https://freesound.org/people/pagancow/sounds/15418/) | pagancow | CC0 |
-| `espresso` | [espresso.WAV](https://freesound.org/people/Anton/sounds/22092/) | Anton | CC-BY 4.0 |
-| `fan` | [Electric Fan 02](https://freesound.org/people/unfa/sounds/170869/) | unfa | CC0 |
 | `fire_pop` | [Bullet_whiz.wav](https://freesound.org/people/CGEffex/sounds/123222/) | CGEffex | CC-BY 4.0 |
 | `fireplace` | "crackling fireplace in a small wooden cabin" (v2) | ElevenLabs (generated) | Generated (ElevenLabs) |
 | `forest` | [Long Birds Forest Ambience.wav](https://freesound.org/people/Motion_S/sounds/221755/) | Motion_S | CC-BY 4.0 |
