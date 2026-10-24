@@ -20,7 +20,7 @@ Read [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluep
 
 Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an issue.
 
-1. **Find work:** `gh issue list --assignee @me`, or pick an unassigned issue in your area: `gh issue list --label area:<audio|3d|ai|sensors> --search "no:assignee"`.
+1. **Find work:** `gh issue list --assignee @me`, or pick an unassigned issue in your area: `gh issue list --label area:<audio|3d|ai|sensors|infra|pitch> --search "no:assignee"`. Labels `first-hour`, `core`, and `stretch` set priority: finish every `core` issue before starting a `stretch` one. `blocked` marks issues waiting on something.
 2. **Claim it** before starting: `gh issue edit <N> --add-assignee @me`. Read the issue and any linked comments.
 3. **Do only that issue** on a feature branch (see Git below).
 4. **Mark it complete** by opening a PR whose body contains `Closes #<N>`. The issue closes when the PR merges. If an issue is finished without code (research, keys, setup), close it with a note: `gh issue close <N> -c "<what was done>"`.
