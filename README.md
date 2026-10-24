@@ -45,7 +45,33 @@ speech restrictions, and preservation of existing positions and unrelated object
 
 The agent only supplies `sound.query`. New sounds need the resolver in #17 to fill
 `assetId` before they can play; existing resolved objects keep their assets during edits.
-API errors leave the current scene intact. Offline presets/demo replay are tracked in #19.
+The prompt bar offers six local presets and an **Offline demo** checkbox. Presets
+use bundled sounds and do not need an API key. If an AI request fails, returns bad
+output, or takes longer than 15 seconds, supported prompts use a local preset or a
+saved edit and show an **AI unavailable** notice. Unsupported edits keep the current
+room intact and ask you to choose a preset or a supported demo prompt.
+
+## Offline demo
+
+Run `npm run dev` locally before disconnecting from the internet, click **Enter room**,
+and enable **Offline demo**. The app and sound pack are served from your computer;
+the demo does not make Gemini requests. The deployed site still needs connectivity
+to load its page and sound files; this is not a service-worker offline cache.
+
+Use **Local preset** to load Rainy café, Bedroom, Forest, Library, Cabin, or Coast.
+For the recorded agent sequence, enter these prompts in order (also listed in the UI):
+
+1. `Rainy Tokyo cafe, I'm writing an essay.`
+2. `Make it rainier.`
+3. `Push the chatter farther away and add a fireplace.`
+
+`src/ai/recordings.ts` contains real Gemini responses captured on October 24, 2026,
+with fixed local sound bindings. Replay adapts object IDs and the rain volume increase
+to the current room so manual placements survive. It supports these saved interactions,
+not arbitrary offline AI requests. Uncheck **Offline demo** to resume live AI requests.
+
+Run `npm run check:offline` for preset asset checks, the recorded sequence, preservation
+of manual edits, and simulated API/timeout failures. This check makes no real API calls.
 
 Wear headphones. The spatial effect depends on them.
 

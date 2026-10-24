@@ -9,6 +9,7 @@
     "typecheck": "tsc",
     "check:gemini": "node --env-file=.env scripts/check-gemini.mjs",
     "check:placement": "node scripts/check-placement.mjs",
+    "check:offline": "node scripts/check-offline.mjs",
     "preview": "vite preview",
     "sounds:fetch": "node --env-file=.env scripts/fetch-freesound.mjs",
     "sounds:pack": "node scripts/pack.mjs"
