@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+# Audio and media: never diff or normalize line endings
+*.mp3  binary
+*.ogg  binary
+*.wav  binary
+*.flac binary
+*.m4a  binary
+*.aac  binary
+*.webm binary
+*.mp4  binary
+*.png  binary
+*.jpg  binary
+*.glb  binary
+*.gltf binary

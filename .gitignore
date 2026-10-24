@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/*
+!.yarn/releases
+.npm/
+
+# Builds
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+*.tsbuildinfo
+
+# Env / secrets (keep API keys server-side and out of git)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing / coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Deploy / backend tooling
+.vercel/
+.netlify/
+.convex/
+spacetimedb/target/
+target/
+
+# Swift helper (Xcode / SwiftPM)
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+Packages/
+Package.resolved
+
+# Sound pack scratch (raw downloads before trimming/encoding into the pack)
+assets/raw/
+sounds/raw/
+*.tmp.wav
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+Thumbs.db
+
+# Claude Code local settings
+.claude/settings.local.json
