@@ -100,12 +100,16 @@ export class AudioEngine {
  * Beds loop one source (with its own fade gain so sound swaps crossfade).
  * Events start a fresh one-shot source on a random timer within intervalSec.
  */
+type Playback = { source: AudioBufferSourceNode; fade: GainNode };
+
 class Voice {
   private gain: GainNode;
   private panner: PannerNode;
-  private bed?: { source: AudioBufferSourceNode; fade: GainNode };
+  private bed?: Playback;
+  private events = new Set<Playback>();
   private timer?: ReturnType<typeof setTimeout>;
   private loadedAssetId?: string;
+  private loadVersion = 0;
   private disposed = false;
 
   constructor(
@@ -123,10 +127,10 @@ class Voice {
     });
     this.gain.connect(this.panner).connect(output);
     this.update(object);
-    if (object.kind === "event") this.scheduleEvent();
   }
 
   update(object: SoundObject) {
+    const previous = this.object;
     this.object = object;
     const now = this.ctx.currentTime;
     const [x, y, z] = object.position;
@@ -134,8 +138,21 @@ class Voice {
     this.panner.positionY.setTargetAtTime(y, now, RAMP_SEC);
     this.panner.positionZ.setTargetAtTime(z, now, RAMP_SEC);
     this.gain.gain.setTargetAtTime(object.volume, now, RAMP_SEC);
-    // Events load their buffer on each play, so only beds need to swap here
+    // A missing replacement asset must stop the old sound too.
     if (object.kind === "bed" && object.sound.assetId !== this.loadedAssetId) void this.playBed();
+    if (object.kind === "event") {
+      const changedAsset = object.sound.assetId !== this.loadedAssetId;
+      if (changedAsset) {
+        this.loadedAssetId = object.sound.assetId;
+        this.loadVersion++;
+        this.stopEvents();
+      }
+      if (!this.timer || changedAsset || previous.kind !== "event" ||
+          previous.intervalSec[0] !== object.intervalSec[0] || previous.intervalSec[1] !== object.intervalSec[1]) {
+        clearTimeout(this.timer);
+        this.scheduleEvent();
+      }
+    }
   }
 
   setPanningModel(model: PanningModelType) {
@@ -144,9 +161,11 @@ class Voice {
 
   dispose() {
     this.disposed = true;
+    this.loadVersion++;
     clearTimeout(this.timer);
     this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, RAMP_SEC);
     this.stopBed();
+    this.stopEvents();
     // Disconnect after the fade so removing a sound never clicks
     setTimeout(() => this.panner.disconnect(), FADE_SEC * 1000 * 2);
   }
@@ -154,17 +173,23 @@ class Voice {
   /** Starts (or crossfades to) the bed loop for the current assetId. */
   private async playBed() {
     const assetId = this.object.sound.assetId;
+    const version = ++this.loadVersion;
     this.loadedAssetId = assetId;
+    this.stopBed();
     const buffer = await loadBuffer(this.ctx, assetId);
     // Ignore if disposed or the asset changed again while loading
-    if (!buffer || this.disposed || this.loadedAssetId !== assetId) return;
+    if (this.disposed || this.loadVersion !== version) return;
+    if (!buffer) {
+      this.loadedAssetId = undefined; // A later scene update may retry a failed file load.
+      return;
+    }
 
-    this.stopBed();
     const loopStart = buffer.duration > 1 ? LOOP_TRIM_SEC : 0;
     const loopEnd = buffer.duration - loopStart;
     const source = new AudioBufferSourceNode(this.ctx, { buffer, loop: true, loopStart, loopEnd });
     const fade = new GainNode(this.ctx, { gain: 0 });
     source.connect(fade).connect(this.gain);
+    source.onended = () => { source.disconnect(); fade.disconnect(); };
     // Random offset so two similar loops don't phase against each other
     source.start(0, loopStart + Math.random() * (loopEnd - loopStart));
     fade.gain.setTargetAtTime(1, this.ctx.currentTime, FADE_SEC / 3);
@@ -173,11 +198,19 @@ class Voice {
 
   private stopBed() {
     if (!this.bed) return;
-    const { source, fade } = this.bed;
+    this.stopPlayback(this.bed);
+    this.bed = undefined;
+  }
+
+  private stopPlayback({ source, fade }: Playback) {
     const now = this.ctx.currentTime;
     fade.gain.setTargetAtTime(0, now, FADE_SEC / 3);
     source.stop(now + FADE_SEC);
-    this.bed = undefined;
+  }
+
+  private stopEvents() {
+    for (const event of this.events) this.stopPlayback(event);
+    this.events.clear();
   }
 
   private scheduleEvent() {
@@ -191,11 +224,16 @@ class Voice {
   }
 
   private async playEvent() {
+    const version = this.loadVersion;
     const buffer = await loadBuffer(this.ctx, this.object.sound.assetId);
-    if (!buffer || this.disposed) return;
+    if (!buffer || this.disposed || this.loadVersion !== version) return;
     const detune = randomBetween(-EVENT_DETUNE_CENTS, EVENT_DETUNE_CENTS);
     const source = new AudioBufferSourceNode(this.ctx, { buffer, detune });
-    source.connect(this.gain);
+    const fade = new GainNode(this.ctx, { gain: 1 });
+    const playback = { source, fade };
+    source.connect(fade).connect(this.gain);
+    this.events.add(playback);
+    source.onended = () => { source.disconnect(); fade.disconnect(); this.events.delete(playback); };
     source.start();
   }
 }
@@ -220,9 +258,13 @@ function loadBuffer(ctx: AudioContext, assetId: string | undefined) {
         if (!entry) throw new Error(`no manifest entry "${assetId}"`);
         return fetch(`/sounds/${entry.file}`);
       })
-      .then((res) => res.arrayBuffer())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Sound file failed: ${res.status}`);
+        return res.arrayBuffer();
+      })
       .then((data) => ctx.decodeAudioData(data))
       .catch((err) => {
+        buffers.delete(assetId); // Retry after transient network/decode failures.
         console.warn(`audio: could not load "${assetId}"`, err);
         return undefined;
       });

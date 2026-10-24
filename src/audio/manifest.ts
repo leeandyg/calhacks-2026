@@ -16,7 +16,11 @@ let manifest: Promise<Map<string, ManifestEntry>> | undefined;
 
 export function loadManifest(): Promise<Map<string, ManifestEntry>> {
   manifest ??= fetch("/sounds/manifest.json")
-    .then((res) => res.json())
-    .then((json) => new Map(z.array(ManifestEntry).parse(json).map((e) => [e.id, e])));
+    .then((res) => {
+      if (!res.ok) throw new Error(`Sound manifest failed: ${res.status}`);
+      return res.json();
+    })
+    .then((json) => new Map(z.array(ManifestEntry).parse(json).map((e) => [e.id, e])))
+    .catch((error) => { manifest = undefined; throw error; });
   return manifest;
 }
