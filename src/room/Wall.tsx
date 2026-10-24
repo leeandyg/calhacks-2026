@@ -5,7 +5,9 @@ import type { RoomConfig, WallConfig } from './types.js';
 import { useSceneStore } from '../scene/store.js';
 import { buildWallSegments, getWallOpenings } from '../scene/layout.js';
 import { SurfacePixels } from './SurfacePixels.js';
-import { getWallOpacity } from './WallVisibility.js';
+import { applyScreenDoorFade, getWallOpacity } from './WallVisibility.js';
+import { useArtStore } from '../art/store.js';
+import { PaintedSurface } from './PaintedSurface.js';
 
 const cameraWorld = new Vector3();
 export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig }) {
@@ -15,6 +17,7 @@ export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig })
   const endExtensions = useRef<[number, number]>([NaN, NaN]);
   const matrix = useMemo(() => new Matrix4(), []);
   const room = useSceneStore(state => state.scene.room);
+  const painting = useArtStore(state => room.art ? state.envs[room.art]?.textures[wall.id] : undefined);
   const objects = useSceneStore(state => state.scene.objects);
   const openings = getWallOpenings(room, objects, wall.id);
   const openingKey = JSON.stringify(openings);
@@ -45,12 +48,11 @@ export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig })
     parts.current = [];
     ref.current?.traverse(object => {
       if (object instanceof Mesh && object.material instanceof MeshStandardMaterial) {
-        object.material.transparent = true;
-        object.material.needsUpdate = true;
+        applyScreenDoorFade(object.material);
         parts.current.push({ mesh: object, material: object.material });
       }
     });
-  }, [updatePanels, wallThickness, config.theme, holes]);
+  }, [updatePanels, wallThickness, config.theme, holes, painting]);
   useFrame(({ camera }) => {
     const group = ref.current;
     if (!group?.parent) return;
@@ -66,14 +68,13 @@ export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig })
       if (Math.abs(left - endExtensions.current[0]) > 1e-8 || Math.abs(right - endExtensions.current[1]) > 1e-8) updatePanels(left, right);
     }
     for (const { mesh, material } of parts.current) {
-      material.opacity = opacity;
-      material.depthWrite = opacity > 0.999;
+      material.opacity = opacity; // drives the screen-door fade, not blending
       mesh.renderOrder = mesh.name === 'wall-body' ? 1 : 2;
     }
   }, -1);
   return <group ref={ref} name={`wall-${wall.id}`} position={wall.position} rotation={[0, wall.rotation, 0]} userData={{ modules: segments.length, openings, thickness: wallThickness, surface: config.theme.surface }}>
     <instancedMesh ref={panels} name="wall-body" args={[undefined, undefined, segments.length]}><boxGeometry args={[1, 1, wallThickness]}/><meshStandardMaterial color={config.theme.surface} roughness={1} flatShading/></instancedMesh>
-    <SurfacePixels width={surfaceWidth} height={height} seed={41} palette={config.theme.detailPalette} openings={holes} position={[0, height / 2, wallThickness / 2 + 0.002]}/>
+    {painting ? <PaintedSurface png={painting} cells={segments} width={wall.width} height={height} depth={wallThickness / 2 + 0.003}/> : <SurfacePixels width={surfaceWidth} height={height} seed={41} palette={config.theme.detailPalette} openings={holes} position={[0, height / 2, wallThickness / 2 + 0.002]}/>}
     <SurfacePixels width={surfaceWidth} height={height} seed={42} palette={config.theme.detailPalette} openings={holes.map(hole => ({ ...hole, x: -hole.x - hole.width }))} position={[0, height / 2, -wallThickness / 2 - 0.002]} rotation={[0, Math.PI, 0]}/>
     <SurfacePixels width={surfaceWidth} height={wallThickness} seed={43} palette={config.theme.detailPalette} openings={holes.filter(hole => hole.y + hole.height >= height / 2).map(hole => ({ ...hole, y: -wallThickness / 2, height: wallThickness }))} position={[0, height + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}/>
   </group>;

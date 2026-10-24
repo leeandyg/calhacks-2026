@@ -131,7 +131,7 @@ try {
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
   assert.equal(await page.getByRole('button').count(), 3);
-  assert.equal((await page.locator('body').innerText()).replace(await page.locator('.demo-controls').innerText(), '').trim(), '', 'besides the demo controls, no added labels');
+  assert.equal((await page.locator('body').innerText()).trim(), 'Head tracking');
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');
   console.log('PASS: touch tap mute/unmute, muted dragging, minimal mobile UI, no shadows and no browser errors');

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Box3, Vector3 } from 'three';
 import { useSoundStatus } from '../audio/generated.js';
 import { useSceneStore } from '../scene/store.js';
+import { spriteKey, useArtStore } from '../art/store.js';
 
 // "Cat purring · generating…" over a prop while its sound is generated with ElevenLabs (#38).
 // The labels are DOM, drawn over the pixel canvas; a tracker inside the canvas moves each one to
@@ -18,10 +19,13 @@ export function SoundStatusProvider({ children }: { children: ReactNode }) {
 function SoundStatusLayer({ layer }: { layer: RefObject<HTMLDivElement | null> }) {
   const objects = useSceneStore(state => state.scene.objects);
   const status = useSoundStatus();
-  const labelled = objects.filter(object => object.sound.assetId && status[object.sound.assetId]);
+  const envId = useSceneStore(state => state.scene.room.art);
+  const sprites = useArtStore(state => state.sprites);
+  const labelled = objects.filter(object => (object.sound.assetId && status[object.sound.assetId]) || (envId && sprites[spriteKey(envId, object)]?.status === 'painting'));
   return <div ref={layer} className="sound-status-layer" aria-live="polite">
     {labelled.map(object => {
-      const failed = status[object.sound.assetId!] === 'failed';
+      const painting = envId && sprites[spriteKey(envId, object)]?.status === 'painting';
+      const failed = !painting && status[object.sound.assetId!] === 'failed';
       return <div key={object.id} data-sound-id={object.id} className={`sound-status${failed ? ' sound-status-failed' : ''}`}>
         {object.label} · {failed ? 'using the closest sound' : 'generating…'}
       </div>;
@@ -39,7 +43,8 @@ export function SoundStatusTracker() {
     if (!labels?.length) return;
     const bounds = gl.domElement.getBoundingClientRect();
     for (const label of labels as HTMLCollectionOf<HTMLElement>) {
-      const prop = scene.getObjectByName(`sound-${label.dataset.soundId}`);
+      const source = scene.getObjectByName(`sound-${label.dataset.soundId}`);
+      const prop = source?.scale.x ? source : scene.getObjectByName(`portal-${label.dataset.soundId}`);
       if (!prop) { label.style.visibility = 'hidden'; continue; }
       box.setFromObject(prop);
       if (box.isEmpty()) { label.style.visibility = 'hidden'; continue; }

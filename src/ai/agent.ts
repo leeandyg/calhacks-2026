@@ -4,7 +4,7 @@ import { offlineResponse } from "./offline.js";
 import { localContext, type Preference, type TimeBucket } from "./preferences.js";
 
 export type AgentContext = { token: string; task: string; timeBucket: TimeBucket | "auto"; turns: string[] };
-export type AgentReply = { response?: SceneResponse; message?: string; notice?: string; recalled?: string[] };
+export type AgentReply = { response?: SceneResponse & { notice?: string }; message?: string; notice?: string; recalled?: string[] };
 class AgentError extends Error { constructor(message: string, readonly status: number) { super(message); } }
 export function memoryCommand(prompt: string) { return /^(?:remember|forget|save (?:this|my) preference)\b/i.test(prompt.trim()); }
 

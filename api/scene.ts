@@ -13,13 +13,15 @@ import { applyOp, clampScene } from "../src/scene/store.js";
 // The agent describes sounds; resolving queries to playable assets belongs to #17.
 // The agent may pick the prop (model); mute, wall mounting and scale belong to the room view.
 const agentSound = SoundRef.omit({ assetId: true }).strict();
-const viewFields = { muted: true, wall: true, scale: true } as const;
+// The agent may mount an object on a wall (a branch growing out of it, a clock hanging on it).
+const viewFields = { muted: true, scale: true } as const;
 const agentObject = z.discriminatedUnion("kind", [
   BedObject.omit(viewFields).extend({ sound: agentSound }),
   EventObject.omit(viewFields).extend({ sound: agentSound }),
 ]);
 // The room's grid and openings are fixed by the room view; the agent only picks preset and reverb.
-const agentRoom = RoomSchema.omit({ grid: true, openings: true });
+// The environment's art and terrain come from api/environment.ts, after the scene.
+const agentRoom = RoomSchema.omit({ grid: true, openings: true, art: true, terrain: true });
 const createArgs = z.object({
   scene: Scene.extend({ room: agentRoom, objects: z.array(agentObject).max(12) }),
 });
@@ -101,6 +103,13 @@ for the user's usual setup. The current prompt wins over memory. For unrelated f
 edits, do not reapply saved positions, volumes, or rooms. Preserve manual placements.
 An example's object IDs refer to an older scene; use current IDs for edits and new IDs for additions.
 The current room grid and openings always take precedence over a remembered room's geometry.
+Treat the room as the real place, not a box: every sound comes from a physical thing in it,
+which the room draws as its own prop. A forest has trees whose leaves carry the wind, a branch
+growing out of a wall with birds on it, a creek in the ground; a cafe has an espresso machine
+and cups on a counter. Label each object by that thing ("Old oak", "Mossy branch with sparrows").
+To mount a thing on a wall (a branch growing from it, a clock hanging on it, a window), set wall
+to "north", "east", "south" or "west" and give its height as y; leave wall unset for things on
+the ground.
 If validation feedback is supplied, fix the error and call the tool again.`;
 
 export async function POST(request: Request): Promise<Response> {

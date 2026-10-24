@@ -33,13 +33,14 @@ Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an
 - The room view and the audio engine only render the scene store (`src/scene/store.ts`). Change the scene through `setScene` / `applyOps` (both all-or-nothing, returning `{ ok }` or `{ ok: false, error }`), never by mutating objects or reading positions from meshes. The store snaps positions onto the room grid with `src/scene/layout.ts`.
 - The room grid is fixed (1 block = 1 m, default 10 × 10 × 7); Gemini never chooses it. Camera and rotation are view-only state in `src/room/useRoomStore.ts`.
 - API keys are read only server side: in `api/` (from `.env` or Vercel) or in `convex/` (from the Convex deployment's environment). Nothing in `src/` may use a secret.
+- Live pxl art (#76) is generated only in `api/` and `server/`. Run model-written code only inside the QuickJS/WASM renderer, never Node `eval`/`vm`. Keep PNGs in `src/art/` browser state; scene JSON carries only `room.art` and canonical `room.terrain`. Render the environment before source generation, and keep waiting portals tied to canonical source positions.
 - Never set `sound.assetId` outside the resolver (`src/audio/resolve.ts`), except in hand-made presets or recordings. Objects without one are resolved automatically: a pack sound, or a `gen:` id that is generated with ElevenLabs (each generation costs credits).
 - Relative imports use `.js` extensions (`./scene.js`) so `api/` works on Vercel.
 - Check with `npm run build` before opening a PR.
 
 ## Frontend (pixel room)
 
-Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, the Enter-room overlay, and one BorderBeam-wrapped prompt bar with its demo row and status line.
+Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, the Enter-room overlay, and one BorderBeam-wrapped prompt bar with its status line. No preset or demo controls; the offline demo is `?demo`.
 
 - Keep view rotation separate from canonical source positions. Room rotation is manual only, through the arrows; no edge-triggered, delayed, or automatic turns.
 - No shadows and no decorative non-source objects. Every model is one sound object.

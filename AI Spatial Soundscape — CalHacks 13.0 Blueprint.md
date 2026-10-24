@@ -144,6 +144,28 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
+**Live pxl environments (#76):** new live scenes stage the environment before revealing sources.
+`POST /api/environment` reasons about the actual place and streams a plan plus five separately
+painted PNGs (floor, north, east, south, west). Natural ground can be uneven; indoor floors remain
+flat. A source-planning pass then uses the concept and canonical terrain, and `/api/sprite` paints
+each physical source. Waiting portals occupy the chosen positions until art arrives, then sources
+emerge. All generated geometry remains structural surfaces or canonical sound objects. Offline
+presets retain their existing rendering.
+
+The optional `room.art` string names browser-cached environment PNGs; optional `room.terrain`
+stores ground heights as `[row][column]` in blocks, north to south and west to east, matching the
+fixed grid, from 0 to 1.5. Missing terrain means flat ground. Placement lifts sources above the
+ground in the shared store, so audio and drawing share canonical positions. Changing the preset
+or grid clears incompatible art and terrain. These optional contract additions need AI-owner
+review in the #76 PR. PNGs never enter scene JSON or Gemini scene requests.
+
+Art code executes with pxl's platform-independent core in QuickJS/WASM in a separate process,
+without host APIs, with memory and wall-clock limits. Gemini receives pxl's skill/reference,
+render failures, lint findings and a preview when time allows (at most three painting calls).
+The routes have separate Vercel duration budgets (120 seconds environment, 90 seconds sprite),
+and use a bounded warm-instance cache keyed by the description and art context. This cache is
+not durable across server instances. See README “Live environment art” for setup and checks.
+
 Units are meters (1 grid block = 1 m), y is up, the floor is centered on the origin, and the listener faces −z at yaw 0 (three.js defaults). The room is a fixed grid drawn by the room view (default 10 × 10 blocks, walls 7 high); the agent picks only its `preset` and `reverb`, never its size (#57).
 
 ```json
