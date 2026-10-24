@@ -11,7 +11,7 @@ const sources = [];
 const requests = new Map();
 const held = new Map();
 const failures = new Set();
-const originals = { fetch, setTimeout, clearTimeout, AudioBufferSourceNode: globalThis.AudioBufferSourceNode, GainNode: globalThis.GainNode, PannerNode: globalThis.PannerNode };
+const originals = { fetch, setTimeout, clearTimeout, AudioBufferSourceNode: globalThis.AudioBufferSourceNode, GainNode: globalThis.GainNode, PannerNode: globalThis.PannerNode, AnalyserNode: globalThis.AnalyserNode };
 class Param { value = 0; setTargetAtTime(value, _at, timeConstant) { this.value = value; this.timeConstant = timeConstant; } }
 class Node { connect(node) { this.output = node; (this.outputs ??= []).push(node); return node; } disconnect() { this.disconnected = true; } }
 class Gain extends Node { gain = new Param(); constructor(_ctx, options) { super(); this.gain.value = options?.gain ?? 1; } }
@@ -25,6 +25,9 @@ class Source extends Node {
   stop(at = now) { this.stopsAt = at; }
 }
 class Convolver extends Node { buffer = null; normalize = true; }
+const analysers = [];
+// Every sample reads `value`, so a check sets the level an object emits.
+class Analyser extends Node { value = 0; constructor(ctx, options) { super(); this.context = ctx; this.fftSize = options?.fftSize ?? 2048; analysers.push(this); } getFloatTimeDomainData(samples) { samples.fill(this.value); } }
 const context = {
   get currentTime() { return now; }, destination: {}, sampleRate: 8000,
   createGain: () => new Gain(),
@@ -61,6 +64,7 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
 let engine;
 try {
   const { AudioEngine } = await server.ssrLoadModule("/src/audio/AudioEngine.ts");
+  const { soundLevel } = await server.ssrLoadModule("/src/audio/levels.ts");
   const { useSceneStore } = await server.ssrLoadModule("/src/scene/store.ts");
   const { bedroom } = await server.ssrLoadModule("/src/scene/fixtures.ts");
   const { useRoomStore } = await server.ssrLoadModule("/src/room/useRoomStore.ts");
@@ -84,6 +88,7 @@ try {
   globalThis.AudioBufferSourceNode = Source;
   globalThis.GainNode = Gain;
   globalThis.PannerNode = Panner;
+  globalThis.AnalyserNode = Analyser;
   function setSound(assetId, kind = "bed", id = "same-object", intervalSec = [1, 1]) {
     useSceneStore.getState().setScene({ ...bedroom, objects: [{
       id, label: assetId ?? "Unresolved", kind, sound: { query: "test sound", assetId },
@@ -200,6 +205,28 @@ try {
     useSceneStore.getState().setScene({ ...bedroom, objects: [] });
     release(); held.delete("owl"); await flush(); await advance(2);
     assert.equal(active().length, 0);
+  });
+  await check("an object's level follows what it emits: silence 0, loud near 1, then a gradual fall", async () => {
+    setSound("ocean", "bed", "metered"); await flush();
+    const analyser = analysers.at(-1);
+    assert.equal(soundLevel("metered"), 0, "silence, e.g. before a clip's first sample, reads 0");
+    analyser.value = 0.5; await advance(1);
+    assert.ok(soundLevel("metered") > 0.95);
+    analyser.value = 0; await advance(0.1);
+    const falling = soundLevel("metered");
+    assert.ok(falling > 0.3 && falling < 0.9, `level ${falling} 0.1 s into silence`);
+    await advance(2);
+    assert.ok(soundLevel("metered") < 0.01);
+    assert.equal(soundLevel("no-such-object"), 0);
+  });
+  await check("a recreated or removed object's meter follows the object", async () => {
+    setSound("ocean", "bed", "metered"); await flush();
+    setSound("cup_clink", "event", "metered"); await flush(); // a kind change recreates the voice
+    const analyser = analysers.at(-1);
+    analyser.value = 0.5; await advance(1);
+    assert.ok(soundLevel("metered") > 0.95, "the new voice's meter is the one read");
+    useSceneStore.getState().setScene({ ...bedroom, objects: [] }); await flush();
+    assert.equal(soundLevel("metered"), 0, "a removed object has no meter");
   });
   await check("muting fades the voice out and unmuting restores its volume", async () => {
     setSound("ocean"); await flush();
