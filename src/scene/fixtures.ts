@@ -1,0 +1,94 @@
+import type { Scene } from "./scene.js";
+
+// Hand-written scenes so the room and audio can be built before the agent exists.
+// Asset ids point at the placeholder sounds in public/sounds until the real pack (#4) lands.
+
+export const cafe: Scene = {
+  room: { preset: "cafe", size: [8, 3, 8], reverb: "small-room" },
+  listener: { position: [0, 1.6, 0], yaw: 0 },
+  objects: [
+    {
+      id: "rain-1",
+      label: "Rain on window",
+      kind: "bed",
+      sound: { query: "steady rain on glass", assetId: "rain_placeholder" },
+      position: [-3, 1.5, 1],
+      volume: 0.6,
+    },
+    {
+      id: "murmur-1",
+      label: "Café murmur",
+      kind: "bed",
+      sound: { query: "soft indistinct café murmur", assetId: "brown_noise" },
+      position: [2.5, 1.2, -2.5],
+      volume: 0.3,
+    },
+    {
+      id: "cups-1",
+      label: "Cups clinking",
+      kind: "event",
+      sound: { query: "ceramic cup clink", assetId: "chirp_placeholder" },
+      position: [3, 1, 2],
+      volume: 0.25,
+      intervalSec: [6, 15],
+    },
+  ],
+  session: { task: "writing an essay", mode: "focus", minutesLeft: 50 },
+};
+
+export const bedroom: Scene = {
+  room: { preset: "bedroom", size: [5, 2.6, 5], reverb: "small-room" },
+  listener: { position: [0, 1.6, 0], yaw: 0 },
+  objects: [
+    {
+      id: "rain-1",
+      label: "Rain on roof",
+      kind: "bed",
+      sound: { query: "heavy rain on a roof", assetId: "rain_placeholder" },
+      position: [0, 2.4, -1.5],
+      volume: 0.7,
+    },
+    {
+      id: "fan-1",
+      label: "Desk fan",
+      kind: "bed",
+      sound: { query: "steady electric fan hum", assetId: "brown_noise" },
+      position: [1.8, 0.8, 1.5],
+      volume: 0.35,
+    },
+  ],
+};
+
+export const forest: Scene = {
+  room: { preset: "forest", size: [14, 6, 14], reverb: "outdoor" },
+  listener: { position: [0, 1.6, 0], yaw: 0 },
+  objects: [
+    {
+      id: "stream-1",
+      label: "Creek",
+      kind: "bed",
+      sound: { query: "gentle flowing creek", assetId: "rain_placeholder" },
+      position: [-4, 0.3, -2],
+      volume: 0.5,
+    },
+    {
+      id: "wind-1",
+      label: "Wind in trees",
+      kind: "bed",
+      sound: { query: "soft wind through leaves", assetId: "brown_noise" },
+      position: [3, 4, 3],
+      volume: 0.3,
+    },
+    {
+      id: "birds-1",
+      label: "Distant birds",
+      kind: "event",
+      sound: { query: "sparrow chirps", assetId: "chirp_placeholder" },
+      position: [5, 3, -5],
+      volume: 0.25,
+      intervalSec: [8, 25],
+    },
+  ],
+};
+
+export const fixtures = { cafe, bedroom, forest };

@@ -27,6 +27,14 @@ Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an
 5. **New work you discover** becomes a new issue (`gh issue create`), not part of the current PR.
 6. If blocked, comment on the issue saying what blocks it and move on.
 
+## Code layout
+
+- Folder owners are listed in README "Layout". Stay in your folder; changes to `src/scene/scene.ts` (the shared contract) need a PR the AI owner reviews.
+- The room view and the audio engine only render the scene store. Change the scene through `setScene` / `applyOps`, never by mutating objects or reading positions from meshes.
+- API keys are read only in `api/` (server side). Nothing in `src/` may use a secret.
+- Relative imports use `.js` extensions (`./scene.js`) so `api/` works on Vercel.
+- Check with `npm run build` before opening a PR.
+
 ## Git
 
 - Never commit directly to `main`. One branch per issue: `feat/<N>-short-slug`, `fix/<N>-short-slug`, or `chore/<N>-short-slug`.
