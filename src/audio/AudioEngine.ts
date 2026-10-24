@@ -1,6 +1,4 @@
 import { useEffect } from "react";
-import { useRoomStore } from "../room/useRoomStore.js";
-import { VIEW_AZIMUTH } from "../scene/layout.js";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
@@ -30,7 +28,6 @@ export class AudioEngine {
   private master: GainNode;
   private reverb: Reverb;
   private unsubscribe?: () => void;
-  private unsubscribeView?: () => void;
 
   constructor(private ctx: AudioContext) {
     this.master = ctx.createGain();
@@ -41,15 +38,10 @@ export class AudioEngine {
   start() {
     this.sync(useSceneStore.getState().scene, undefined);
     this.unsubscribe = useSceneStore.subscribe((state, prev) => this.sync(state.scene, prev.scene));
-    // Turning the room on screen turns your ears with it (see setListener).
-    this.unsubscribeView = useRoomStore.subscribe((state, prev) => {
-      if (state.viewAngle !== prev.viewAngle) this.setListener(useSceneStore.getState().scene.listener);
-    });
   }
 
   stop() {
     this.unsubscribe?.();
-    this.unsubscribeView?.();
     for (const voice of this.voices.values()) voice.dispose();
     this.voices.clear();
     this.master.disconnect();
@@ -90,14 +82,12 @@ export class AudioEngine {
   }
 
   /**
-   * Scene positions never rotate; the room view turns the whole room on screen instead. So the
-   * listener faces into the screen (VIEW_AZIMUTH), turned back by the room's on-screen angle:
-   * a sound on the left of the screen is on your left, at every turn and during the animation.
+   * The listener sits in the room and faces scene.listener.yaw. Turning the room view only moves the
+   * camera around the room, so it never changes what you hear; head tracking changes the yaw (#21).
    */
-  private setListener({ position: [x, y, z], yaw: sceneYaw }: Listener) {
+  private setListener({ position: [x, y, z], yaw }: Listener) {
     const l = this.ctx.listener;
     const now = this.ctx.currentTime;
-    const yaw = sceneYaw + VIEW_AZIMUTH - useRoomStore.getState().viewAngle;
     const forward = [-Math.sin(yaw), 0, -Math.cos(yaw)];
     if (l.positionX) {
       l.positionX.setTargetAtTime(x, now, RAMP_SEC);

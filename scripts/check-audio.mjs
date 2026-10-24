@@ -201,14 +201,13 @@ try {
     mute(false);
     assert.equal(voiceGain().value, 0.5);
   });
-  await check("turning the room turns the listener: screen-left stays left", async () => {
+  await check("turning the room view leaves the listener where it is", async () => {
     const forward = () => [context.listener.forwardX.value, context.listener.forwardZ.value].map((v) => Math.round(v * 1000) / 1000);
-    // At rest the listener looks into the screen, from the camera's +x/+z corner toward -x/-z
-    assert.deepEqual(forward(), [-0.707, -0.707]);
+    // The listener faces scene.listener.yaw (0: toward -z), whatever the view's angle
+    assert.deepEqual(forward(), [-0, -1]);
     useRoomStore.setState({ viewAngle: Math.PI / 2 }); // the room turned a quarter counterclockwise
-    assert.deepEqual(forward(), [0.707, -0.707]);
+    assert.deepEqual(forward(), [-0, -1]);
     useRoomStore.setState({ viewAngle: 0 });
-    assert.deepEqual(forward(), [-0.707, -0.707]);
   });
   await check("engine stop cancels loops and future event callbacks", async () => {
     setSound("ocean"); await flush(); engine.stop(); await advance(3);
