@@ -110,11 +110,16 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
-Units are meters, y is up, and the listener sits at the origin facing −z (three.js defaults).
+Units are meters (1 grid block = 1 m), y is up, the floor is centered on the origin, and the listener faces −z at yaw 0 (three.js defaults). The room is a fixed grid drawn by the room view (default 10 × 10 blocks, walls 7 high); the agent picks only its `preset` and `reverb`, never its size (#57).
 
 ```json
 {
-  "room": { "preset": "cafe", "size": [8, 3, 8], "reverb": "small-room" },
+  "room": {
+    "preset": "cafe",
+    "grid": { "mode": "Square", "columns": 10, "rows": 10, "wallHeight": 7 },
+    "openings": [],
+    "reverb": "small-room"
+  },
   "listener": { "position": [0, 1.6, 0], "yaw": 0 },
   "objects": [
     {
@@ -146,9 +151,12 @@ Edits from the agent (and from voice commands) are a list of ops applied in orde
   { "op": "move", "id": "rain-1", "position": [-4, 1.5, 0] },
   { "op": "set_volume", "id": "birds-1", "volume": 0.1 },
   { "op": "add", "object": { "id": "fire-1", "label": "Fireplace", "kind": "bed", "sound": { "query": "crackling fireplace" }, "position": [2, 0.5, 2], "volume": 0.4 } },
+  { "op": "set_muted", "id": "birds-1", "muted": true },
   { "op": "set_room", "preset": "cabin" }
 ]
 ```
+
+Objects can also carry room-view fields: `model` (the prop drawn: `rain`, `fan`, `birds`, `speaker`), `muted` (silences without changing `volume`), `wall` (for window-mounted props) and `scale`. Missing means no specific prop, not muted, on the floor, scale 1.
 
 `assetId` is filled in by the resolver, never by the agent. That keeps the agent describing sounds in words and the resolver owning files. An `assetId` is either a pack id from `manifest.json` (`rain_window`) or a generated sound, `gen:<kind>:<query>` (`gen:bed:a cat purring softly`).
 

@@ -1,8 +1,8 @@
 import { GoogleGenAI, type Interactions } from "@google/genai";
 import { z } from "zod";
 import {
-  BedObject, EditOp, EventObject, Scene, SceneRequest, SceneResponse, SoundRef,
-  type Room, type SoundObject,
+  BedObject, DEFAULT_GRID, EditOp, EventObject, Room as RoomSchema, Scene, SceneRequest, SceneResponse, SoundRef,
+  roomSize, type Room, type SoundObject,
 } from "../src/scene/scene.js";
 import { applyOp, clampPosition } from "../src/scene/store.js";
 
@@ -16,11 +16,17 @@ const agentObject = z.discriminatedUnion("kind", [
   BedObject.extend({ sound: agentSound }),
   EventObject.extend({ sound: agentSound }),
 ]);
-const createArgs = z.object({ scene: Scene.extend({ objects: z.array(agentObject).max(12) }) });
+// The room's grid and openings are fixed by the room view; the agent only picks preset and reverb.
+const agentRoom = RoomSchema.omit({ grid: true, openings: true });
+const createArgs = z.object({
+  scene: Scene.extend({ room: agentRoom, objects: z.array(agentObject).max(12) }),
+});
 const editArgs = z.object({
   ops: z.array(z.discriminatedUnion("op", [
     EditOp.options[0].extend({ object: agentObject }),
-    ...EditOp.options.slice(1),
+    ...EditOp.options.slice(1).map((option) =>
+      option.shape.op.value === "set_room" ? (option as typeof EditOp.options[4]).omit({ grid: true, openings: true }) : option,
+    ),
   ])),
 });
 const tools = [
@@ -48,13 +54,16 @@ existing objects just to bring them into line with these defaults.
 and positions. If there is no rain, add one rain bed and preserve every existing
 object. Do not replace the room or move other sounds for this request.
 Added objects must have new unique IDs.
-Positions are meters, y is up, and the listener faces -z at yaw 0. Room dimensions
-must be positive. Volumes are between 0 and 1. Use at most 12 objects.
+Positions are meters, y is up, and the listener faces -z at yaw 0. The room's size is fixed
+and given as roomSize [width, height, depth]: keep x within ±width/2, z within ±depth/2 and y
+between 0 and height. Volumes are between 0 and 1. Use at most 12 objects.
 For a new scene, place the listener at [0, 1.6, 0], facing -z.
 
 Focus sound placement defaults:
 - Put steady broadband masking beds (rain, fans, brown noise, flowing water, wind)
   close to the listener: normally 1-2.5 meters away horizontally, within room bounds.
+  The room is larger than most real rooms, so keep these beds 1-2.5 meters away even when
+  they describe something at a window or wall: they are heard, not seen.
   Start their volume around 0.35-0.6. When there are multiple masking beds, spread
   them around the listener in different directions, including opposite sides;
   do not stack them at the same position or cluster them in one direction.
@@ -92,6 +101,10 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // Every scene keeps the current room's grid and openings (the room view's), or the defaults for the first one
+  const grid = parsed.data.scene?.room.grid ?? DEFAULT_GRID;
+  const openings = parsed.data.scene?.room.openings ?? [];
+
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return Response.json({ error: "Set GEMINI_API_KEY in .env (or in Vercel) and restart the server." }, { status: 503 });
@@ -106,7 +119,7 @@ export async function POST(request: Request): Promise<Response> {
         model: "gemini-3.8-flash",
         store: false,
         system_instruction: systemInstruction,
-        input: JSON.stringify({ ...parsed.data, validationError: feedback }),
+        input: JSON.stringify({ ...parsed.data, roomSize: roomSize({ grid }), validationError: feedback }),
         tools: parsed.data.scene ? tools : tools.slice(0, 1),
         generation_config: { tool_choice: "any", thinking_level: "low", max_output_tokens: 8192 },
       }, {
@@ -145,7 +158,8 @@ export async function POST(request: Request): Promise<Response> {
       const call = calls[0];
       let response: SceneResponse;
       if (call.name === "create_scene") {
-        const { scene } = createArgs.parse(call.arguments);
+        const { scene: created } = createArgs.parse(call.arguments);
+        const scene: Scene = { ...created, room: { ...created.room, grid, openings } };
         validateScene(scene);
         response = {
           kind: "create",
@@ -165,9 +179,7 @@ export async function POST(request: Request): Promise<Response> {
               throw new Error(`Added object ID ${id} already exists. Use a new ID.`);
             }
             op = { ...op, object: clampObject(op.object, scene.room) };
-          } else if (op.op === "set_room") {
-            if (op.size?.some((size) => size <= 0)) throw new Error("Room dimensions must be positive.");
-          } else {
+          } else if (op.op !== "set_room") {
             const id = op.id;
             if (!scene.objects.some((object) => object.id === id)) {
               throw new Error(`No object has ID ${id}. Use an existing ID.`);
@@ -196,7 +208,6 @@ function clampObject(object: SoundObject, room: Room): SoundObject {
 }
 
 function validateScene(scene: Scene) {
-  if (scene.room.size.some((size) => size <= 0)) throw new Error("Room dimensions must be positive.");
   if (scene.objects.length > 12) throw new Error("Use at most 12 objects.");
   if (new Set(scene.objects.map((object) => object.id)).size !== scene.objects.length) {
     throw new Error("Every object must have a unique ID.");
