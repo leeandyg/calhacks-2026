@@ -1,3 +1,5 @@
+import { agentError, agentSettings } from './world.js';
+import { ManagedAgent } from '../server/managedAgent.js';
 import { GoogleGenAI, type Interactions } from "@google/genai";
 import { z } from "zod";
 import {
@@ -117,7 +119,8 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 export async function sceneResponse(request: Request, preferenceContext?: unknown): Promise<Response> {
-  const parsed = SceneRequest.safeParse(await request.json().catch(() => null));
+  const raw = await request.json().catch(() => null);
+  const parsed = SceneRequest.safeParse(raw);
   if (!parsed.success || !parsed.data.prompt.trim()) {
     return Response.json({ error: "Send a non-empty prompt and a valid scene (or null)." }, { status: 400 });
   }
@@ -127,6 +130,15 @@ export async function sceneResponse(request: Request, preferenceContext?: unknow
     } catch {
       return Response.json({ error: "The current scene has invalid dimensions, IDs, or intervals." }, { status: 400 });
     }
+  }
+
+  const managed = agentSettings();
+  if (managed) {
+    try {
+      const previousToken = typeof raw?.sessionToken === 'string' ? raw.sessionToken : undefined;
+      const started = await new ManagedAgent(managed).start(parsed.data, previousToken, preferenceContext);
+      return Response.json(started, { status: 202, headers: { 'Cache-Control': 'no-store' } });
+    } catch (error) { return agentError(error); }
   }
 
   // Every scene keeps the current room's grid and openings (the room view's), or the defaults for the first one

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { createServer } from "vite";
 
+// This remains the Gemini placement diagnostic; managed generation has check:managed.
+process.env.ANTHROPIC_API_KEY = '';
+
 // Live acceptance checks for #16. Uses the server's .env and makes six Gemini requests.
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
 try {

@@ -18,6 +18,8 @@ export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig })
   const matrix = useMemo(() => new Matrix4(), []);
   const room = useSceneStore(state => state.scene.room);
   const painting = useArtStore(state => room.art ? state.envs[room.art]?.textures[wall.id] : undefined);
+  const animation = useArtStore(state => room.art ? state.envs[room.art]?.animations?.[wall.id] : undefined);
+  const openAir = useArtStore(state => room.art ? state.envs[room.art]?.openAir : false);
   const objects = useSceneStore(state => state.scene.objects);
   const openings = getWallOpenings(room, objects, wall.id);
   const openingKey = JSON.stringify(openings);
@@ -73,8 +75,8 @@ export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig })
     }
   }, -1);
   return <group ref={ref} name={`wall-${wall.id}`} position={wall.position} rotation={[0, wall.rotation, 0]} userData={{ modules: segments.length, openings, thickness: wallThickness, surface: config.theme.surface }}>
-    <instancedMesh ref={panels} name="wall-body" args={[undefined, undefined, segments.length]}><boxGeometry args={[1, 1, wallThickness]}/><meshStandardMaterial color={config.theme.surface} roughness={1} flatShading/></instancedMesh>
-    {painting ? <PaintedSurface png={painting} cells={segments} width={wall.width} height={height} depth={wallThickness / 2 + 0.003}/> : <SurfacePixels width={surfaceWidth} height={height} seed={41} palette={config.theme.detailPalette} openings={holes} position={[0, height / 2, wallThickness / 2 + 0.002]}/>}
+    <instancedMesh ref={panels} name="wall-body" visible={!openAir} args={[undefined, undefined, segments.length]}><boxGeometry args={[1, 1, wallThickness]}/><meshStandardMaterial color={config.theme.surface} roughness={1} flatShading/></instancedMesh>
+    {painting ? <PaintedSurface png={painting} animation={animation} cells={segments} width={wall.width} height={height} depth={wallThickness / 2 + 0.003}/> : <SurfacePixels width={surfaceWidth} height={height} seed={41} palette={config.theme.detailPalette} openings={holes} position={[0, height / 2, wallThickness / 2 + 0.002]}/>}
     <SurfacePixels width={surfaceWidth} height={height} seed={42} palette={config.theme.detailPalette} openings={holes.map(hole => ({ ...hole, x: -hole.x - hole.width }))} position={[0, height / 2, -wallThickness / 2 - 0.002]} rotation={[0, Math.PI, 0]}/>
     <SurfacePixels width={surfaceWidth} height={wallThickness} seed={43} palette={config.theme.detailPalette} openings={holes.filter(hole => hole.y + hole.height >= height / 2).map(hole => ({ ...hole, y: -wallThickness / 2, height: wallThickness }))} position={[0, height + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}/>
   </group>;

@@ -1,25 +1,35 @@
-import { useEffect, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
 import { BufferGeometry, Float32BufferAttribute, NearestFilter, SRGBColorSpace, TextureLoader } from 'three';
 
 // All painting stays inside the live room's shared pixel pass. UV rectangles let floor cells
 // rise independently and wall panels leave real openings without repainting the PNG.
-export function usePaintTexture(png: string | undefined) {
+export function usePaintTexture(png: string | undefined, animation?: { frames: number; fps: number }, enabled: () => boolean = () => true, resetWhenPaused = false) {
+  const elapsed = useRef(0);
+  const frames = animation?.frames ?? 1;
   const texture = useMemo(() => {
     if (!png) return undefined;
     const value = new TextureLoader().load(png);
     value.magFilter = value.minFilter = NearestFilter;
     value.generateMipmaps = false;
     value.colorSpace = SRGBColorSpace;
+    value.repeat.x = 1 / frames;
     return value;
-  }, [png]);
+  }, [png, frames]);
+  useFrame((_, delta) => {
+    if (!texture || frames <= 1) return;
+    if (enabled()) elapsed.current += delta;
+    else if (resetWhenPaused) elapsed.current = 0;
+    texture.offset.x = Math.floor(elapsed.current * (animation?.fps ?? 10)) % frames / frames;
+  });
   useEffect(() => () => texture?.dispose(), [texture]);
   return texture;
 }
 
-export function PaintedSurface({ png, cells, width, height, depth }: {
-  png: string; cells: { column: number; level: number }[]; width: number; height: number; depth: number;
+export function PaintedSurface({ png, cells, width, height, depth, animation }: {
+  png: string; animation?: { frames: number; fps: number }; cells: { column: number; level: number }[]; width: number; height: number; depth: number;
 }) {
-  const texture = usePaintTexture(png);
+  const texture = usePaintTexture(png, animation);
   const geometry = useMemo(() => {
     const positions: number[] = [], uvs: number[] = [];
     for (const { column: x, level: y } of cells) {
@@ -37,6 +47,6 @@ export function PaintedSurface({ png, cells, width, height, depth }: {
   }, [cells, width, height, depth]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return <mesh name="painted-wall" geometry={geometry}>
-    <meshStandardMaterial map={texture} roughness={1} flatShading/>
+    <meshStandardMaterial map={texture} transparent alphaTest={0.15} roughness={1} flatShading/>
   </mesh>;
 }

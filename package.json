@@ -35,7 +35,9 @@
     "prebuild": "node scripts/build-pxl-sandbox.mjs",
     "check:art": "node scripts/build-pxl-sandbox.mjs && node scripts/check-art.mjs",
     "test:art": "node scripts/art-pipeline-test.mjs",
-    "postinstall": "node scripts/build-pxl-sandbox.mjs"
+    "postinstall": "node scripts/build-pxl-sandbox.mjs",
+    "test:managed": "node scripts/managed-browser-test.mjs",
+    "check:managed": "node scripts/check-managed-live.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

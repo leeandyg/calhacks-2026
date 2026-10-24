@@ -60,6 +60,26 @@ try {
     await assert.rejects(agent.requestAgent("Use my usual setup", room, context), /No saved preference/);
   });
 
+  await check("authenticated turns follow managed world progress and keep memory notices", async () => {
+    const paths = [], updates = [];
+    globalThis.fetch = async (url) => {
+      paths.push(String(url));
+      if (url === "/api/agent") return Response.json({ kind: "managed", token: "safe-capability", recalled: ["coding (morning)"] }, { status: 202 });
+      if (String(url).includes("action=stream")) return new Response('data: {"type":"progress","message":"Painting…"}\n\ndata: {"type":"complete"}\n\n');
+      return Response.json({ response: { kind: "edit", ops: [{ op: "set_volume", id: room.objects[0].id, volume: 0.4 }] }, assets: { envId: "agent-test", sprites: [], sounds: [] } });
+    };
+    const result = await agent.requestAgent("make it rainier", room, context, false, text => updates.push(text));
+    assert.equal(result.response.kind, "edit"); assert.equal(result.response.managed.envId, "agent-test");
+    assert.deepEqual(result.recalled, ["coding (morning)"]); assert.ok(updates.includes("Painting…"));
+    assert.ok(paths.some(path => path.startsWith("/api/world?"))); assert.ok(!paths.includes("/api/scene"));
+  });
+  await check("a failed started managed turn keeps the room and reports its error", async () => {
+    globalThis.fetch = async (url) => url === "/api/agent"
+      ? Response.json({ kind: "managed", token: "safe-capability" }, { status: 202 })
+      : new Response('data: {"type":"error","error":"Generated output invalid"}\n\n');
+    await assert.rejects(agent.requestAgent("make it rainier", room, context), /Generated output invalid/);
+  });
+
   process.env.MOSS_PROJECT_ID = "test-project"; process.env.MOSS_PROJECT_KEY = "test-key";
   const cloud = new Map(); let closes = 0, pushStatus = "completed";
   MossClient.prototype.session = async function (name) {
