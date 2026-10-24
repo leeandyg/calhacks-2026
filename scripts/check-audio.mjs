@@ -231,7 +231,8 @@ try {
   });
   await check("muting fades the voice out and unmuting restores its volume", async () => {
     setSound("ocean"); await flush();
-    const voiceGain = () => active()[0].outputs[0].outputs[0].gain;
+    // By name: an earlier check's one-shot may still be fading out.
+    const voiceGain = () => active().find((source) => source.buffer.asset === "ocean").outputs[0].outputs[0].gain;
     const mute = (muted) => useSceneStore.getState().applyOps([{ op: "set_muted", id: "same-object", muted }]);
     mute(true);
     assert.equal(voiceGain().value, 0);
