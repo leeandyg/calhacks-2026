@@ -22,11 +22,20 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 
 | Option | How it works | Trade-off | Use it for |
 | --- | --- | --- | --- |
-| Curated local pack | 40–60 loops (rain, café, fire, fan, brown noise, birds, keyboard) tagged in a `manifest.json` | Only what you downloaded, but zero latency and works on bad Wi-Fi | **Default.** Every scene must be buildable from this alone |
-| Freesound API | Tag search, stream the HQ preview MP3 with an API token | Loops are rarely seamless; licenses vary (CC0, CC-BY, CC-BY-NC) | Filling the local pack in the first hours, not live calls |
-| ElevenLabs Sound Effects | Text prompt to audio; the v2 model's `loop` flag makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | A few seconds per call, costs credits, clips cap at 30 s | Sounds the pack lacks ("espresso machine hiss"); cache every result |
+| Curated local pack | 33 sounds today (21 seamless loops, 12 one-shots) tagged in `public/sounds/manifest.json`, built by `scripts/pack.mjs` | Only what's in the pack, but zero latency and works on bad Wi-Fi | **Built (#4).** The instant, offline layer |
+| Freesound API | Tag search, download the HQ preview MP3 with an API token (`scripts/fetch-freesound.mjs`) | Slow CDN; quality varies; licenses vary (we keep CC0 and CC-BY only) | **Source of most of the pack** (26 of 33), auto-picked by download count |
+| ElevenLabs Sound Effects | Text prompt to audio; `loop: true` makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | 15 s loop in ~4–7 s, 2 s one-shot in ~1.5–2.5 s; 40 credits per second | **Built (#17): the live fallback** for anything the pack lacks ("a cat purring") |
 
-**Resolver:** the AI writes a short description per sound object. Semantic search over the manifest tags picks the closest file. If the best match scores under a threshold, generate it with ElevenLabs and add it to the library.
+**Pack source is moving to generated.** In a side-by-side listening test, ElevenLabs beat the auto-picked Freesound sound for every prompt we compared, so those four (rain_window, fireplace, cup_clink, sparrow) are now generated (`scripts/generate-pack.mjs`, #40). The rest stay on Freesound until someone listens through them; any weak one can be regenerated the same way (about 600 credits per 15 s loop, 80 per one-shot). `fan` and `espresso` were removed for strong electrical hum (60 Hz and 100 Hz) until better recordings are found; requests for them are generated instead.
+
+**Resolver (`src/audio/resolve.ts`, built):** the agent writes a description per sound object (`sound.query`). The browser's resolver fills in `assetId` for any object that arrives without one:
+
+1. Score every pack sound of the same kind by words its tags share with the query (stemmed, with filler words like "steady" or "gentle" ignored). An entry's main noun counts triple, and a sound already used in the scene is penalized, so two rain beds get different files.
+2. A good match (the entry's main noun is the thing described, or three or more shared words) uses that pack file.
+3. Otherwise the id becomes `gen:<kind>:<query>`, and the audio engine fetches `GET /api/sound`, which generates it with ElevenLabs: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (2 s). The models were picked by ear in `scripts/test-elevenlabs.mjs`.
+4. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead.
+
+`useSoundStatus` (in `src/audio/generated.ts`) reports `"generating"` or `"failed"` per assetId for the room view. Semantic search with Moss is still a possible upgrade for the word scoring.
 
 ### 2. Spatial audio
 
@@ -78,7 +87,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 - **Frontend:** Vite, React, TypeScript, `@react-three/fiber`, `@react-three/drei`, `zustand` for the scene store, `zod` for schemas.
 - **Audio:** Web Audio HRTF `PannerNode` per object, driven by the scene store; `ConvolverNode` room reverb, `AnalyserNode` for visuals and mic level.
 - **AI:** Gemini 3.8 Flash through the Google GenAI SDK's Interactions API with tool use, called from the backend so keys stay server-side.
-- **Sounds:** local pack plus ElevenLabs Sound Effects fallback; semantic lookup with [Moss](https://github.com/usemoss/moss) (sponsor, sub-10 ms search, TypeScript SDK) or a small embeddings index.
+- **Sounds:** local pack (Freesound today) plus live ElevenLabs Sound Effects fallback through the resolver; word-overlap scoring now, with [Moss](https://github.com/usemoss/moss) (sponsor, sub-10 ms search, TypeScript SDK) as a possible upgrade.
 - **Voice (optional):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Sonic TTS for a spoken focus coach.
 - **Realtime state (pick one):** SpacetimeDB if you build shared rooms, Convex if you only need saved scenes and personalization.
 - **Swift helper (planned, after core):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
@@ -134,7 +143,7 @@ Edits from the agent (and from voice commands) are a list of ops applied in orde
 ]
 ```
 
-`assetId` is filled in by the resolver, never by the agent. That keeps the agent describing sounds in words and the resolver owning files.
+`assetId` is filled in by the resolver, never by the agent. That keeps the agent describing sounds in words and the resolver owning files. An `assetId` is either a pack id from `manifest.json` (`rain_window`) or a generated sound, `gen:<kind>:<query>` (`gen:bed:a cat purring softly`).
 
 ## Stretch features
 
@@ -261,7 +270,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 
 | Risk | Fallback |
 | --- | --- |
-| Venue Wi-Fi dies | Bundle the sound pack and cache generated sounds; keep a "demo mode" with recorded agent responses |
+| Venue Wi-Fi dies | The pack works offline, and generated sounds fall back to the closest pack sound. Play the demo prompts once before judging so their generated sounds are in the browser cache; keep a "demo mode" with recorded agent responses |
 | Agent returns bad JSON or is slow | Validate with zod, retry once, fall back to 6 preset scenes; stream objects in as they arrive |
 | Spatial effect feels weak to judges | Exaggerate distances, use mono sources, open with a sound moving hard left to right |
 | Head tracking jitters | Smooth with a lerp or One Euro filter; add a recenter button |

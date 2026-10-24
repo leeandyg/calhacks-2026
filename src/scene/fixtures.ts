@@ -49,10 +49,11 @@ export const bedroom: Scene = {
       volume: 0.7,
     },
     {
-      id: "fan-1",
-      label: "Desk fan",
+      // Was a desk fan; the fan recording was removed from the pack for its electrical hum
+      id: "noise-1",
+      label: "Brown noise",
       kind: "bed",
-      sound: { query: "steady electric fan hum", assetId: "fan" },
+      sound: { query: "soft brown noise", assetId: "brown_noise" },
       position: [1.8, 0.8, 1.5],
       volume: 0.35,
     },

@@ -77,18 +77,18 @@ try {
   }
   let passed = 0;
   async function check(name, test) { await test(); passed++; console.log(`PASS ${name}`); }
-  setSound("fan");
+  setSound("ocean");
   engine = new AudioEngine(context); engine.start(); await flush();
   await check("a failed manifest can recover on the next scene load", async () => {
     assert.equal(active().length, 0);
-    setSound("fan"); await flush();
-    assert.deepEqual(active().map((source) => source.buffer.asset), ["fan"]);
+    setSound("ocean"); await flush();
+    assert.deepEqual(active().map((source) => source.buffer.asset), ["ocean"]);
   });
   await check("replacing a bed with an unresolved sound stops the previous loop", async () => {
     const old = active()[0];
     setSound(undefined); await flush(); await advance(0.7);
     assert.equal(active().length, 0); assert.ok(old.disconnected);
-    setSound("fan"); await flush(); assert.equal(active().length, 1);
+    setSound("ocean"); await flush(); assert.equal(active().length, 1);
   });
   await check("an HTTP sound-file failure fades the old bed and can be retried", async () => {
     failures.add("rain_roof"); setSound("rain_roof"); await flush(); await advance(0.7);
@@ -100,7 +100,7 @@ try {
   await check("rapid A/B/A changes ignore superseded asynchronous loads", async () => {
     let release; const promise = new Promise((resolve) => { release = resolve; });
     held.set("brown_noise", { promise });
-    setSound("brown_noise"); await flush(); setSound("fan"); await flush(); setSound("brown_noise"); await flush();
+    setSound("brown_noise"); await flush(); setSound("ocean"); await flush(); setSound("brown_noise"); await flush();
     release(); held.delete("brown_noise"); await flush(); await advance(0.7);
     assert.deepEqual(active().map((source) => source.buffer.asset), ["brown_noise"]);
   });
@@ -125,7 +125,7 @@ try {
     assert.equal(active().length, 0);
   });
   await check("engine stop cancels loops and future event callbacks", async () => {
-    setSound("fan"); await flush(); engine.stop(); await advance(3);
+    setSound("ocean"); await flush(); engine.stop(); await advance(3);
     assert.equal(active().length, 0); assert.equal(timers.size, 0);
   });
   console.log(`Passed ${passed} audio lifecycle checks.`);

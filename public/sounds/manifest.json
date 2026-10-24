@@ -154,7 +154,7 @@
       "dishes"
     ],
     "kind": "event",
-    "license": "CC0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "dog_distant",
@@ -183,34 +183,6 @@
     "license": "CC0"
   },
   {
-    "id": "espresso",
-    "file": "espresso.mp3",
-    "tags": [
-      "espresso",
-      "coffee machine",
-      "steam",
-      "hiss",
-      "cafe",
-      "barista"
-    ],
-    "kind": "bed",
-    "license": "CC-BY 4.0"
-  },
-  {
-    "id": "fan",
-    "file": "fan.mp3",
-    "tags": [
-      "fan",
-      "electric fan",
-      "hum",
-      "steady",
-      "masking",
-      "bedroom"
-    ],
-    "kind": "bed",
-    "license": "CC0"
-  },
-  {
     "id": "fire_pop",
     "file": "fire_pop.mp3",
     "tags": [
@@ -236,7 +208,7 @@
       "warm"
     ],
     "kind": "bed",
-    "license": "CC0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "forest",
@@ -376,7 +348,7 @@
       "bedroom"
     ],
     "kind": "bed",
-    "license": "CC-BY 4.0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "songbird",
@@ -403,7 +375,7 @@
       "outdoor"
     ],
     "kind": "event",
-    "license": "CC-BY 4.0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "spoon_stir",
