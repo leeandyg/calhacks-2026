@@ -3,9 +3,7 @@
   "functions": {
     "api/agent.ts": {
       "maxDuration": 60,
-      "includeFiles": [
-        "AGENT_CONFIG.yaml"
-      ]
+      "includeFiles": "AGENT_CONFIG.yaml"
     },
     "api/voice.ts": {
       "maxDuration": 30
@@ -15,35 +13,19 @@
     },
     "api/sprite.ts": {
       "maxDuration": 90,
-      "includeFiles": [
-        "server/pxl-runner.mjs",
-        "server/pxl-core.generated.js",
-        "node_modules/pxl-pixelart/**",
-        "node_modules/quickjs-emscripten*/**",
-        "node_modules/@jitl/quickjs-*/**"
-      ]
+      "includeFiles": "{server/pxl-runner.mjs,server/pxl-core.generated.js,node_modules/pxl-pixelart/**,node_modules/quickjs-emscripten*/**,node_modules/@jitl/quickjs-*/**}"
     },
     "api/environment.ts": {
       "maxDuration": 120,
-      "includeFiles": [
-        "server/pxl-runner.mjs",
-        "server/pxl-core.generated.js",
-        "node_modules/pxl-pixelart/**",
-        "node_modules/quickjs-emscripten*/**",
-        "node_modules/@jitl/quickjs-*/**"
-      ]
+      "includeFiles": "{server/pxl-runner.mjs,server/pxl-core.generated.js,node_modules/pxl-pixelart/**,node_modules/quickjs-emscripten*/**,node_modules/@jitl/quickjs-*/**}"
     },
     "api/scene.ts": {
       "maxDuration": 60,
-      "includeFiles": [
-        "AGENT_CONFIG.yaml"
-      ]
+      "includeFiles": "AGENT_CONFIG.yaml"
     },
     "api/world.ts": {
       "maxDuration": 60,
-      "includeFiles": [
-        "AGENT_CONFIG.yaml"
-      ]
+      "includeFiles": "AGENT_CONFIG.yaml"
     }
   }
 }
