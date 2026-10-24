@@ -1,0 +1,23 @@
+[
+  {
+    "id": "brown_noise",
+    "file": "brown_noise.mp3",
+    "tags": ["brown noise", "steady", "masking", "hum", "murmur"],
+    "kind": "bed",
+    "license": "CC0 (generated placeholder)"
+  },
+  {
+    "id": "rain_placeholder",
+    "file": "rain_placeholder.mp3",
+    "tags": ["rain", "water", "steady", "hiss"],
+    "kind": "bed",
+    "license": "CC0 (generated placeholder)"
+  },
+  {
+    "id": "chirp_placeholder",
+    "file": "chirp_placeholder.mp3",
+    "tags": ["chirp", "bird", "short", "one-shot"],
+    "kind": "event",
+    "license": "CC0 (generated placeholder)"
+  }
+]

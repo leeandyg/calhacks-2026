@@ -32,11 +32,12 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 
 | Option | Notes |
 | --- | --- |
-| Web Audio `PannerNode`, `panningModel: "HRTF"` | Built into every browser. Binaural over headphones; position per source, orientation on the `AudioListener` |
-| three.js `PositionalAudio` (drei `<PositionalAudio>`) | **Pick.** Wraps the PannerNode and follows its 3D object, so dragging the mesh moves the sound for free |
+| Web Audio `PannerNode`, `panningModel: "HRTF"` | **Pick.** Built into every browser. Binaural over headphones; position per source, orientation on the `AudioListener`. The audio engine sets positions from the scene store, not from the 3D meshes (see below) |
+| three.js `PositionalAudio` (drei `<PositionalAudio>`) | Wraps the PannerNode and follows its 3D object. Not used: it ties the audio to the 3D view's component tree |
 | Resonance Audio (Google) | Adds room reflections from room size and wall materials. Older library, still works |
 | Native `AVAudioEnvironmentNode` / PHASE | Apple's spatial engines. Great with AirPods, but locks the whole app into Swift |
 
+- **Store-driven audio:** the audio engine subscribes to the scene store and diffs objects by id, creating, updating or removing one HRTF voice per object. It never reads the 3D view, so drags, agent edits and presets all reach the audio the same way, and the audio and 3D code can be built independently.
 - Two kinds of sound objects: **beds** (continuous loops) and **events** (one-shots on a random timer, like a bird every 20–60 s). Events are what make it feel real.
 - Start each loop at a random offset so two similar loops don't phase against each other.
 - Add a `ConvolverNode` reverb per room preset (bedroom, café, forest, library).
@@ -75,7 +76,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 **Concrete picks**
 
 - **Frontend:** Vite, React, TypeScript, `@react-three/fiber`, `@react-three/drei`, `zustand` for the scene store, `zod` for schemas.
-- **Audio:** three.js `PositionalAudio` (HRTF), `ConvolverNode` room reverb, `AnalyserNode` for visuals and mic level.
+- **Audio:** Web Audio HRTF `PannerNode` per object, driven by the scene store; `ConvolverNode` room reverb, `AnalyserNode` for visuals and mic level.
 - **AI:** Claude through the Anthropic API with tool use, called from the backend so keys stay server-side.
 - **Sounds:** local pack plus ElevenLabs Sound Effects fallback; semantic lookup with [Moss](https://github.com/usemoss/moss) (sponsor, sub-10 ms search, TypeScript SDK) or a small embeddings index.
 - **Voice (optional):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Sonic TTS for a spoken focus coach.
