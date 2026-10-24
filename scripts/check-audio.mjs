@@ -68,6 +68,7 @@ try {
   const { useSceneStore } = await server.ssrLoadModule("/src/scene/store.ts");
   const { bedroom } = await server.ssrLoadModule("/src/scene/fixtures.ts");
   const { useRoomStore } = await server.ssrLoadModule("/src/room/useRoomStore.ts");
+  const { useHeadPose } = await server.ssrLoadModule("/src/sensors/headPose.ts");
   const manifest = JSON.parse(readFileSync("public/sounds/manifest.json", "utf8"));
   const assets = new Map(manifest.map((entry) => [`/sounds/${entry.file}`, entry.id]));
   let manifestFailure = true;
@@ -245,6 +246,18 @@ try {
     useRoomStore.setState({ viewAngle: Math.PI / 2 }); // the room turned a quarter counterclockwise
     assert.deepEqual(forward(), [-0, -1]);
     useRoomStore.setState({ viewAngle: 0 });
+  });
+  await check("turning your head turns the listener; the sounds stay put in the room", async () => {
+    const forward = () => [context.listener.forwardX.value, context.listener.forwardZ.value].map((v) => Math.round(v * 1000) / 1000 + 0);
+    useHeadPose.setState({ yaw: Math.PI / 2, status: "tracking" }); // head turned a quarter to the left
+    assert.deepEqual(forward(), [-1, 0], "facing -x: a sound ahead (-z) is now on your right");
+    useHeadPose.setState({ yaw: -Math.PI / 4 });
+    assert.deepEqual(forward(), [0.707, -0.707]);
+    useRoomStore.setState({ viewAngle: Math.PI / 2 }); // turning the view still changes nothing
+    assert.deepEqual(forward(), [0.707, -0.707]);
+    useRoomStore.setState({ viewAngle: 0 });
+    useHeadPose.setState({ yaw: 0, status: "off" });
+    assert.deepEqual(forward(), [0, -1]);
   });
   await check("engine stop cancels loops and future event callbacks", async () => {
     setSound("ocean"); await flush(); engine.stop(); await advance(3);

@@ -1,6 +1,7 @@
 import { demoPrompts } from "../ai/offline.js";
 import { presets } from "../scene/presets.js";
 import type { Scene } from "../scene/scene.js";
+import { HeadTrackingControl } from "../sensors/HeadTrackingControl.js";
 
 export function DemoControls({ disabled, demoMode, onDemoModeChange, onPreset }: {
   disabled: boolean;
@@ -25,6 +26,7 @@ export function DemoControls({ disabled, demoMode, onDemoModeChange, onPreset }:
         <input type="checkbox" checked={demoMode} onChange={(event) => onDemoModeChange(event.target.checked)} />
         Offline demo
       </label>
+      <HeadTrackingControl />
       <datalist id="demo-prompts">
         {demoPrompts.map((prompt) => <option key={prompt} value={prompt} />)}
       </datalist>
