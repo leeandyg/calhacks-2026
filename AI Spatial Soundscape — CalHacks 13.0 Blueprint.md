@@ -56,11 +56,11 @@ The room is a floor plane with an isometric orthographic camera. Each sound obje
 
 ### 4. The AI that builds and edits the room
 
-- Give Claude two tools: `create_scene(scene)` and `edit_scene(ops)`, where ops are add, remove, move, set\_volume and set\_room.
+- Give Gemini two tools: `create_scene(scene)` and `edit_scene(ops)`, where ops are add, remove, move, set\_volume and set\_room.
 - Always send the current scene JSON with the user's prompt. "Make the rain quieter" then becomes an edit, and the user's manual drags survive.
 - Put placement rules in the system prompt: steady broadband sounds (rain, fan, brown noise) wide and close to mask outside noise; intermittent sounds far and quiet; no intelligible speech, which distracts most.
 - Validate the output with a zod schema and clamp positions to the room bounds.
-- Use a fast model (Claude Haiku 5.5) for edits and a stronger one (Claude Sonnet 5.5) for the first scene. Animate objects popping in as the tool call streams.
+- Use Gemini 3.8 Flash (`gemini-3.8-flash`) for both creation and edits, through the backend with `GEMINI_API_KEY`. Keep the shared scene contract unchanged. Streaming object animations can follow once the request/response path works.
 
 ## Tech stack
 
@@ -77,7 +77,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 
 - **Frontend:** Vite, React, TypeScript, `@react-three/fiber`, `@react-three/drei`, `zustand` for the scene store, `zod` for schemas.
 - **Audio:** Web Audio HRTF `PannerNode` per object, driven by the scene store; `ConvolverNode` room reverb, `AnalyserNode` for visuals and mic level.
-- **AI:** Claude through the Anthropic API with tool use, called from the backend so keys stay server-side.
+- **AI:** Gemini 3.8 Flash through the Google GenAI SDK's Interactions API with tool use, called from the backend so keys stay server-side.
 - **Sounds:** local pack plus ElevenLabs Sound Effects fallback; semantic lookup with [Moss](https://github.com/usemoss/moss) (sponsor, sub-10 ms search, TypeScript SDK) or a small embeddings index.
 - **Voice (optional):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Sonic TTS for a spoken focus coach.
 - **Realtime state (pick one):** SpacetimeDB if you build shared rooms, Convex if you only need saved scenes and personalization.
@@ -142,7 +142,7 @@ Build the adaptive agent and camera head tracking first: together they make the 
 
 | Priority | Feature | How to build it | Est. hours | Risk | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Adaptive agent | Mic level via `getUserMedia` + `AnalyserNode`, a Pomodoro state machine, and a loop that sends Claude {noise level, minutes in session, task, current scene} every few minutes or on a spike. It returns edit ops: raise the masking bed, switch to a break scene, play a spoken cue | 3–5 | Low | **Build — this is the pitch** |
+| 1 | Adaptive agent | Mic level via `getUserMedia` + `AnalyserNode`, a Pomodoro state machine, and a loop that sends Gemini {noise level, minutes in session, task, current scene} every few minutes or on a spike. It returns edit ops: raise the masking bed, switch to a break scene, play a spoken cue | 3–5 | Low | **Build — this is the pitch** |
 | 2 | Camera head tracking | MediaPipe Face Landmarker in the browser; read yaw and pitch from its transformation matrix and set the `AudioListener` orientation | 2–3 | Low | **Build** — works for any judge with a webcam |
 | 3 | Lecture audio into the room | Chrome `getDisplayMedia({audio: true})` captures a tab; feed it into a PannerNode as a "Lecture" object; duck other sounds while it plays | 2–3 | Low–med | **Build** the browser path |
 | 4 | AirPods head tracking | Swift helper with `CMHeadphoneMotionManager` streams yaw/pitch/roll over a localhost WebSocket | 3–5 | Medium | **Build if you have a Swift dev** — best wow moment |
@@ -179,7 +179,7 @@ Aim for the Cal Hacks judged prizes plus four or five sponsor tracks where the s
 | Cal Hacks Most Technically Advanced | NuPhy Air60 HE each | Strong | HRTF engine + head tracking + agent loop, explained in one architecture slide |
 | Cal Hacks People-First Social Impact | Apple Watch SE 3 each | Strong | Frame it for students in loud dorms, shared housing, and people with ADHD or noise sensitivity |
 | Cal Hacks 1st / 2nd / 3rd Overall | $3,600 + laptop each / Switch 2 each / smart glasses each | Strong | Everything above, demoed cleanly |
-| Anthropic (anchor sponsor) | Not on Devpost yet; last year's Best Use of Claude was a tungsten cube + $5,000 credits ([12.0 prizes](https://live.calhacks.io/prizes)) | Strong | Claude as the scene agent with tool use; check Hive/Slack for this year's track |
+| Anthropic (anchor sponsor) | Not on Devpost yet; last year's Best Use of Claude was a tungsten cube + $5,000 credits ([12.0 prizes](https://live.calhacks.io/prizes)) | Reassess | The current scene agent uses Gemini; reassess eligibility against this year's rules before targeting this track |
 | Moss | AirPods Max or Pro (listed at $996) | Strong | Semantic lookup from "cozy crackling fireplace" to a sound file, in-browser, under 10 ms ([Moss](https://github.com/usemoss/moss)) |
 | Cartesia | Listed at $1,516 (prize item TBD) | Strong | Ink-2 voice commands ("make it rain harder") and Sonic spoken break cues placed as a "coach" object in the room |
 | SpacetimeDB (anchor sponsor) | Special prize for the most impressive use ([their blog](https://spacetimedb.com/blog/spacetime-at-calhacks)); amount not posted | Strong if collab | Shared scene + live avatar positions for collab rooms; the CEO runs a workshop |
@@ -196,7 +196,7 @@ Not a fit: Hyphenate (finance), Visa (shopping), Capital One, CRS, Coinbase, Api
 
 **Two bundles to choose from**
 
-- **Solo-room bundle (lower risk):** Cal Hacks prizes, Anthropic, Moss, Cartesia, Convex, Figma, GoDaddy.
+- **Solo-room bundle (lower risk):** Cal Hacks prizes, Moss, Cartesia, Convex, Figma, GoDaddy. Reassess the Anthropic track after the switch to Gemini.
 - **Collab bundle (higher ceiling):** same, but swap Convex for SpacetimeDB and add Meta.
 
 ## Execution plan
@@ -213,7 +213,7 @@ If a gate slips by more than two hours, cut the next phase's lowest-priority fea
 | --- | --- | --- |
 | A — Audio | Audio engine, sound pack, resolver, reverb presets | One loop on an HRTF panner that follows a 3D object |
 | B — 3D and UI | R3F room, drag, labels, listener avatar, visuals | Draggable objects writing positions to the store |
-| C — AI | Scene schema, Claude tools and prompts, adaptive loop, voice | `create_scene` returning valid JSON for 3 test prompts |
+| C — AI | Scene schema, Gemini tools and prompts, adaptive loop, voice | `create_scene` returning valid JSON for 3 test prompts |
 | D — Sensors and sponsors | Head tracking (webcam, AirPods helper), Moss / Cartesia / sync integrations, Devpost, video | Live head yaw printed from the webcam |
 
 Three people? Give head tracking to A and the sponsor integrations plus Devpost to C.
@@ -223,7 +223,7 @@ Three people? Give head tracking to A and the sponsor integrations plus Devpost 
 ### First-hour checklist
 
 - [ ] Agree on the scene schema and commit it as `scene.ts` with zod
-- [ ] Get API keys: Anthropic, ElevenLabs, Cartesia, Moss, and SpacetimeDB or Convex
+- [ ] Get API keys: Gemini (Google AI Studio), ElevenLabs, Cartesia, Moss, and SpacetimeDB or Convex
 - [ ] Download 40–60 loops and write `manifest.json` (id, file, tags, kind, license)
 - [ ] Scaffold Vite + React + R3F and deploy a hello-world to Vercel
 - [ ] Join the Devpost as a team and shortlist sponsor tracks

@@ -10,16 +10,35 @@ See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluepr
 
 - Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod
 - Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
-- AI: Claude via the Anthropic API (tool use), called from the backend
+- AI: Gemini 3.8 Flash via the Google GenAI SDK (tool use), called from the backend
 
 ## Setup
 
 ```sh
 npm install
-cp .env.example .env   # add your API keys
+cp .env.example .env   # PowerShell: Copy-Item .env.example .env
+npm run check:gemini   # after adding GEMINI_API_KEY to .env
 npm run dev            # http://localhost:5173, serves api/ too
 npm run build          # typecheck + production build
 ```
+
+Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
+`GEMINI_API_KEY` in `.env`. Restart the dev server after changing it. On Vercel, add
+the same environment variable to the deployment's environment and redeploy.
+Node.js 24 is recommended; on Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
+
+`POST /api/scene` sends the prompt and current scene to `gemini-3.8-flash`, which calls
+`create_scene` or `edit_scene`. The endpoint validates tool arguments with Zod,
+clamps positions to room bounds, and retries invalid output once. Transient provider
+and connection errors get up to two retries with increasing delays (about 1s, then
+2s, with jitter), with a 20-second timeout per attempt. Timeouts return HTTP 504;
+provider overload returns HTTP 503, and quota errors return HTTP 429. A new environment
+request can replace the starter scene; follow-up changes return edit ops so manual
+placements survive. Try "rainy cafe, I'm writing an essay", then "make the rain quieter".
+
+The agent only supplies `sound.query`. New sounds need the resolver in #17 to fill
+`assetId` before they can play; existing resolved objects keep their assets during edits.
+API errors leave the current scene intact. Offline presets/demo replay are tracked in #19.
 
 Wear headphones. The spatial effect depends on them.
 
