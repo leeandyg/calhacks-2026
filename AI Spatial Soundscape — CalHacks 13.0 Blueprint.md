@@ -33,7 +33,7 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 1. Score every pack sound of the same kind by words its tags share with the query (stemmed, with filler words like "steady" or "gentle" ignored). An entry's main noun counts triple, and a sound already used in the scene is penalized, so two rain beds get different files.
 2. A good match (the entry's main noun is the thing described, or three or more shared words) uses that pack file.
 3. Otherwise the id becomes `gen:<kind>:<query>`, and the audio engine fetches `GET /api/sound`, which generates it with ElevenLabs: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (2 s). The models were picked by ear in `scripts/test-elevenlabs.mjs`.
-4. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead.
+4. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead. Those caches are per device and per region, and Vercel's is cleared on each deployment; the planned Convex sound cache makes this durable (see "Saved sounds and saved rooms").
 
 `useSoundStatus` (in `src/audio/generated.ts`) reports `"generating"` or `"failed"` per assetId for the room view. Semantic search with Moss is still a possible upgrade for the word scoring.
 
@@ -91,7 +91,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 - **Voice (optional):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Sonic TTS for a spoken focus coach.
 - **Realtime state (pick one):** SpacetimeDB if you build shared rooms, Convex if you only need saved scenes and personalization.
 - **Swift helper (planned, after core):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
-- **Hosting:** Vercel for the frontend; the backend wherever your realtime choice lives.
+- **Hosting:** Vercel for the frontend and `api/`; Convex for stored sounds and rooms.
 
 ## Architecture
 
@@ -156,7 +156,7 @@ Build the adaptive agent and camera head tracking first: together they make the 
 | 3 | Lecture audio into the room | Chrome `getDisplayMedia({audio: true})` captures a tab; feed it into a PannerNode as a "Lecture" object; duck other sounds while it plays | 2–3 | Low–med | **Build** the browser path |
 | 4 | AirPods head tracking | Swift helper with `CMHeadphoneMotionManager` streams yaw/pitch/roll over a localhost WebSocket | 3–5 | Medium | **Build if you have a Swift dev** — best wow moment |
 | 5 | Collab rooms | Shared scene + avatar positions in SpacetimeDB; voices over a small WebRTC mesh; each remote voice gets a PannerNode at that person's avatar | 6–10 | Med–high | Only if the core is done by Saturday noon |
-| 6 | Personalization | Log sessions (task, scene, minutes, thumbs up/down); retrieve the 3 most similar past scenes as examples when generating | 2–3 | Low | Saturday night |
+| 6 | Personalization | Log sessions (task, scene, minutes, thumbs up/down) in Convex next to saved rooms; retrieve the 3 most similar past scenes as examples when generating | 2–3 | Low | Saturday night |
 | 7 | Visual polish | Per-object pulse from its `AnalyserNode`; lighting per room preset | 2 | Low | Sunday early morning |
 | 8 | App audio in the room (Spotify) | Swift helper detects which apps are playing, taps one with a Core Audio process tap, and streams it to the browser, where it becomes a live, visualized sound object | 6–10 | High | **Planned** after core; see "App audio in the room" |
 | 9 | Meeting speaker separation | Diarization only says who spoke when; separating overlapping voices needs a model like Meta's [SAM Audio](https://ai.meta.com/samaudio/) on a GPU | 10+ | High | Skip |
@@ -178,6 +178,33 @@ The team decided to add this after the core demo works: music already playing in
 - Core Audio taps need `NSAudioCaptureUsageDescription` in the helper's Info.plist and a one-time permission prompt ([Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)).
 - Mic-based noise sensing hears your own soundscape through open headphones. Use closed headphones, or subtract the app's own output level before deciding.
 
+### Saved sounds and saved rooms (Convex)
+
+For the Convex track. Convex sits **next to** the current app, not under it: the zustand store stays the live scene, `api/scene.ts` stays on Vercel, and the local pack stays the offline layer. The app still runs without Convex: with `VITE_CONVEX_URL` unset or Convex unreachable, saving is unavailable and generated sounds come from `/api/sound` as today.
+
+**Saved rooms (C, @OakleySun, #51, PR #52)**
+
+- Named **Save room** / **Load room** controls in the prompt bar. Loading goes through `setScene`; saving never changes the playing room.
+- Convex Auth anonymous sessions keep each browser's library private.
+- Scenes are stored as `v.any()` and validated with the zod `Scene`, so `scene.ts` stays the only contract.
+- The PR also sets Convex up: the package, `convex/schema.ts`, the browser client (`src/scene/convex.ts`) and `npm run convex:dev`.
+
+**Saved sounds (A, @leeandyg, #53, after #52)**
+
+- **Why:** today a generated sound is cached only by the browser that asked for it and by Vercel's CDN, which is per region and cleared on each deployment. A judge's laptop starts cold, and after a redeploy the same sound can be paid for again (about 600 credits per 15 s loop).
+- A `sounds` table, `{ kind, query, status, storageId }`, indexed by `(kind, query)`. The audio lives in Convex file storage (a 15 s loop is about 240 KB).
+- A Convex action takes over from `GET /api/sound`. If `(kind, query)` is ready, it returns the stored file's URL. If not, it claims the row as `generating`, calls ElevenLabs with the same models and durations, stores the MP3 and marks the row `ready`.
+- The claim is a mutation, which Convex runs as a transaction, so two browsers asking for the same new sound pay once; the second waits on the row through a live query. A `failed` row, or one stuck in `generating` for over a minute, can be claimed again.
+- `src/audio/generated.ts` loads the returned URL; decoding, loudness and the pack fallback don't change. `ELEVENLABS_API_KEY` is set in the Convex deployment.
+- Result: each sound is generated once for every user, device and deployment, and a saved room's `gen:` sounds reopen instantly with no credits. Later, the resolver could match descriptions against stored sounds as well as the pack, so the library grows with use.
+
+**Still needed for both:** a cloud Convex project and production deployment (#54). #52 runs on a local deployment.
+
+**Conventions that change** (in #53, the first PR that puts a key in `convex/`)
+
+- Server code and keys live in `api/` or `convex/`; nothing in `src/` uses a secret. `VITE_CONVEX_URL` is public.
+- Development runs `npm run convex:dev` next to `npm run dev`. Each teammate gets their own dev deployment, with its own environment variables to set.
+
 ## CalHacks 13.0 sponsor tracks
 
 Aim for the Cal Hacks judged prizes plus four or five sponsor tracks where the sponsor's tech is core to the demo, not bolted on. Prizes below are from the [Devpost page](https://cal-hacks-13-0.devpost.com/); submissions close **Sunday Oct 25, 9:00am PDT**, with a 3-minute pitch and 2 minutes of questions.
@@ -193,7 +220,7 @@ Aim for the Cal Hacks judged prizes plus four or five sponsor tracks where the s
 | Cartesia | Listed at $1,516 (prize item TBD) | Strong | Ink-2 voice commands ("make it rain harder") and Sonic spoken break cues placed as a "coach" object in the room |
 | SpacetimeDB (anchor sponsor) | Special prize for the most impressive use ([their blog](https://spacetimedb.com/blog/spacetime-at-calhacks)); amount not posted | Strong if collab | Shared scene + live avatar positions for collab rooms; the CEO runs a workshop |
 | Meta: Bringing People Closer Together with AI | Invite to Round 2 at Menlo Park, travel covered | Strong if collab | Spatial-audio study rooms where friends sit at different spots |
-| Convex | Teenage Engineering EP-133 K.O. II + ESP32 display (listed at $1,308) | Medium | Saved scenes, session log, personalization; pick this *or* SpacetimeDB |
+| Convex | Teenage Engineering EP-133 K.O. II + ESP32 display (listed at $1,308) | Medium | Saved rooms (#51) and a shared cache of generated sounds in Convex file storage (#53); see "Saved sounds and saved rooms". Personalization on top. Pick this *or* SpacetimeDB |
 | Fetch.ai | $1,500 / $1,000 / $500 | Medium | Wrap the environment agent as an Agentverse agent; last year required Agentverse registration + chat protocol |
 | Microsoft: Built for the Real World | $3,800 + Surface laptop each | Medium | Real-world framing and a usable deployed link; criteria not posted |
 | Figma: Best Design / Most Creative | $1,000 each (gift cards + recruiter session) | Medium | Design the room UI in Figma first and show it |
@@ -270,7 +297,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 
 | Risk | Fallback |
 | --- | --- |
-| Venue Wi-Fi dies | The pack works offline, and generated sounds fall back to the closest pack sound. Play the demo prompts once before judging so their generated sounds are in the browser cache; keep a "demo mode" with recorded agent responses |
+| Venue Wi-Fi dies | The pack works offline, and generated sounds fall back to the closest pack sound. Play the demo prompts once before judging so their generated sounds are cached (in Convex once the sound cache is built, which warms every machine; until then only the browser that played them); keep a "demo mode" with recorded agent responses |
 | Agent returns bad JSON or is slow | Validate with zod, retry once, fall back to 6 preset scenes; stream objects in as they arrive |
 | Spatial effect feels weak to judges | Exaggerate distances, use mono sources, open with a sound moving hard left to right |
 | Head tracking jitters | Smooth with a lerp or One Euro filter; add a recenter button |
