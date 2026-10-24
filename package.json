@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "typecheck": "tsc",
     "check:gemini": "node --env-file=.env scripts/check-gemini.mjs",
@@ -15,7 +15,16 @@
     "check:reverb": "node scripts/check-reverb.mjs",
     "preview": "vite preview",
     "sounds:fetch": "node --env-file=.env scripts/fetch-freesound.mjs",
-    "sounds:pack": "node scripts/pack.mjs"
+    "sounds:pack": "node scripts/pack.mjs",
+    "test": "vitest run",
+    "test:browser": "node scripts/browser-test.mjs",
+    "test:frontend": "node scripts/frontend-test.mjs",
+    "test:window": "node scripts/window-edge-test.mjs",
+    "test:prompt": "node scripts/prompt-test.mjs",
+    "art:build": "node scripts/pixel-room.mjs build",
+    "art:lint": "node scripts/pixel-room.mjs lint",
+    "art:verify": "node scripts/pixel-room.mjs verify",
+    "art:serve": "node scripts/pixel-room.mjs serve"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
@@ -25,7 +34,10 @@
     "react-dom": "^19.3.1",
     "three": "^0.186.1",
     "zod": "^4.6.7",
-    "zustand": "^5.0.16"
+    "zustand": "^5.0.16",
+    "@tailwindcss/vite": "^4.1.14",
+    "border-beam": "^1.4.1",
+    "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
@@ -34,6 +46,8 @@
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.2",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "@playwright/test": "^1.56.1",
+    "vitest": "^5.0.5"
   }
 }

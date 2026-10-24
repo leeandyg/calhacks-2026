@@ -30,11 +30,23 @@ Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an
 ## Code layout
 
 - Folder owners are listed in README "Layout". Stay in your folder; changes to `src/scene/scene.ts` (the shared contract) need a PR the AI owner reviews.
-- The room view and the audio engine only render the scene store. Change the scene through `setScene` / `applyOps`, never by mutating objects or reading positions from meshes.
+- The room view and the audio engine only render the scene store (`src/scene/store.ts`). Change the scene through `setScene` / `applyOps` (both all-or-nothing, returning `{ ok }` or `{ ok: false, error }`), never by mutating objects or reading positions from meshes. The store snaps positions onto the room grid with `src/scene/layout.ts`.
+- The room grid is fixed (1 block = 1 m, default 10 × 10 × 7); Gemini never chooses it. Camera and rotation are view-only state in `src/room/useRoomStore.ts`.
 - API keys are read only in `api/` (server side). Nothing in `src/` may use a secret.
 - Never set `sound.assetId` outside the resolver (`src/audio/resolve.ts`), except in hand-made presets or recordings. Objects without one are resolved automatically: a pack sound, or a `gen:` id that is generated with ElevenLabs (each generation costs credits).
 - Relative imports use `.js` extensions (`./scene.js`) so `api/` works on Vercel.
 - Check with `npm run build` before opening a PR.
+
+## Frontend (pixel room)
+
+Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, the Enter-room overlay, and one BorderBeam-wrapped prompt bar with its demo row and status line.
+
+- Keep view rotation separate from canonical source positions. Room rotation is manual only, through the arrows; no edge-triggered, delayed, or automatic turns.
+- No shadows and no decorative non-source objects. Every model is one sound object.
+- Integer Square/Rectangle grid counts with independent wall height; walls and floor share the fixed `SLAB_THICKNESS`. Plain rooms are gray and unmarked; forest has sparse seeded dirt/moss pixels that fade with their walls.
+- Pixelate the whole room on one shared pixel grid with the pxl palette, antialiasing off. Keep pixel rendering in `src/room/RoomScene.tsx`; root `index.html` -> `src/main.tsx` -> `src/App.tsx` is the only entry. Never substitute the static `art/` export for the interactive room.
+- Source windows keep one complete corner segment at each wall end, including after room resize and scaling.
+- Check with `npm run build`, `npm test`, the `check:*` scripts, and with the dev server running, `npm run test:browser`, `test:frontend`, `test:window` and `test:prompt` (`PLAYWRIGHT_CHANNEL=chrome` uses installed Chrome; `TEST_URL` picks the server).
 
 ## Git
 

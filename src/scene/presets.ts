@@ -1,16 +1,19 @@
 import { bedroom, cafe, forest } from "./fixtures.js";
-import { DEFAULT_GRID, type Scene, type SoundObject, type Vec3 } from "./scene.js";
+import { snapScene } from "./layout.js";
+import { DEFAULT_GRID, Scene, type SceneInput, type Vec3 } from "./scene.js";
 
-function bed(id: string, label: string, assetId: string, position: Vec3, volume: number): SoundObject {
+type SoundObjectInput = SceneInput["objects"][number];
+
+function bed(id: string, label: string, assetId: string, position: Vec3, volume: number): SoundObjectInput {
   return { id, label, kind: "bed", sound: { query: label, assetId }, position, volume };
 }
 
-function event(id: string, label: string, assetId: string, position: Vec3, volume: number): SoundObject {
+function event(id: string, label: string, assetId: string, position: Vec3, volume: number): SoundObjectInput {
   return { id, label, kind: "event", sound: { query: label, assetId }, position, volume, intervalSec: [20, 60] };
 }
 
-function scene(room: Scene["room"], objects: SoundObject[]): Scene {
-  return { room, listener: { position: [0, 1.6, 0], yaw: 0 }, objects };
+function scene(room: Scene["room"], objects: SoundObjectInput[]): Scene {
+  return snapScene(Scene.parse({ room, listener: { position: [0, 1.6, 0], yaw: 0 }, objects }));
 }
 
 export const presets = [

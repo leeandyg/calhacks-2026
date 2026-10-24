@@ -1,0 +1,31 @@
+{
+  "width": 480,
+  "height": 270,
+  "frameCount": 16,
+  "fps": 10,
+  "durationMs": 1600,
+  "colors": 20,
+  "lintFindings": 0,
+  "lintedFrames": 16,
+  "staticPixelsUnchanged": true,
+  "patchesReconstructFrames": true,
+  "exactPhaseWrap": true,
+  "adjacentFramePixelChanges": [
+    36,
+    203,
+    34,
+    40,
+    102,
+    48,
+    128,
+    38,
+    35,
+    207,
+    39,
+    44,
+    99,
+    43,
+    135,
+    44
+  ]
+}
