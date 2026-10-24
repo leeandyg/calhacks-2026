@@ -79,6 +79,12 @@ Run `npm run check:offline` for preset asset checks, the recorded sequence, pres
 of manual edits, and simulated API/timeout failures. This check makes no real API calls.
 Run `npm run check:audio` for sound replacement, removal, download recovery, and event
 cleanup checks using a simulated audio clock; it does not play through your speakers.
+Run `npm run check:reverb` for the room reverb (impulse responses and preset switching),
+also with a simulated audio context.
+
+The room reverb follows `room.reverb` (`small-room`, `large-room`, `outdoor`, `none`), which
+the agent picks from the prompt. Farther sounds get more of it, which is most of what makes
+distance audible.
 
 Wear headphones. The spatial effect depends on them.
 

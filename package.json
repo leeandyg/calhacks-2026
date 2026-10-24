@@ -12,6 +12,7 @@
     "check:offline": "node scripts/check-offline.mjs",
     "check:audio": "node scripts/check-audio.mjs",
     "check:resolver": "node scripts/check-resolver.mjs",
+    "check:reverb": "node scripts/check-reverb.mjs",
     "preview": "vite preview",
     "sounds:fetch": "node --env-file=.env scripts/fetch-freesound.mjs",
     "sounds:pack": "node scripts/pack.mjs"

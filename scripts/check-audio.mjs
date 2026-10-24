@@ -21,9 +21,15 @@ class Source extends Node {
   start() { this.started = true; }
   stop(at = now) { this.stopsAt = at; }
 }
+class Convolver extends Node { buffer = null; normalize = true; }
 const context = {
-  get currentTime() { return now; }, destination: {},
+  get currentTime() { return now; }, destination: {}, sampleRate: 8000,
   createGain: () => new Gain(),
+  createConvolver: () => new Convolver(),
+  createBuffer: (channels, length, sampleRate) => {
+    const data = Array.from({ length: channels }, () => new Float32Array(length));
+    return { numberOfChannels: channels, length, sampleRate, duration: length / sampleRate, getChannelData: (c) => data[c] };
+  },
   listener: Object.fromEntries(["positionX", "positionY", "positionZ", "forwardX", "forwardY", "forwardZ", "upX", "upY", "upZ"].map((key) => [key, new Param()])),
   decodeAudioData: async (data) => ({ duration: 10, asset: new TextDecoder().decode(data) }),
 };
