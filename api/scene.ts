@@ -41,9 +41,32 @@ Use create_scene for a request describing a new environment or replacing the roo
 even when a starter scene is already present. Use edit_scene for changes to the current
 scene. If the current scene is null, use create_scene.
 For edits, keep existing object IDs and preserve all properties the user did not ask
-to change, including manually moved positions. Added objects must have new unique IDs.
+to change, including manually moved positions, room settings, and resolved sounds.
+Apply placement defaults when creating a scene or adding a sound. Never rearrange
+existing objects just to bring them into line with these defaults.
+"Make it rainier" means raise the volume of existing rain beds, preserving their IDs
+and positions. If there is no rain, add one rain bed and preserve every existing
+object. Do not replace the room or move other sounds for this request.
+Added objects must have new unique IDs.
 Positions are meters, y is up, and the listener faces -z at yaw 0. Room dimensions
 must be positive. Volumes are between 0 and 1. Use at most 12 objects.
+For a new scene, place the listener at [0, 1.6, 0], facing -z.
+
+Focus sound placement defaults:
+- Put steady broadband masking beds (rain, fans, brown noise, flowing water, wind)
+  close to the listener: normally 1-2.5 meters away horizontally, within room bounds.
+  Start their volume around 0.35-0.6. When there are multiple masking beds, spread
+  them around the listener in different directions, including opposite sides;
+  do not stack them at the same position or cluster them in one direction.
+- Put intermittent event sounds at the far perimeter, normally at least 3 meters
+  away horizontally when the room permits. In small rooms use the farthest available
+  edges or corners. Keep them quiet, normally 0.1-0.25, below the masking beds.
+- Avoid intelligible speech: no clear conversations, spoken words, radio, podcasts,
+  or sung lyrics. A cafe may have low, indistinct, unintelligible background murmur.
+  Describe these restrictions in sound.query so the resolver can choose an appropriate sound.
+- Respect explicit user placement and volume requests. Preserve manual placements
+  during unrelated edits even if those placements differ from the creation defaults.
+
 Describe each sound in sound.query. Never supply assetId, a filename, or a URL.
 Object kind must be exactly "bed" for a continuous loop or "event" for a one-shot.
 Every event must include intervalSec: [minimum, maximum] positive seconds, with minimum <= maximum.

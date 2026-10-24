@@ -36,6 +36,13 @@ provider overload returns HTTP 503, and quota errors return HTTP 429. A new envi
 request can replace the starter scene; follow-up changes return edit ops so manual
 placements survive. Try "rainy cafe, I'm writing an essay", then "make the rain quieter".
 
+New scenes place masking beds close and in different directions, with event sounds
+farther away and quieter. Sound descriptions exclude intelligible speech. These
+defaults never rearrange manually positioned objects during unrelated edits.
+`npm run check:placement` runs six live requests: cafe, forest, and bedroom creation,
+each followed by "make it rainier" after a manual move. It checks placement defaults,
+speech restrictions, and preservation of existing positions and unrelated objects.
+
 The agent only supplies `sound.query`. New sounds need the resolver in #17 to fill
 `assetId` before they can play; existing resolved objects keep their assets during edits.
 API errors leave the current scene intact. Offline presets/demo replay are tracked in #19.
