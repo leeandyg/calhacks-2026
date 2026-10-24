@@ -24,6 +24,16 @@ launched the helper from (Terminal, iTerm or VS Code). Allow it, or turn it on l
 Settings → Privacy & Security → Screen & System Audio Recording → System Audio Recording Only. Until
 then, the helper waits at its first capture.
 
+## Which apps join the room
+
+- An app joins after playing real sound for about 3 of the last 4 seconds, so notification pings
+  never do. Chat and mail apps (Slack, Messages, Mail, FaceTime) are ignored.
+- A paused app keeps its spot. It leaves after 60 s of silence, when it quits, or when the room's
+  browser disconnects.
+- The browser the room runs in is never captured: Chrome plays all tabs through one process, so
+  a video in the *same* browser can't be separated. Play it in another browser or app.
+- Only regular apps count, not command-line tools or system sounds.
+
 ## Protocol
 
 `ws://127.0.0.1:47800`, loopback only. Only pages from `localhost`, `127.0.0.1` or the project's
