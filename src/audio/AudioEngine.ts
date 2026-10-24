@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
+import { addMeter, removeMeter } from "./levels.js";
 import { isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
 import { loadManifest } from "./manifest.js";
 import { matchSound, startResolver } from "./resolve.js";
@@ -110,7 +111,8 @@ export class AudioEngine {
 }
 
 /**
- * One sound object: source(s) -> gain -> HRTF panner -> master, plus gain -> send -> reverb.
+ * One sound object: source(s) -> gain -> HRTF panner -> master, plus gain -> send -> reverb, and
+ * gain -> analyser for the room view's level meter (levels.ts).
  * The send is taken before the panner, so the reverb doesn't fade with distance (see reverb.ts).
  * Beds loop one source (with its own fade gain so sound swaps crossfade).
  * Events play soon after a new sound arrives, then wait a fresh random silent gap within intervalSec
@@ -122,6 +124,7 @@ class Voice {
   private gain: GainNode;
   private panner: PannerNode;
   private send: GainNode;
+  private analyser: AnalyserNode;
   private bed?: Playback;
   private events = new Set<Playback>();
   private eventLoading = false;
@@ -148,6 +151,9 @@ class Voice {
     this.gain.connect(this.panner).connect(output);
     this.send = new GainNode(ctx, { gain: 1 });
     this.gain.connect(this.send).connect(reverb);
+    this.analyser = new AnalyserNode(ctx, { fftSize: 1024 });
+    this.gain.connect(this.analyser);
+    addMeter(object.id, this.analyser);
     this.update(object);
   }
 
@@ -189,6 +195,7 @@ class Voice {
   dispose() {
     this.disposed = true;
     this.loadVersion++;
+    removeMeter(this.object.id, this.analyser);
     clearTimeout(this.timer);
     this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, RAMP_SEC);
     this.stopBed();
@@ -197,6 +204,7 @@ class Voice {
     setTimeout(() => {
       this.panner.disconnect();
       this.send.disconnect();
+      this.analyser.disconnect();
     }, FADE_SEC * 1000 * 2);
   }
 
