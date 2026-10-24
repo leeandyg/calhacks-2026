@@ -17,7 +17,7 @@ const MAX_QUERY = 300; // api/sound.ts and convex/sounds.ts reject longer querie
 const CONVEX_WAIT_MS = 35_000; // generation times out at 25 s on the server
 // Loudness targets match scripts/pack.mjs, so generated and pack sounds sit at the same level
 const TARGET_LUFS: Record<Kind, number> = { bed: -20, event: -18 };
-const MAX_GAIN_DB = 30; // don't blow a near-silent generation up into pure noise
+const MAX_GAIN_DB = 40; // quiet Foley can need >30 dB; still bound amplification of noise
 const LIMIT = 0.8; // above this, peaks are softly rounded instead of stopping the boost
 
 export function generatedAssetId(kind: Kind, query: string): string {
@@ -119,12 +119,27 @@ function storedSoundUrl(client: ConvexReactClient, kind: Kind, query: string): P
 export async function normalize(input: AudioBuffer, kind: Kind): Promise<AudioBuffer> {
   const out = new AudioBuffer({ numberOfChannels: 1, length: input.length, sampleRate: input.sampleRate });
   const mono = out.getChannelData(0);
+  let strongestChannel = 0;
+  let strongestEnergy = 0;
   for (let c = 0; c < input.numberOfChannels; c++) {
     const data = input.getChannelData(c);
-    for (let i = 0; i < data.length; i++) mono[i] += data[i] / input.numberOfChannels;
+    let energy = 0;
+    for (let i = 0; i < data.length; i++) {
+      mono[i] += data[i] / input.numberOfChannels;
+      energy += data[i] * data[i];
+    }
+    if (energy > strongestEnergy) { strongestEnergy = energy; strongestChannel = c; }
+  }
+  // Some generated stereo uses opposing phases. Averaging those channels can erase the source;
+  // use the stronger original channel only when the mono mix loses over 10 dB of energy.
+  const monoEnergy = mono.reduce((sum, sample) => sum + sample * sample, 0);
+  if (input.numberOfChannels > 1 && monoEnergy < strongestEnergy * 0.1) {
+    mono.set(input.getChannelData(strongestChannel));
   }
   const lufs = await loudness(out);
-  if (!Number.isFinite(lufs)) return out; // silent
+  // Let the existing pack fallback handle empty/near-silent output instead of displaying a
+  // playable prop that makes no sound. Never turn digital silence into amplified noise.
+  if (!Number.isFinite(lufs)) throw new Error("Generated sound is silent or too quiet to normalize.");
   const gain = 10 ** (Math.min(TARGET_LUFS[kind] - lufs, MAX_GAIN_DB) / 20);
   for (let i = 0; i < mono.length; i++) mono[i] = softLimit(mono[i] * gain);
   return out;
@@ -133,7 +148,8 @@ export async function normalize(input: AudioBuffer, kind: Kind): Promise<AudioBu
 /**
  * Integrated loudness in LUFS (EBU R128, the scale ffmpeg's loudnorm uses in scripts/pack.mjs):
  * K-weighting filters, 400 ms blocks every 100 ms, absolute gate at -70 LUFS, relative gate 10 LU
- * below the mean. Mono only.
+ * below the mean. Mono only. Clips shorter than 400 ms use their full length as one block,
+ * so a short click doesn't skip normalization altogether.
  */
 export async function loudness(buffer: AudioBuffer): Promise<number> {
   const offline = new OfflineAudioContext(1, buffer.length, buffer.sampleRate);
@@ -145,7 +161,7 @@ export async function loudness(buffer: AudioBuffer): Promise<number> {
   source.start();
   const x = (await offline.startRendering()).getChannelData(0);
 
-  const block = Math.round(0.4 * buffer.sampleRate);
+  const block = Math.min(buffer.length, Math.round(0.4 * buffer.sampleRate));
   const hop = Math.round(0.1 * buffer.sampleRate);
   const blocks: number[] = [];
   for (let start = 0; start + block <= x.length; start += hop) {
