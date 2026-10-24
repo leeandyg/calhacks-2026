@@ -120,13 +120,23 @@ Listing and saving never change the playing scene. A delayed load is discarded i
 the room changes while it is in flight. Missing configuration or a disconnected
 Convex deployment leaves local presets, AI prompts and playback available.
 
-For cloud storage, sign in using `npx convex login`, then run
-`npx convex dev --configure` and select a cloud project. Run `npm run convex:auth`
-for that development deployment. For production, run
-`npm run convex:auth -- --prod` and `npx convex deploy`; set `VITE_CONVEX_URL` on
-Vercel to the production deployment's public `.convex.cloud` URL and rebuild the
-frontend. Convex Auth's `JWT_PRIVATE_KEY` and `JWKS` stay in the Convex deployment;
-the setup script generates them without printing them and preserves existing keys.
+**Cloud project:** `calhacks-2026` in the `andylee0440` Convex team. Ask @leeandyg for an
+invite, then run `npx convex login` and `npx convex dev --configure existing --team andylee0440
+--project calhacks-2026`. That gives you your own cloud dev deployment in `.env.local`. Run
+`npm run convex:auth` once for it.
+
+**Production** (`nautical-dogfish-530`) is what https://calhacks-2026.vercel.app uses:
+Vercel's Production environment has its public `VITE_CONVEX_URL`. Its `JWT_PRIVATE_KEY` and
+`JWKS` are set (`npm run convex:auth -- --prod`); the setup script generates them without
+printing them and preserves existing keys. Vercel builds with `scripts/vercel-build.mjs`
+(`vercel.json`):
+- With `CONVEX_DEPLOY_KEY` set (Vercel, Production only), each production build first
+  runs `npx convex deploy`, so `convex/` changes go live with the site.
+- Without it (previews and local builds), it's a plain `npm run build`, and `convex/` changes
+  reach production only with a manual `npx convex deploy`. Previews have no Convex.
+
+Server-side keys for Convex functions (e.g. `ELEVENLABS_API_KEY` for the sound cache) go in
+each deployment's environment: `npx convex env set <NAME>` (add `--prod` for production).
 
 `npm run check:convex` checks round-trip persistence, named updates, validation,
 unauthenticated rejection and isolation between two anonymous users. It requires a
