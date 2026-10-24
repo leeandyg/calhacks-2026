@@ -110,3 +110,15 @@ Add a sound by adding it to `SOUNDS` in `scripts/fetch-freesound.mjs` and `TAGS`
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
 
 `api/*.ts` files export `POST(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
+
+## Standalone pixel-room frontend
+
+The `front-end` branch includes the interactive pixel-room project in [`frontend/`](frontend/README.md). Run it independently from the repository's integrated app:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Use Node.js 22.12 or newer. The standalone frontend has its own scene schema and store; its prompt logs text, and it is not connected to the root app's AI or audio. See [the implementation review](frontend/docs/ISSUE_VERIFICATION.md) for outstanding integration work.
