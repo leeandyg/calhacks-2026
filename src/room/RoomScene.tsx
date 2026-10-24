@@ -10,6 +10,9 @@ import { getRoomDimensions, ROOM_FRAME, roomProjectionEnvelope } from '../scene/
 import { PIXEL_PALETTE } from './pixelPalette.js';
 import { SpawnController, SpawnProvider } from './spawn.js';
 import { SoundStatusProvider, SoundStatusTracker } from './SoundStatusLabels.js';
+import { useArtStore } from '../art/store.js';
+
+const MAX_ART_COLORS = 64;
 
 function target(depth = false) {
   return new WebGLRenderTarget(1, 1, {
@@ -24,6 +27,8 @@ function target(depth = false) {
  */
 function PixelRoomRenderer() {
   const { gl, scene, size, viewport } = useThree();
+  const envId = useSceneStore(state => state.scene.room.art);
+  const artColors = useArtStore(state => envId ? state.envs[envId]?.colors : undefined);
   const cache = useRef({ tick: -1, objects: useSceneStore.getState().scene.objects });
   const resources = useMemo(() => {
     const shell = target(true);
@@ -35,19 +40,22 @@ function PixelRoomRenderer() {
       uniforms: {
         shell: { value: shell.texture }, props: { value: props.texture },
         shellDepth: { value: shell.depthTexture }, propDepth: { value: propDepth.depthTexture },
-        palette: { value: PIXEL_PALETTE.map(hex => new Color(hex)) },
+        palette: { value: Array.from({ length: MAX_ART_COLORS }, (_, i) => new Color(PIXEL_PALETTE[i % PIXEL_PALETTE.length])) },
+        paletteCount: { value: PIXEL_PALETTE.length },
         toneMappingExposure: { value: 1 },
       },
       vertexShader: `varying vec2 uvScreen;
         void main() { uvScreen = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
       fragmentShader: `
         uniform sampler2D shell, props, shellDepth, propDepth;
-        uniform vec3 palette[${PIXEL_PALETTE.length}];
+        uniform vec3 palette[${MAX_ART_COLORS}];
+        uniform int paletteCount;
         varying vec2 uvScreen;
         #include <tonemapping_pars_fragment>
         vec3 nearestColor(vec3 value) {
           vec3 best = palette[0]; float distance = 1e8;
-          for (int i = 0; i < ${PIXEL_PALETTE.length}; i++) {
+          for (int i = 0; i < ${MAX_ART_COLORS}; i++) {
+            if (i >= paletteCount) break;
             vec3 delta = value - palette[i];
             float candidate = dot(delta * delta, vec3(0.25, 0.6, 0.15));
             if (candidate < distance) { distance = candidate; best = palette[i]; }
@@ -75,6 +83,13 @@ function PixelRoomRenderer() {
     composite.add(quad);
     return { shell, props, propDepth, depthMaterial, material, composite, quad, camera: new ThreeOrthographicCamera(-1, 1, 1, -1, 0, 1) };
   }, []);
+
+  useLayoutEffect(() => {
+    const colors = [...new Set([...(artColors ?? []), ...PIXEL_PALETTE])].slice(0, MAX_ART_COLORS);
+    resources.material.uniforms.palette.value = Array.from({ length: MAX_ART_COLORS }, (_, i) => new Color(colors[i % colors.length]));
+    resources.material.uniforms.paletteCount.value = colors.length;
+    cache.current.tick = -1;
+  }, [artColors, resources]);
 
   useLayoutEffect(() => {
     const pixelSize = size.width < 600 ? 1.5 : 3;
@@ -146,7 +161,7 @@ function FixedCamera() {
     // The diagonal envelope fits rectangles throughout the complete animation.
     const { horizontal, vertical } = roomProjectionEnvelope(roomSize);
     const topInset = Math.max(20, size.height * 0.055);
-    const controlsClearance = 200; // prompt, demo controls and status line
+    const controlsClearance = 160; // prompt and status line
     const availableHeight = Math.max(100, Math.min(size.height * 0.8, size.height - topInset - controlsClearance));
     camera.zoom = Math.min(Math.max(40, size.width - 112) / horizontal, availableHeight / vertical);
     camera.lookAt(...cameraConfig.target);
@@ -213,7 +228,7 @@ function DevInspection() {
           walls: roomConfig.walls.map(wall => {
             const group = state.scene.getObjectByName(`wall-${wall.id}`);
             const mesh = group?.getObjectByName('wall-body') as Mesh<BoxGeometry, MeshStandardMaterial> | undefined;
-            return { id: wall.id, thickness: mesh?.geometry.parameters.depth, color: mesh?.material.color.getHexString(), childCount: group?.children.length };
+            return { id: wall.id, bodyVisible: mesh?.visible, thickness: mesh?.geometry.parameters.depth, color: mesh?.material.color.getHexString(), childCount: group?.children.length };
           }),
           surfaceDetails,
         },
@@ -229,7 +244,8 @@ function DevInspection() {
             return bird ? [{ y: bird.position.y, blinking: bird.getObjectByName('bird-blink')?.visible }] : [];
           });
           const rainPoses = Array.from({ length: 8 }, (_, i) => model?.getObjectByName(`rain-streak-${i}`)).filter(mesh => mesh !== undefined).map(mesh => ({ y: mesh.position.y, height: mesh.scale.y, visible: mesh.visible }));
-          return { id: object.id, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
+          const painted = model?.getObjectByName('painted-prop') as Mesh<PlaneGeometry, MeshStandardMaterial> | undefined;
+          return { id: object.id, artFrame: painted?.material.map?.offset.x, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
         }),
         windowOpacities,
         shadows,

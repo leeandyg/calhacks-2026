@@ -1,3 +1,5 @@
+import { setEventPlaying } from './activity.js';
+import { isManagedSound, loadManagedSound } from './managed.js';
 import { useEffect } from "react";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useHeadPose } from "../sensors/headPose.js";
@@ -257,6 +259,7 @@ class Voice {
   private stopEvents() {
     for (const event of this.events) this.stopPlayback(event);
     this.events.clear();
+    setEventPlaying(this.object.id, false);
   }
 
   private scheduleEvent(soon = this.firstPlay) {
@@ -292,9 +295,11 @@ class Voice {
       source.disconnect();
       fade.disconnect();
       this.events.delete(playback);
+      if (!this.events.size) setEventPlaying(this.object.id, false);
       if (this.loadVersion === version) this.scheduleEvent();
     };
     source.start();
+    setEventPlaying(this.object.id, true);
   }
 }
 
@@ -312,7 +317,7 @@ function loadBuffer(ctx: AudioContext, assetId: string | undefined): Promise<Aud
   if (!assetId) return Promise.resolve(undefined); // not resolved yet (see resolve.ts)
   let buffer = buffers.get(assetId);
   if (!buffer) {
-    buffer = (isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
+    buffer = (isManagedSound(assetId) ? loadManagedSound(ctx, assetId) : isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
       // Retry pack files after transient network/decode failures. A failed generation is not
       // retried: each scene update (every drag frame) would otherwise call /api/sound again.
       if (!isGenerated(assetId)) buffers.delete(assetId);
@@ -344,7 +349,7 @@ async function loadGeneratedOrFallback(ctx: AudioContext, assetId: string): Prom
   }
 }
 
-/** Runs the engine (and the resolver that fills in assetIds) while `enabled` (after "Enter room"). */
+/** Runs the engine and resolver after the user's first room has been created. */
 export function useAudioEngine(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;

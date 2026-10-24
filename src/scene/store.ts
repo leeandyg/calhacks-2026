@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { ZodError } from "zod";
-import { starter } from "./fixtures.js";
-import { placeObject, wallLength } from "./layout.js";
-import { EditOp, MAX_OBJECTS, Scene, roomSize, type EditOpInput, type Room, type SceneInput, type SoundObject, type Vec3 } from "./scene.js";
+import { placeInRoom, wallLength } from "./layout.js";
+import { DEFAULT_GRID, EditOp, MAX_OBJECTS, Scene, roomSize, type EditOpInput, type Room, type SceneInput, type SoundObject, type Vec3 } from "./scene.js";
 
 // The one place scene state lives. The room view and the audio engine render whatever is here;
 // drags, the agent and presets change it only through setScene / applyOps. Both are all or
@@ -17,7 +16,12 @@ type SceneState = {
 };
 
 export const useSceneStore = create<SceneState>()((set, get) => ({
-  scene: prepare(starter),
+  // Only fixed geometry exists before the user's first successful generation.
+  scene: prepare({
+    room: { preset: "bedroom", grid: DEFAULT_GRID, openings: [], reverb: "none" },
+    listener: { position: [0, 1.6, 0], yaw: 0 },
+    objects: [],
+  }),
   setScene: (scene) => mutate(() => set({ scene: prepare(scene) })),
   applyOps: (ops) =>
     mutate(() => {
@@ -55,6 +59,8 @@ export function applyOp(scene: Scene, op: EditOp): Scene {
       return updateObject(scene, op.id, (o) => ({ ...o, muted: op.muted }));
     case "set_room": {
       const room: Room = {
+        ...scene.room,
+        ...(op.preset !== scene.room.preset || op.grid ? { art: undefined, terrain: undefined } : {}),
         preset: op.preset,
         grid: op.grid ?? scene.room.grid,
         openings: op.openings ?? scene.room.openings,
@@ -73,7 +79,7 @@ function findObject(scene: Scene, id: string): SoundObject {
 
 function updateObject(scene: Scene, id: string, fn: (o: SoundObject) => SoundObject): Scene {
   const object = findObject(scene, id);
-  const next = placeObject(fn(object), scene.room.grid);
+  const next = placeInRoom(fn(object), scene.room);
   return { ...scene, objects: scene.objects.map((o) => (o === object ? next : o)) };
 }
 
@@ -88,7 +94,7 @@ export function clampPosition([x, y, z]: Vec3, room: Pick<Room, "grid">): Vec3 {
 export function clampScene(scene: Scene): Scene {
   const listener = { ...scene.listener, position: clampPosition(scene.listener.position, scene.room) };
   const same = listener.position.every((v, i) => v === scene.listener.position[i]);
-  return { ...scene, listener: same ? scene.listener : listener, objects: scene.objects.map((o) => placeObject(o, scene.room.grid)) };
+  return { ...scene, listener: same ? scene.listener : listener, objects: scene.objects.map((o) => placeInRoom(o, scene.room)) };
 }
 
 function prepare(input: SceneInput): Scene {
@@ -101,8 +107,11 @@ function prepare(input: SceneInput): Scene {
 function validateScene(scene: Scene) {
   Scene.parse(scene);
   if (new Set(scene.objects.map((o) => o.id)).size !== scene.objects.length) throw new Error("Every sound must have a unique id.");
-  const { grid, openings } = scene.room;
+  const { grid, openings, terrain } = scene.room;
   if (grid.mode === "Square" && grid.columns !== grid.rows) throw new Error("A Square room needs equal columns and rows.");
+  if (terrain && (terrain.length !== grid.rows || terrain.some((row) => row.length !== grid.columns))) {
+    throw new Error(`Terrain must have ${grid.rows} rows of ${grid.columns} heights.`);
+  }
   if (new Set(openings.map((o) => o.id)).size !== openings.length) throw new Error("Every opening must have a unique id.");
   for (const o of openings) {
     if (o.kind === "door" && o.level !== 0) throw new Error(`Door ${o.id} must start at floor level.`);

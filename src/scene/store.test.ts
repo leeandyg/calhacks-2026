@@ -5,8 +5,48 @@ import { presets } from './presets.js';
 import { Scene } from './scene.js';
 import { getRoomConfig } from '../room/roomConfig.js';
 
+const initialScene = useSceneStore.getState().scene;
+it('starts with only the fixed empty structure, without starter content', () => {
+  expect(initialScene.objects).toEqual([]);
+  expect(initialScene.room.grid).toEqual({ mode: 'Square', columns: 10, rows: 10, wallHeight: 7 });
+  expect(initialScene.room.art).toBeUndefined();
+  expect(initialScene.room.terrain).toBeUndefined();
+  expect(initialScene.session).toBeUndefined();
+});
+
 describe('frontend scene contract and edit operations', () => {
   beforeEach(() => { useSceneStore.getState().setScene(starter); });
+  it('keeps terrain in canonical source placement and preserves it across sound edits', () => {
+    const scene = structuredClone(starter);
+    scene.room.art = 'forest-art';
+    scene.room.terrain = Array.from({ length: scene.room.grid.rows }, () => Array(scene.room.grid.columns).fill(1.25));
+    expect(useSceneStore.getState().setScene(scene)).toEqual({ ok: true });
+    const source = useSceneStore.getState().scene.objects.find(object => object.id === 'fan-1')!;
+    expect(source.position[1]).toBeGreaterThanOrEqual(2);
+    const room = useSceneStore.getState().scene.room;
+    useSceneStore.getState().applyOps([{ op: 'set_volume', id: source.id, volume: 0.2 }]);
+    expect(useSceneStore.getState().scene.room).toBe(room);
+    expect(useSceneStore.getState().scene.objects.find(object => object.id === source.id)!.position).toEqual(source.position);
+  });
+  it('rejects mismatched terrain atomically and clears it when the grid changes', () => {
+    const original = useSceneStore.getState().scene;
+    expect(useSceneStore.getState().setScene({ ...original, room: { ...original.room, terrain: [[1]] } }).ok).toBe(false);
+    expect(useSceneStore.getState().scene).toBe(original);
+    useSceneStore.getState().setScene({ ...original, room: { ...original.room, art: 'art', terrain: Array.from({ length: 10 }, () => Array(10).fill(0.25)) } });
+    expect(useSceneStore.getState().applyOps([{ op: 'set_room', preset: 'forest', grid: { mode: 'Square', columns: 6, rows: 6, wallHeight: 4 } }]).ok).toBe(true);
+    expect(useSceneStore.getState().scene.room.art).toBeUndefined();
+    expect(useSceneStore.getState().scene.room.terrain).toBeUndefined();
+  });
+  it('mounts painted wall sources against the wall at their canonical audio position', () => {
+    const scene = structuredClone(starter);
+    scene.room.art = 'forest-art';
+    scene.objects[1].wall = 'north';
+    expect(useSceneStore.getState().setScene(scene)).toEqual({ ok: true });
+    const object = useSceneStore.getState().scene.objects[1];
+    expect(object.position[2]).toBeCloseTo(-scene.room.grid.rows / 2 + 0.225);
+    useSceneStore.getState().applyOps([{ op: 'set_volume', id: object.id, volume: 0.3 }]);
+    expect(useSceneStore.getState().scene.objects[1].position).toEqual(object.position);
+  });
   it('serializes the blueprint contract as plain scene JSON', () => {
     const scene = useSceneStore.getState().scene;
     expect(Scene.parse(JSON.parse(JSON.stringify(scene)))).toEqual(scene);

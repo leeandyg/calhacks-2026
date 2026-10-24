@@ -40,11 +40,20 @@ export const RoomOpening = z.object({
 });
 export type RoomOpening = z.infer<typeof RoomOpening>;
 
+/** Ground height of each floor cell in blocks, [row][column] (row 0 is the north edge). */
+export const TERRAIN_MAX = 1.5;
+export const Terrain = z.array(z.array(z.number().min(0).max(TERRAIN_MAX)));
+export type Terrain = z.infer<typeof Terrain>;
+
 export const Room = z.object({
   preset: RoomPreset,
   grid: RoomGrid,
   openings: z.array(RoomOpening),
   reverb: ReverbPreset,
+  /** The painted environment (api/environment.ts); its textures stay in the browser (src/art/). */
+  art: z.string().min(1).max(80).optional(),
+  /** Uneven ground painted with the environment. Missing means a flat floor. */
+  terrain: Terrain.optional(),
 }).strict(); // no room.size that could disagree with the grid (#49)
 export type Room = z.infer<typeof Room>;
 
