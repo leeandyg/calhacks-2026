@@ -11,6 +11,7 @@ Your instinct on order is right: **3D room with draggable spatial audio first, A
 - **Core (must demo):** prompt → room fills with labeled sound objects → drag one and hear it move → "make it rainier" edits the room.
 - **Best stretch for a wow moment:** AirPods head tracking, so sources stay fixed in the room as you turn your head.
 - **Best stretch for the "agentic" pitch:** mic-level noise sensing + a Pomodoro-style agent that changes the scene on its own.
+- **Planned voice and memory:** use Moss to recall conversation context and the user's preferred environment for a task or time of day; Cartesia handles speech and Gemini applies scene edits. Build after the core integration works.
 - **Planned for later (Swift helper):** capture audio from a Mac app like Spotify and place it in the room as a live, visualized sound object. Only after the core demo works.
 - **Skip:** meeting speaker separation. It's real, but it can eat the whole weekend.
 
@@ -35,7 +36,7 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 3. Otherwise the id becomes `gen:<kind>:<query>`, and the audio engine fetches `GET /api/sound`, which generates it with ElevenLabs: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (2 s). The models were picked by ear in `scripts/test-elevenlabs.mjs`.
 4. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead.
 
-`useSoundStatus` (in `src/audio/generated.ts`) reports `"generating"` or `"failed"` per assetId for the room view. Semantic search with Moss is still a possible upgrade for the word scoring.
+`useSoundStatus` (in `src/audio/generated.ts`) reports `"generating"` or `"failed"` per assetId for the room view. Moss is planned first for voice context and preference memory (see below); semantic sound lookup remains a possible later upgrade to the word scoring.
 
 ### 2. Spatial audio
 
@@ -87,9 +88,10 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 - **Frontend:** Vite, React, TypeScript, `@react-three/fiber`, `@react-three/drei`, `zustand` for the scene store, `zod` for schemas.
 - **Audio:** Web Audio HRTF `PannerNode` per object, driven by the scene store; `ConvolverNode` room reverb, `AnalyserNode` for visuals and mic level.
 - **AI:** Gemini 3.8 Flash through the Google GenAI SDK's Interactions API with tool use, called from the backend so keys stay server-side.
-- **Sounds:** local pack (Freesound today) plus live ElevenLabs Sound Effects fallback through the resolver; word-overlap scoring now, with [Moss](https://github.com/usemoss/moss) (sponsor, sub-10 ms search, TypeScript SDK) as a possible upgrade.
-- **Voice (optional):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Sonic TTS for a spoken focus coach.
-- **Saved state:** Convex stores named scene snapshots (#51), scoped to an anonymous authenticated browser session. Explicit Save/Load preserves the existing scene contract; Zustand remains the active room. Personalization is a later step. SpacetimeDB remains an alternative if shared rooms become the priority.
+- **Sounds:** local pack (Freesound today) plus live ElevenLabs Sound Effects fallback through the resolver; word-overlap scoring now. Moss semantic asset search is a later upgrade, separate from its planned memory role.
+- **Voice (planned, #23):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for spoken commands, Moss for relevant conversation and preference context, Gemini for scene operations, and Sonic TTS for short acknowledgements or focus-coach cues.
+- **Memory (planned):** [Moss sessions](https://docs.moss.dev/docs/integrate/sessions) for live conversational context and persistent indexes for recalling preferences across sessions. Keep Gemini as the scene agent; Moss Inference is optional, outside the first implementation.
+- **Saved state:** Convex stores named scene snapshots (#51), scoped to an anonymous authenticated browser session. Explicit Save/Load preserves the existing scene contract; Zustand remains the active room. Planned preference records live separately in Convex and are indexed in Moss. SpacetimeDB remains an alternative if shared rooms become the priority.
 - **Swift helper (planned, after core):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
 - **Hosting:** Vercel for the frontend; the backend wherever your realtime choice lives.
 
@@ -107,6 +109,36 @@ the active room; only an explicit Load validates a snapshot and calls `setScene`
 Each anonymous authenticated session can read and update only its own saves. Local
 presets and playback continue when Convex is unavailable. Generated audio files
 remain on the existing resolver/cache path; they are not copied into scene records.
+
+### Planned: Moss voice context and preference memory
+
+**Status: design only (#65), owned by @OakleySun.** Finish the team's core integration and end-to-end demo first, then the adaptive agent (#20), voice commands (#23), and memory. Use the supplied *Moss Hackathon Developer Guide* and the linked official docs for implementation.
+
+**Experience:** the user can say, "Remember: when I'm coding in the morning, I like close rain, brown noise, and very few cup clinks." Later, "Set up my usual coding environment" recalls that preference using the current task and the user's local time. An evening reading preference can instead favor a quiet fireplace and fewer intermittent sounds. These are examples to learn from the user, not built-in assumptions.
+
+**Voice turn:** Cartesia transcribes a push-to-talk command → the backend gathers the current scene, task and local time bucket → Moss retrieves relevant live context and up to three saved preferences → Gemini produces the existing create/edit response → zod validation and `setScene` / `applyOps` update the room → Cartesia can speak a brief acknowledgement. Keep acknowledgements brief and outside the ambient sound beds; the existing no-intelligible-speech rule still applies to the soundscape.
+
+**Learning and recall**
+
+- Start with explicit "remember this for…" commands and thumbs-up/down after a session. Summarize the accepted environment: task, morning/afternoon/evening/night, timezone, preferred sounds, volumes, event frequency and any requested placements. Record the evidence and update time. Use the stated task or `session.task`; do not infer tasks by monitoring other apps.
+- A manual adjustment changes the current scene immediately. Offer it as a preference candidate; store it as a lasting preference when the user confirms it or rates the result positively. A one-off drag must not become a permanent habit automatically.
+- Retrieve by task meaning (for example, "essay writing" can match "writing a paper") with task/time metadata, then prefer recent explicit preferences over older conflicting ones. A new command overrides remembered defaults. "Make it rainier" changes the relevant rain objects and preserves unrelated manual placements.
+- Use the browser's local timezone to assign time buckets. If task or time context is missing, use an applicable general preference or the normal scene defaults. Memory supplies defaults when the user starts or requests a scene; a clock change alone must not replace the room. The adaptive loop (#20) may reuse the same preferences within its normal edit rules.
+- Support "forget my evening preference" and a visible way to review/delete memories. Store concise preference summaries rather than raw microphone recordings. A correction supersedes the old preference; deleted or superseded records must stop appearing in retrieval.
+
+**Storage and index boundary**
+
+- Convex is the durable source for preference records, separate from saved scene snapshots: owner, summary, task, time bucket, timezone, preferred scene settings, feedback source and update time. These are proposed memory fields, not additions to `scene.ts`. Only validated scene operations reach the audio and room view.
+- Moss holds the searchable projection. Use a session index for the current conversation's working context, and a per-user persistent index for accepted preferences across sessions. The guide distinguishes these two lifetimes; [sessions](https://docs.moss.dev/docs/integrate/sessions) can be persisted, while [persistent indexes](https://docs.moss.dev/docs/integrate/storage-persistence) are loaded into the serving process for local retrieval. Update/delete indexed documents when their Convex records change, and check returned record versions against Convex before use.
+- Authenticate the backend request before selecting the user's index; never accept an arbitrary owner/index from the browser. Use [metadata filtering](https://docs.moss.dev/docs/integrate/metadata-filtering) for task/time selection, not as a substitute for ownership checks. Keep project credentials in `api/`. The existing anonymous identity remembers one browser; cross-device accounts are later work.
+- Check the Moss Node SDK on the deployed runtime before wiring it into voice. Load an existing index rather than rebuilding the persistent index on every request, and restore live context from app state after a cold start. Measure the complete voice turn: Moss's advertised retrieval latency does not include transcription, index loading, Gemini or TTS.
+
+**Build and demo checks**
+
+1. Prove basic voice commands against the existing scene contract (#23), then add a typed "remember" path with Convex persistence and Moss recall before connecting spoken memory commands.
+2. Save different morning-coding and evening-reading preferences. Reload, ask for each with a paraphrased task, and verify the correct sounds, volumes and event spacing. Use a supplied test time so the demo need not wait for evening.
+3. Drag a source, then say "make it rainier." Verify that recalled defaults do not undo the drag. Correct a preference, delete another, and verify both changes after reload; a second authenticated identity must not retrieve the first user's memories.
+4. Simulate Moss/voice outages. Typed prompts and local presets still work; a failed memory lookup uses the current prompt and safe defaults, without changing the room by itself. If a memory write has not synced to Moss, report that state instead of claiming recall is ready. Keep a clearly labeled recorded example for the offline demo.
 
 ### Scene contract
 
@@ -163,7 +195,7 @@ Build the adaptive agent and camera head tracking first: together they make the 
 | 3 | Lecture audio into the room | Chrome `getDisplayMedia({audio: true})` captures a tab; feed it into a PannerNode as a "Lecture" object; duck other sounds while it plays | 2–3 | Low–med | **Build** the browser path |
 | 4 | AirPods head tracking | Swift helper with `CMHeadphoneMotionManager` streams yaw/pitch/roll over a localhost WebSocket | 3–5 | Medium | **Build if you have a Swift dev** — best wow moment |
 | 5 | Collab rooms | Shared scene + avatar positions in SpacetimeDB; voices over a small WebRTC mesh; each remote voice gets a PannerNode at that person's avatar | 6–10 | Med–high | Only if the core is done by Saturday noon |
-| 6 | Personalization | Log sessions (task, scene, minutes, thumbs up/down); retrieve the 3 most similar past scenes as examples when generating | 2–3 | Low | Saturday night |
+| 6 | Moss preference memory | Convex stores accepted task/time preferences; Moss retrieves relevant memories and live voice context for Gemini. Learn from explicit feedback, support corrections and forgetting, and preserve manual edits. See the plan above | 3–5 after voice | Medium | **Planned** after core, #20 and #23 |
 | 7 | Visual polish | Per-object pulse from its `AnalyserNode`; lighting per room preset | 2 | Low | Sunday early morning |
 | 8 | App audio in the room (Spotify) | Swift helper detects which apps are playing, taps one with a Core Audio process tap, and streams it to the browser, where it becomes a live, visualized sound object | 6–10 | High | **Planned** after core; see "App audio in the room" |
 | 9 | Meeting speaker separation | Diarization only says who spoke when; separating overlapping voices needs a model like Meta's [SAM Audio](https://ai.meta.com/samaudio/) on a GPU | 10+ | High | Skip |
@@ -196,7 +228,7 @@ Aim for the Cal Hacks judged prizes plus four or five sponsor tracks where the s
 | Cal Hacks People-First Social Impact | Apple Watch SE 3 each | Strong | Frame it for students in loud dorms, shared housing, and people with ADHD or noise sensitivity |
 | Cal Hacks 1st / 2nd / 3rd Overall | $3,600 + laptop each / Switch 2 each / smart glasses each | Strong | Everything above, demoed cleanly |
 | Anthropic (anchor sponsor) | Not on Devpost yet; last year's Best Use of Claude was a tungsten cube + $5,000 credits ([12.0 prizes](https://live.calhacks.io/prizes)) | Reassess | The current scene agent uses Gemini; reassess eligibility against this year's rules before targeting this track |
-| Moss | AirPods Max or Pro (listed at $996) | Strong | Semantic lookup from "cozy crackling fireplace" to a sound file, in-browser, under 10 ms ([Moss](https://github.com/usemoss/moss)) |
+| Moss | AirPods Max or Pro (listed at $996) | Strong if implemented | Recall a user's task/time preferences during a voice command, then generate the matching environment; demonstrate a correction and later recall. Moss provides retrieval, with actual voice latency measured end to end ([sessions](https://docs.moss.dev/docs/integrate/sessions)) |
 | Cartesia | Listed at $1,516 (prize item TBD) | Strong | Ink-2 voice commands ("make it rain harder") and Sonic spoken break cues placed as a "coach" object in the room |
 | SpacetimeDB (anchor sponsor) | Special prize for the most impressive use ([their blog](https://spacetimedb.com/blog/spacetime-at-calhacks)); amount not posted | Strong if collab | Shared scene + live avatar positions for collab rooms; the CEO runs a workshop |
 | Meta: Bringing People Closer Together with AI | Invite to Round 2 at Menlo Park, travel covered | Strong if collab | Spatial-audio study rooms where friends sit at different spots |
@@ -258,7 +290,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 1. **0:00–0:20 Problem.** Play 5 seconds of a loud dorm or the hackathon floor. "This is where you're trying to study."
 2. **0:20–0:50 Generate.** Say or type "rainy Tokyo café, I'm writing an essay." Objects pop into the room as the agent places them.
 3. **0:50–1:20 Move.** Drag the rain to the left. Then turn your head: the sounds stay fixed in the room.
-4. **1:20–1:50 Edit.** "Push the chatter farther away and add a fireplace." The agent edits; your manual placement survives.
+4. **1:20–1:50 Edit.** "Push the chatter farther away and add a fireplace." The agent edits; your manual placement survives. Once memory ships, use this slot for "Use my usual evening reading setup," recalling a previously saved preference through Moss; keep the original edit as the fallback.
 5. **1:50–2:20 Adapt.** Trigger a noise spike; the agent thickens the masking bed. The Pomodoro ends; the coach object speaks a break cue and the room shifts.
 6. **2:20–2:45 Lecture.** Drop a lecture tab into the room; it sits front-center and everything else ducks.
 7. **2:45–3:00 Close.** One architecture slide naming the sponsor tech, then the pitch line.
@@ -279,6 +311,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 | --- | --- |
 | Venue Wi-Fi dies | The pack works offline, and generated sounds fall back to the closest pack sound. Play the demo prompts once before judging so their generated sounds are in the browser cache; keep a "demo mode" with recorded agent responses |
 | Agent returns bad JSON or is slow | Validate with zod, retry once, fall back to 6 preset scenes; stream objects in as they arrive |
+| Moss memory or voice service is unavailable | Keep typed commands and local presets usable. Skip failed retrieval and use the current prompt with safe defaults; label recorded preference-recall examples as demo data |
 | Spatial effect feels weak to judges | Exaggerate distances, use mono sources, open with a sound moving hard left to right |
 | Head tracking jitters | Smooth with a lerp or One Euro filter; add a recenter button |
 | Browser blocks audio on load | Gate the app behind an "Enter room" click that resumes the `AudioContext` |
@@ -295,6 +328,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 - [ElevenLabs sound effects docs](https://elevenlabs.io/docs/capabilities/sound-effects) — looping, 30 s clips
 - [Cartesia changelog](https://docs.cartesia.ai/changelog) — Ink-2 STT, Sonic TTS
 - [Moss on GitHub](https://github.com/usemoss/moss) — real-time semantic search SDK
+- [Moss sessions](https://docs.moss.dev/docs/integrate/sessions), [storage and persistence](https://docs.moss.dev/docs/integrate/storage-persistence), and [metadata filtering](https://docs.moss.dev/docs/integrate/metadata-filtering) — live context, durable indexes and task/time retrieval; also informed by the supplied *Moss Hackathon Developer Guide*
 - [WWDC23 session 10179](https://developer.apple.com/videos/play/wwdc2023/10179) — `CMHeadphoneMotionManager` on macOS 14
 - [Apple Developer Forums: yaw recenters with Spatial Audio](https://developer.apple.com/forums/thread/844940)
 - [Apple: Capturing system audio with Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)
