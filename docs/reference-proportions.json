@@ -1,0 +1,51 @@
+{
+  "source": "references/room-view-1.png",
+  "measurement": "Approximate pixel landmarks estimated from the reference's straight structural edges",
+  "image": {
+    "width": 1920,
+    "height": 1080
+  },
+  "landmarks": {
+    "backTop": [
+      960,
+      110
+    ],
+    "leftTop": [
+      487,
+      347
+    ],
+    "leftBottom": [
+      487,
+      758
+    ],
+    "rightBottom": [
+      1433,
+      758
+    ],
+    "frontBottom": [
+      960,
+      995
+    ]
+  },
+  "targets": {
+    "floorEdgeRiseRun": 0.5,
+    "outlineHeightWidth": 0.9355,
+    "outlineRatioTolerance": 0.005,
+    "cameraAzimuthDegrees": 45,
+    "cameraElevationDegrees": 30,
+    "viewportHeightOccupancy": 0.82
+  },
+  "calibratedGrid": {
+    "mode": "Square",
+    "columns": 10,
+    "rows": 10,
+    "wallHeight": 7
+  },
+  "frame": {
+    "slabThickness": 0.42,
+    "floorDepth": 0.42,
+    "floorOverhang": 0.21,
+    "wallCapTop": 0
+  },
+  "frameNote": "One fixed thickness shared by walls and floor; no caps, baseboards, borders, or stepped plinth. Integer grid recalibrated to retain the reference silhouette with this continuous shell."
+}

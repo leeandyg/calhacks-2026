@@ -12,6 +12,7 @@ try {
   const { offlineResponse, demoPrompts } = await server.ssrLoadModule("/src/ai/offline.ts");
   const { Scene, SceneResponse } = await server.ssrLoadModule("/src/scene/scene.ts");
   const { applyOp, useSceneStore } = await server.ssrLoadModule("/src/scene/store.ts");
+  const { placeObject } = await server.ssrLoadModule("/src/scene/layout.ts");
   const { startResolver } = await server.ssrLoadModule("/src/audio/resolve.ts");
   const manifest = new Map(JSON.parse(readFileSync("public/sounds/manifest.json", "utf8")).map((entry) => [entry.id, entry]));
   let passed = 0;
@@ -132,8 +133,10 @@ try {
     } finally { stop(); }
   });
   await check("live additions reach generated IDs while preserving manually edited objects", async () => {
-    const scene = structuredClone(presets[0].scene);
-    scene.objects[0].position = [0.5, 1.2, 0.5];
+    // A manual drag goes through the store, which snaps it onto the room grid.
+    useSceneStore.getState().setScene(presets[0].scene);
+    useSceneStore.getState().applyOps([{ op: "move", id: presets[0].scene.objects[1].id, position: [-1.5, 1.2, 2.5] }]);
+    const scene = structuredClone(useSceneStore.getState().scene);
     const before = structuredClone(scene);
     const calls = [];
     const live = { kind: "edit", ops: [{ op: "add", object: {
@@ -154,7 +157,7 @@ try {
       assert.deepEqual(edited.objects.slice(0, scene.objects.length), before.objects);
       const cat = edited.objects.find((object) => object.id === "cat-1");
       assert.equal(cat.sound.assetId, "gen:bed:a cat purring softly");
-      assert.deepEqual(cat.position, live.ops[0].object.position);
+      assert.deepEqual(cat.position, placeObject(live.ops[0].object, scene.room.grid).position, "the cat goes where the agent put it, on the grid");
       assert.deepEqual(calls, ["/api/scene"], "Resolving an ID must not trigger paid sound generation in this test");
     } finally { stop(); }
     assert.deepEqual(scene, before);

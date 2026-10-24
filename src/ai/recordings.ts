@@ -19,11 +19,8 @@ export const demoRecordings = {
         "room": {
           "reverb": "small-room",
           "preset": "cafe",
-          "size": [
-            7,
-            3,
-            7
-          ]
+          "grid": { "mode": "Square", "columns": 10, "rows": 10, "wallHeight": 7 },
+          "openings": []
         },
         "listener": {
           "yaw": 0,

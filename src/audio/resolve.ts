@@ -97,13 +97,15 @@ export function startResolver(): () => void {
     const missing = scene.objects.filter((o) => !o.sound.assetId);
     if (!missing.length) return;
     const taken = new Set(scene.objects.flatMap((o) => (o.sound.assetId ? [o.sound.assetId] : [])));
-    applyOps(
+    // "add" with an existing id replaces that object in place, keeping its position and mute.
+    const result = applyOps(
       missing.map((object) => {
         const assetId = resolveSound(object.sound.query, object.kind, manifest!, taken);
         taken.add(assetId);
         return { op: "add" as const, object: { ...object, sound: { ...object.sound, assetId } } };
       }),
     );
+    if (!result.ok) console.warn("resolver: could not bind sounds:", result.error);
   };
   let stopped = false;
   void loadManifest().then((m) => {

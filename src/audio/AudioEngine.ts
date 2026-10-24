@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { useRoomStore } from "../room/useRoomStore.js";
+import { VIEW_AZIMUTH } from "../scene/layout.js";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
@@ -21,12 +23,14 @@ const LOOP_TRIM_SEC = 0.03; // skip the silence mp3 encoders add at each end, or
 const MAX_HRTF = 12; // HRTF is expensive; quieter voices beyond this use equal-power panning
 const EVENT_DETUNE_CENTS = 100; // random pitch spread so repeated events don't sound identical
 const EVENT_MIN_GAIN = 0.75; // vary each occurrence below the user's chosen volume
+const MUTE_FADE_SEC = 0.25; // muting or unmuting fades instead of cutting
 
 export class AudioEngine {
   private voices = new Map<string, Voice>();
   private master: GainNode;
   private reverb: Reverb;
   private unsubscribe?: () => void;
+  private unsubscribeView?: () => void;
 
   constructor(private ctx: AudioContext) {
     this.master = ctx.createGain();
@@ -37,10 +41,15 @@ export class AudioEngine {
   start() {
     this.sync(useSceneStore.getState().scene, undefined);
     this.unsubscribe = useSceneStore.subscribe((state, prev) => this.sync(state.scene, prev.scene));
+    // Turning the room on screen turns your ears with it (see setListener).
+    this.unsubscribeView = useRoomStore.subscribe((state, prev) => {
+      if (state.viewAngle !== prev.viewAngle) this.setListener(useSceneStore.getState().scene.listener);
+    });
   }
 
   stop() {
     this.unsubscribe?.();
+    this.unsubscribeView?.();
     for (const voice of this.voices.values()) voice.dispose();
     this.voices.clear();
     this.master.disconnect();
@@ -75,14 +84,20 @@ export class AudioEngine {
 
   /** The loudest MAX_HRTF voices (volume over distance) get HRTF; the rest get equal-power. */
   private assignPanningModels(listener: Listener) {
-    const loudness = (v: Voice) => v.object.volume / Math.max(1, distance(v.object.position, listener.position));
+    const loudness = (v: Voice) => (v.object.muted ? 0 : v.object.volume) / Math.max(1, distance(v.object.position, listener.position));
     const ranked = [...this.voices.values()].sort((a, b) => loudness(b) - loudness(a));
     ranked.forEach((voice, i) => voice.setPanningModel(i < MAX_HRTF ? "HRTF" : "equalpower"));
   }
 
-  private setListener({ position: [x, y, z], yaw }: Listener) {
+  /**
+   * Scene positions never rotate; the room view turns the whole room on screen instead. So the
+   * listener faces into the screen (VIEW_AZIMUTH), turned back by the room's on-screen angle:
+   * a sound on the left of the screen is on your left, at every turn and during the animation.
+   */
+  private setListener({ position: [x, y, z], yaw: sceneYaw }: Listener) {
     const l = this.ctx.listener;
     const now = this.ctx.currentTime;
+    const yaw = sceneYaw + VIEW_AZIMUTH - useRoomStore.getState().viewAngle;
     const forward = [-Math.sin(yaw), 0, -Math.cos(yaw)];
     if (l.positionX) {
       l.positionX.setTargetAtTime(x, now, RAMP_SEC);
@@ -150,7 +165,9 @@ class Voice {
     this.panner.positionX.setTargetAtTime(x, now, RAMP_SEC);
     this.panner.positionY.setTargetAtTime(y, now, RAMP_SEC);
     this.panner.positionZ.setTargetAtTime(z, now, RAMP_SEC);
-    this.gain.gain.setTargetAtTime(object.volume, now, RAMP_SEC);
+    // Muting (a click on the object) fades it out but keeps its volume for unmuting.
+    const fade = object.muted !== previous.muted ? MUTE_FADE_SEC / 3 : RAMP_SEC;
+    this.gain.gain.setTargetAtTime(object.muted ? 0 : object.volume, now, fade);
     // A missing replacement asset must stop the old sound too.
     if (object.kind === "bed" && object.sound.assetId !== this.loadedAssetId) void this.playBed();
     if (object.kind === "event") {

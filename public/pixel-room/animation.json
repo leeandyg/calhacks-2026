@@ -1,0 +1,139 @@
+{
+  "width": 480,
+  "height": 270,
+  "fps": 10,
+  "durationMs": 1600,
+  "colors": 20,
+  "loop": true,
+  "base": "static-base.png",
+  "frames": [
+    {
+      "file": "patches/00.png",
+      "x": 184,
+      "y": 83,
+      "width": 68,
+      "height": 124,
+      "ms": 100
+    },
+    {
+      "file": "patches/01.png",
+      "x": 184,
+      "y": 84,
+      "width": 68,
+      "height": 123,
+      "ms": 100
+    },
+    {
+      "file": "patches/02.png",
+      "x": 184,
+      "y": 85,
+      "width": 68,
+      "height": 122,
+      "ms": 100
+    },
+    {
+      "file": "patches/03.png",
+      "x": 184,
+      "y": 86,
+      "width": 68,
+      "height": 121,
+      "ms": 100
+    },
+    {
+      "file": "patches/04.png",
+      "x": 184,
+      "y": 87,
+      "width": 68,
+      "height": 120,
+      "ms": 100
+    },
+    {
+      "file": "patches/05.png",
+      "x": 184,
+      "y": 81,
+      "width": 68,
+      "height": 126,
+      "ms": 100
+    },
+    {
+      "file": "patches/06.png",
+      "x": 184,
+      "y": 81,
+      "width": 68,
+      "height": 126,
+      "ms": 100
+    },
+    {
+      "file": "patches/07.png",
+      "x": 184,
+      "y": 82,
+      "width": 68,
+      "height": 125,
+      "ms": 100
+    },
+    {
+      "file": "patches/08.png",
+      "x": 184,
+      "y": 83,
+      "width": 68,
+      "height": 124,
+      "ms": 100
+    },
+    {
+      "file": "patches/09.png",
+      "x": 184,
+      "y": 84,
+      "width": 68,
+      "height": 123,
+      "ms": 100
+    },
+    {
+      "file": "patches/10.png",
+      "x": 184,
+      "y": 85,
+      "width": 68,
+      "height": 122,
+      "ms": 100
+    },
+    {
+      "file": "patches/11.png",
+      "x": 184,
+      "y": 86,
+      "width": 68,
+      "height": 121,
+      "ms": 100
+    },
+    {
+      "file": "patches/12.png",
+      "x": 184,
+      "y": 87,
+      "width": 68,
+      "height": 120,
+      "ms": 100
+    },
+    {
+      "file": "patches/13.png",
+      "x": 184,
+      "y": 88,
+      "width": 68,
+      "height": 119,
+      "ms": 100
+    },
+    {
+      "file": "patches/14.png",
+      "x": 184,
+      "y": 89,
+      "width": 68,
+      "height": 118,
+      "ms": 100
+    },
+    {
+      "file": "patches/15.png",
+      "x": 184,
+      "y": 83,
+      "width": 68,
+      "height": 124,
+      "ms": 100
+    }
+  ]
+}

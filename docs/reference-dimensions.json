@@ -1,0 +1,19 @@
+{
+  "game": "My Dream Setup",
+  "dimension_system": {
+    "type": "Grid-based",
+    "measurement_unit": "Modular segments (blocks/squares)",
+    "custom_metric_input": false,
+    "approximate_scale": "1 wall/floor segment ≈ 1 meter / 1 yard"
+  },
+  "room_building_constraints": {
+    "blueprint_modes": ["Square", "Rectangle"],
+    "custom_shapes": false,
+    "adjustable_parameters": [
+      "Room length (via grid count)",
+      "Room width (via grid count)",
+      "Wall height",
+      "Door and window placement"
+    ]
+  }
+}
