@@ -137,15 +137,10 @@ export function roomProjectionEnvelope([width, height, depth]: RoomDimensions) {
 }
 
 export interface WallSegment { column: number; level: number; position: Position }
-export function sourceWindowOpening(object: SoundObject, grid: RoomGrid): RoomOpening | null {
-  if (getModelId(object) !== 'rain' || !object.wall) return null;
-  const { columns, height } = gridFootprint(object);
-  const wall = object.wall;
-  const tangent = wall === 'north' ? object.position[0] : wall === 'east' ? object.position[2] : wall === 'south' ? -object.position[0] : -object.position[2];
-  return { id: `source-${object.id}`, kind: 'window', wall, column: Math.round(tangent + wallLength(wall, grid) / 2 - columns / 2), level: Math.round(object.position[1] - height / 2), span: columns, height };
-}
-export function getWallOpenings(room: Scene['room'], objects: SoundObject[], wall: WallId): RoomOpening[] {
-  return [...room.openings, ...objects.map(object => sourceWindowOpening(object, room.grid)).filter((opening): opening is RoomOpening => opening !== null)].filter(opening => opening.wall === wall);
+// Sources never cut the wall slab: a wall-mounted source (a rain window, a branch) sits on the
+// intact inner face as a prop/painting. The only wall holes are the room's explicit openings.
+export function getWallOpenings(room: Scene['room'], wall: WallId): RoomOpening[] {
+  return room.openings.filter(opening => opening.wall === wall);
 }
 export function buildWallSegments(wall: WallId, grid: RoomGrid, openings: RoomOpening[]): WallSegment[] {
   const length = wallLength(wall, grid);

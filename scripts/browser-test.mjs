@@ -35,7 +35,7 @@ try {
   assert.equal(await page.getByRole('button').count(), 3, 'two rotation arrows and one send button');
   assert.deepEqual(initial.scene.room.grid, { mode: 'Square', columns: 10, rows: 10, wallHeight: 7 });
   assert.equal(initial.floorModules, 100);
-  assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 64);
+  assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 70, 'the rain window hangs on a solid wall; sources never cut the slab');
   assert.equal(initial.walls.find(wall => wall.id === 'east').modules, 70);
   assert.equal(initial.shell.floorThickness, 0.42);
   assert.equal(initial.shell.floorColor, '969aa3');
@@ -121,7 +121,7 @@ try {
   assert.ok(rectangle.shell.walls.every(wall => wall.thickness === 0.42));
   assert.deepEqual(rectangle.shell.surfaceDetails, [], 'returning to a plain room removes all dirt pixels');
   assert.equal(rectangle.walls.find(wall => wall.id === 'north').modules, 40);
-  assert.equal(rectangle.walls.find(wall => wall.id === 'west').modules, 16);
+  assert.equal(rectangle.walls.find(wall => wall.id === 'west').modules, 22, 'only the doorway opens the slab, not the 2x3 window');
   assert.ok(rectangle.bounds.left >= 0 && rectangle.bounds.top >= 0 && rectangle.bounds.right <= 1440 && rectangle.bounds.bottom < 824);
   await page.screenshot({ path: 'test-results/grid-rectangle.png' });
   for (let i = 0; i < 4; i++) {

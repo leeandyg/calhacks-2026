@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
-import { BufferGeometry, Float32BufferAttribute, NearestFilter, SRGBColorSpace, TextureLoader } from 'three';
+import { BufferGeometry, Float32BufferAttribute, NearestFilter, SRGBColorSpace, Texture } from 'three';
+import { loadPaintImage, paintImage } from '../art/images.js';
 
 // All painting stays inside the live room's shared pixel pass. UV rectangles let floor cells
 // rise independently and wall panels leave real openings without repainting the PNG.
@@ -9,13 +10,23 @@ export function usePaintTexture(png: string | undefined, animation?: { frames: n
   const frames = animation?.frames ?? 1;
   const texture = useMemo(() => {
     if (!png) return undefined;
-    const value = new TextureLoader().load(png);
+    const image = paintImage(png);
+    const value = new Texture(image);
+    if (image) value.needsUpdate = true;
     value.magFilter = value.minFilter = NearestFilter;
     value.generateMipmaps = false;
     value.colorSpace = SRGBColorSpace;
     value.repeat.x = 1 / frames;
     return value;
   }, [png, frames]);
+  useEffect(() => {
+    if (!png || !texture || texture.image) return;
+    let cancelled = false;
+    void loadPaintImage(png).then(image => {
+      if (!cancelled) { texture.image = image; texture.needsUpdate = true; }
+    }).catch(() => console.warn('Generated artwork could not be loaded.'));
+    return () => { cancelled = true; };
+  }, [png, texture]);
   useFrame((_, delta) => {
     if (!texture || frames <= 1) return;
     if (enabled()) elapsed.current += delta;

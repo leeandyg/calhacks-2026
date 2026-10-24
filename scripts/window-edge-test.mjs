@@ -38,20 +38,15 @@ async function checkEdges(prefix) {
       const moved = state.objects.find(object => object.id === 'rain-1');
       assert.equal(moved.wall, wall.id);
       assert.equal(moved.muted, false);
-      const opening = state.walls.find(item => item.id === wall.id).openings.find(opening => opening.id === 'source-rain-1');
-      assert.ok(opening.column === 1 || opening.column + opening.span === length - 1, 'window clamps to nearest safe end cell');
-      assert.ok(opening.column >= 1 && opening.column + opening.span <= length - 1);
-      assert.ok(state.walls.filter(item => item.id !== wall.id).every(item => !item.openings.some(opening => opening.id === 'source-rain-1')), 'old wall cutout is closed');
-      const actualPanels = await page.evaluate(({wall, length, opening}) => {
-        const results = [];
-        for (let level = opening.level; level < opening.level + opening.height; level++) {
-          results.push(window.__pixelRoomWallSolid(wall, 0, level));
-          results.push(window.__pixelRoomWallSolid(wall, length - 1, level));
-        }
-        results.push(!window.__pixelRoomWallSolid(wall, opening.column, opening.level));
-        return results;
-      }, { wall: wall.id, length, opening });
-      assert.ok(actualPanels.every(Boolean), 'raycasts confirm solid corner posts and a correctly aligned window opening');
+      // The 2-block window stops one block short of each corner, and it hangs on the intact slab.
+      const along = alongZ ? moved.position[2] : moved.position[0];
+      assert.ok(Math.abs(along) <= length / 2 - 2 + 1e-9 && Math.abs(along) >= length / 2 - 2.5, 'window clamps to the nearest safe end');
+      assert.ok(state.walls.every(item => !item.openings.some(opening => opening.id === 'source-rain-1')), 'sources never cut the slab');
+      const column = Math.floor(along * (wall.id === 'south' || wall.id === 'west' ? -1 : 1) + length / 2);
+      const level = Math.floor(moved.position[1]);
+      const solid = await page.evaluate(({ wall, length, column, level }) =>
+        [0, length - 1, column].map(c => window.__pixelRoomWallSolid(wall, c, level)), { wall: wall.id, length, column, level });
+      assert.ok(solid.every(Boolean), 'raycasts confirm solid corners and a solid slab behind the window');
       assert.deepEqual(state.camera, fixedCamera);
       await page.screenshot({ path: `test-results/window-edge-${prefix}-${wall.id}-${end}.png` });
     }
@@ -77,5 +72,5 @@ try {
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(100);
   await page.screenshot({ path: 'test-results/window-edge-mobile.png' });
   assert.deepEqual(errors, []);
-  console.log('PASS: original frontend only; real window drags to both ends, solid corner posts, no stale cutouts, four orientations, rectangle and mobile, no browser errors');
+  console.log('PASS: original frontend only; real window drags to both ends, solid corner posts, walls never cut by the window, four orientations, rectangle and mobile, no browser errors');
 } finally { await browser.close(); }

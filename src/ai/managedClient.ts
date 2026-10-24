@@ -2,6 +2,7 @@ import type { Scene, SoundObject } from '../scene/scene.js';
 import { ManagedResult, type ManagedAssets } from './world.js';
 import { addEnvironment, setSprite, spriteKey } from '../art/store.js';
 import { registerManagedSound } from '../audio/managed.js';
+import { loadPaintImage } from '../art/images.js';
 
 let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
@@ -42,8 +43,8 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
     const result = ManagedResult.parse(body);
     // Preload images before revealing the first room; no empty shell flashes on slow connections.
     await Promise.all([
-      ...Object.values(result.assets.environment?.textures ?? {}).map(image => preload(image.url)),
-      ...result.assets.sprites.map(image => preload(image.url)),
+      ...Object.values(result.assets.environment?.textures ?? {}).map(image => loadPaintImage(image.url)),
+      ...result.assets.sprites.map(image => loadPaintImage(image.url)),
     ]);
     sessionToken = token;
     return result;
@@ -51,13 +52,6 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   throw new Error('Claude finished, but its generated files are not available yet. Please try again.');
 }
 class AgentRunError extends Error {}
-function preload(url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const image = new Image(); image.onload = () => resolve(); image.onerror = () => reject(new Error('A generated image could not be loaded.'));
-    image.src = url;
-  });
-}
-
 export function installManagedAssets(assets: ManagedAssets, scene: Scene) {
   const { environment, envId } = assets;
   if (environment) {

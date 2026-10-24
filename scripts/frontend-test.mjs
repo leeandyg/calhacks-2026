@@ -78,8 +78,7 @@ try {
       assert.equal(current.wall, wall, `${id} reaches ${wall}`);
       if (id === 'rain-1') {
         const room = await inspect();
-        assert.equal(room.walls.find(item => item.id === wall).openings.filter(opening => opening.id === 'source-rain-1').length, 1);
-        assert.ok(room.walls.filter(item => item.id !== wall).every(item => !item.openings.some(opening => opening.id === 'source-rain-1')));
+        assert.ok(room.walls.every(item => !item.openings.some(opening => opening.id === 'source-rain-1')), 'a wall-mounted window never cuts the slab');
       }
       assert.equal(current.muted, false, 'dragging never mutes');
       assert.equal(current.position[1], original.position[1], 'drag preserves height');

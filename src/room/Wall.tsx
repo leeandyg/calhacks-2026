@@ -19,8 +19,7 @@ export function Wall({ wall, config }: { wall: WallConfig; config: RoomConfig })
   const room = useSceneStore(state => state.scene.room);
   const painting = useArtStore(state => room.art ? state.envs[room.art]?.textures[wall.id] : undefined);
   const animation = useArtStore(state => room.art ? state.envs[room.art]?.animations?.[wall.id] : undefined);
-  const objects = useSceneStore(state => state.scene.objects);
-  const openings = getWallOpenings(room, objects, wall.id);
+  const openings = getWallOpenings(room, wall.id);
   const openingKey = JSON.stringify(openings);
   const segments = useMemo(() => buildWallSegments(wall.id, config.grid, JSON.parse(openingKey)), [wall.id, config.grid, openingKey]);
   const { height, wallThickness } = config.dimensions;
