@@ -5,6 +5,7 @@ import { getAudioContext } from "./context.js";
 import { isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
 import { loadManifest } from "./manifest.js";
 import { matchSound, startResolver } from "./resolve.js";
+import { Reverb } from "./reverb.js";
 
 // Renders the scene store as sound. It reads only from the store, never from the 3D view,
 // so drags, agent edits and presets all reach the audio the same way.
@@ -23,12 +24,13 @@ const EVENT_DETUNE_CENTS = 100; // random pitch spread so repeated events don't 
 export class AudioEngine {
   private voices = new Map<string, Voice>();
   private master: GainNode;
+  private reverb: Reverb;
   private unsubscribe?: () => void;
 
   constructor(private ctx: AudioContext) {
     this.master = ctx.createGain();
     this.master.connect(ctx.destination);
-    // TODO(#12): route master through a ConvolverNode per room.reverb
+    this.reverb = new Reverb(ctx, ctx.destination);
   }
 
   start() {
@@ -41,10 +43,12 @@ export class AudioEngine {
     for (const voice of this.voices.values()) voice.dispose();
     this.voices.clear();
     this.master.disconnect();
+    this.reverb.disconnect();
   }
 
   private sync(scene: Scene, prev: Scene | undefined) {
     if (scene.listener !== prev?.listener) this.setListener(scene.listener);
+    if (scene.room.reverb !== prev?.room.reverb) this.reverb.setPreset(scene.room.reverb);
 
     const seen = new Set<string>();
     for (const object of scene.objects) {
@@ -55,7 +59,7 @@ export class AudioEngine {
         voice.dispose();
         voice = undefined;
       }
-      if (!voice) this.voices.set(object.id, new Voice(this.ctx, this.master, object));
+      if (!voice) this.voices.set(object.id, new Voice(this.ctx, this.master, this.reverb.input, object));
       else if (voice.object !== object) voice.update(object);
     }
     for (const [id, voice] of this.voices) {
@@ -98,7 +102,8 @@ export class AudioEngine {
 }
 
 /**
- * One sound object: source(s) -> gain -> HRTF panner -> master.
+ * One sound object: source(s) -> gain -> HRTF panner -> master, plus gain -> send -> reverb.
+ * The send is taken before the panner, so the reverb doesn't fade with distance (see reverb.ts).
  * Beds loop one source (with its own fade gain so sound swaps crossfade).
  * Events start a fresh one-shot source on a random timer within intervalSec.
  */
@@ -107,6 +112,7 @@ type Playback = { source: AudioBufferSourceNode; fade: GainNode };
 class Voice {
   private gain: GainNode;
   private panner: PannerNode;
+  private send: GainNode;
   private bed?: Playback;
   private events = new Set<Playback>();
   private timer?: ReturnType<typeof setTimeout>;
@@ -117,6 +123,7 @@ class Voice {
   constructor(
     private ctx: AudioContext,
     output: AudioNode,
+    reverb: AudioNode,
     public object: SoundObject,
   ) {
     this.gain = ctx.createGain();
@@ -128,6 +135,8 @@ class Voice {
       rolloffFactor: 1,
     });
     this.gain.connect(this.panner).connect(output);
+    this.send = new GainNode(ctx, { gain: 1 });
+    this.gain.connect(this.send).connect(reverb);
     this.update(object);
   }
 
@@ -169,7 +178,10 @@ class Voice {
     this.stopBed();
     this.stopEvents();
     // Disconnect after the fade so removing a sound never clicks
-    setTimeout(() => this.panner.disconnect(), FADE_SEC * 1000 * 2);
+    setTimeout(() => {
+      this.panner.disconnect();
+      this.send.disconnect();
+    }, FADE_SEC * 1000 * 2);
   }
 
   /** Starts (or crossfades to) the bed loop for the current assetId. */

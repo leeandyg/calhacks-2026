@@ -49,7 +49,7 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 - **Store-driven audio:** the audio engine subscribes to the scene store and diffs objects by id, creating, updating or removing one HRTF voice per object. It never reads the 3D view, so drags, agent edits and presets all reach the audio the same way, and the audio and 3D code can be built independently.
 - Two kinds of sound objects: **beds** (continuous loops) and **events** (one-shots on a random timer, like a bird every 20–60 s). Events are what make it feel real.
 - Start each loop at a random offset so two similar loops don't phase against each other.
-- Add a `ConvolverNode` reverb per room preset (bedroom, café, forest, library).
+- **Room reverb (built, #12, `src/audio/reverb.ts`):** one shared `ConvolverNode` with synthesized impulse responses (no files) for `room.reverb`: `small-room` (0.6 s), `large-room` (1.8 s), `outdoor` (0.4 s, bright, light) or `none`. The agent picks the preset from the prompt; it doesn't depend on the drawn room's size (#49). Each voice sends to it from before its panner, so far sounds come out wetter: about 14–20 dB of reverb below a source 1 m away, roughly level with it at 6 m indoors. Switching presets fades out, swaps and fades back in.
 - Ramp every gain and position change (`setTargetAtTime`) so drags never click.
 
 ### 3. The 3D room
