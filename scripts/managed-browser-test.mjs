@@ -49,6 +49,7 @@ await page.route('**/api/world*',async route=>{
 try{
  await page.goto(process.env.TEST_URL??'http://localhost:5173');
  assert.equal(await page.locator('canvas').count(),0);
+ assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[]);
  await page.getByLabel('Prompt',{exact:true}).fill('An open forest');await page.getByRole('button',{name:'Send',exact:true}).click();
  await page.getByRole('status').filter({hasText:'Claude'}).waitFor();
  assert.equal(await page.locator('canvas').count(),0,'room stays hidden while Claude is working');
@@ -56,10 +57,24 @@ try{
  await page.waitForFunction(()=>!window.__spawnBusy);
  assert.ok(streamCount>=2,'client reconnects without starting a second run');assert.equal(requests.length,1);assert.equal(requests[0].scene,null);
  assert.equal(legacyCalls,0,'managed output never calls the Gemini art pipeline');
+ // Even an older openAir=true result must paint a complete physical shell.
+ for(let turn=0;turn<4;turn++){
+  const state=await page.evaluate(()=>window.__pixelRoom());
+  assert.ok(state.shell.walls.every(wall=>wall.bodyVisible && wall.thickness===.42),'all walls keep their solid 0.42-block slabs');
+  assert.ok(state.walls.every(wall=>wall.modules===16),'four complete walls, without dummy window cutouts');
+  assert.equal(state.walls.filter(wall=>wall.opacity===1).length,2,'manual view still fades only the near walls');
+  for(const wall of state.walls)for(const column of [0,3])for(const level of [0,3])
+   assert.equal(await page.evaluate(([id,column,level])=>window.__pixelRoomWallSolid(id,column,level),[wall.id,column,level]),true,'complete solid corner segments');
+  if(turn===0){await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/managed-solid-shell.png'})}
+  await page.getByRole('button',{name:'Rotate Right',exact:true}).click();
+  await page.waitForFunction(()=>!window.__pixelRoom().rotating);
+ }
+
  const frames=[];for(let i=0;i<8;i++){frames.push(await page.evaluate(()=>window.__pixelRoom().objects.find(o=>o.id==='oak').artFrame));await page.waitForTimeout(120)}
  assert.ok(new Set(frames).size>1,'sprite sheet animates');
- await page.evaluate(()=>window.__pixelRoomEdit([{op:'move',id:'oak',position:[-1,1.5,1]},{op:'set_muted',id:'oak',muted:true}]));
+ await page.evaluate(()=>window.__pixelRoomEdit([{op:'move',id:'oak',position:[-1,1.5,1],wall:'west'},{op:'set_muted',id:'oak',muted:true}]));
  const before=await page.evaluate(()=>window.__pixelRoom().scene.objects.find(o=>o.id==='oak'));
+ assert.equal(await page.evaluate(()=>typeof window.__pixelRoom().objects.find(o=>o.id==='oak').artFrame),'number','managed sprite survives a wall/floor move without a stock prop');
  const stopped=[];for(let i=0;i<4;i++){stopped.push(await page.evaluate(()=>window.__pixelRoom().objects.find(o=>o.id==='oak').artFrame));await page.waitForTimeout(120)}
  assert.equal(new Set(stopped).size,1,'muting freezes the animation');
  await page.getByLabel('Prompt',{exact:true}).fill('Make the oak quieter');await page.getByRole('button',{name:'Send',exact:true}).click();
@@ -74,5 +89,5 @@ try{
  assert.ok(loadedAudio.length>=2&&loadedAudio.every(status=>status===200),'chirp audio decodes through the existing engine');
  await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/managed-flow.png'});
  assert.deepEqual(errors,[]);
- console.log('PASS managed reconnect, delayed files, real image/audio decoding, sprite animation/mute, follow-up context and safe edit failure');
+ console.log('PASS managed reconnect, delayed files, real image/audio decoding, solid slabs/corners, sprite animation/mute/movement, follow-up context and safe edit failure');
 }finally{await browser.close()}

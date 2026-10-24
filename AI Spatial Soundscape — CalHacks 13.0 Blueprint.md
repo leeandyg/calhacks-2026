@@ -151,15 +151,18 @@ validates a per-turn manifest, and proxies the resulting images/audio with signe
 The agent runs code in Anthropic's sandbox; the application only consumes compiled assets. All
 objects still use the existing scene store and resolver. Generated media metadata lives alongside
 the browser art store, without adding fields to the shared scene JSON. `room.art` identifies that
-world; terrain and positions remain canonical. Open-air worlds hide structural wall panels and
-may use transparent landscape backdrops. Bed sprite motion loops; event motion follows playback,
+world; terrain and positions remain canonical. All generated themes retain the fixed volumetric shell, with 0.42-block wall/floor slabs
+and complete flush corners. Legacy `openAir` metadata cannot remove structural panels; paintings
+cover existing surfaces, including outdoors/cities. Bed sprite motion loops; event motion follows playback,
 and muting freezes it. First creation remains hidden until the manifest and images are ready.
 Follow-up edits receive the latest scene and reuse the session, preserving manual placement.
 `AGENT_CONFIG.yaml` holds the supplied system prompt; the configured agent resource supplies
 its model/tools. Gemini and offline/demo paths remain available. See README for setup and checks.
 
 **First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
-The first request sends `scene: null`. Keep the room hidden during creation or errors, then reveal
+The canonical store initially contains only the fixed structure and listener, with no fixture
+objects, artwork, terrain or session. The first request sends `scene: null`. Live failures keep
+the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden during creation or errors, then reveal
 it with its rotation arrows and move the prompt below it after successful creation. Prompt
 submission supplies the audio gesture; the engine starts when the created room is revealed.
 

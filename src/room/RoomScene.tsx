@@ -228,7 +228,7 @@ function DevInspection() {
           walls: roomConfig.walls.map(wall => {
             const group = state.scene.getObjectByName(`wall-${wall.id}`);
             const mesh = group?.getObjectByName('wall-body') as Mesh<BoxGeometry, MeshStandardMaterial> | undefined;
-            return { id: wall.id, thickness: mesh?.geometry.parameters.depth, color: mesh?.material.color.getHexString(), childCount: group?.children.length };
+            return { id: wall.id, bodyVisible: mesh?.visible, thickness: mesh?.geometry.parameters.depth, color: mesh?.material.color.getHexString(), childCount: group?.children.length };
           }),
           surfaceDetails,
         },

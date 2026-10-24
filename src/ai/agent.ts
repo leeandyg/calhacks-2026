@@ -1,7 +1,6 @@
 import { SceneResponse, type Scene } from "../scene/scene.js";
 import { requestScene } from "./client.js";
 import { currentAgentSession, followManagedRun } from "./managedClient.js";
-import { offlineResponse } from "./offline.js";
 import { localContext, type Preference, type TimeBucket } from "./preferences.js";
 
 export type AgentContext = { token: string; task: string; timeBucket: TimeBucket | "auto"; turns: string[] };
@@ -44,7 +43,6 @@ export async function requestAgent(prompt: string, scene: Scene | null, context?
       return { response, notice: response.notice ?? "Memory is offline. This command used the current room and prompt." };
     }
     if (error instanceof AgentError && error.status < 500 && error.status !== 429) throw error;
-    const replay = offlineResponse(prompt, scene);
-    return { response: replay.response, notice: `Agent unavailable. ${replay.notice}` };
+    throw new Error("The scene agent is unavailable. Your room was kept unchanged. Please try again.");
   }
 }

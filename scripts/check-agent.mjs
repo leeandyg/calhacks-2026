@@ -40,11 +40,10 @@ try {
     await assert.rejects(agent.requestAgent("remember this for coding", room, context, true), /live connection/);
     await assert.rejects(agent.requestAgent("forget my coding preference", room), /Connect/);
   });
-  await check("an agent outage replays rainier without moving existing objects", async () => {
+  await check("an agent outage never replays a dummy preset or recorded edit", async () => {
     globalThis.fetch = async () => Response.json({ error: "Service down" }, { status: 503 });
-    const reply = await agent.requestAgent("make it rainier", room, context);
-    assert.equal(reply.response.kind, "edit");
-    assert.ok(reply.response.ops.every((op) => op.op === "set_volume"));
+    await assert.rejects(agent.requestAgent("make it rainier", room, context), /kept unchanged/);
+    await assert.rejects(agent.requestAgent("forest", null, context), /kept unchanged/);
     assert.deepEqual(room.objects[0].position, [1.4, 1.2, -1.7]);
   });
   await check("unavailable memory authentication leaves live typed commands usable", async () => {

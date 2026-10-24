@@ -70,7 +70,7 @@ export function installManagedAssets(assets: ManagedAssets, scene: Scene) {
     });
   }
   for (const image of assets.sprites) {
-    const object: Pick<SoundObject, 'label' | 'sound' | 'wall'> = { label: image.label, sound: { query: image.query }, wall: image.wall };
+    const object: Pick<SoundObject, 'id' | 'label' | 'sound' | 'wall'> = { id: image.objectId, label: image.label, sound: { query: image.query }, wall: image.wall };
     setSprite(spriteKey(envId, object), { status: 'ready', png: image.url, w: image.w, h: image.h, frames: image.frames, fps: image.fps });
   }
   for (const sound of assets.sounds) registerManagedSound(envId, sound);
