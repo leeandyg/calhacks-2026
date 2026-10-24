@@ -53,6 +53,13 @@ For a rectangle use, for example, `mode: "Rectangle", columns: 10, rows: 6, wall
 
 ### Environment surfaces
 
+- Claude-managed worlds (#86) can set browser art metadata `openAir`. Hide the structural wall
+  panels for these outdoor worlds; optional transparent PNG strips provide landscape backdrops
+  and retain their own wall visibility behavior. Environment and source strips use horizontal
+  equal-size frames on the shared pixel grid. Bed motion loops; event motion runs during its
+  sound playback and rests between events. Muting freezes source animation. Keep the initial
+  prompt centered until the generated scene validates and its images finish loading.
+
 - Live generated environments (#76) extend these defaults: `room.art` references five pxl PNGs in
   the browser art store, and `room.terrain[row][column]` raises individual floor cells. The fixed
   structural slab stays `SLAB_THICKNESS`; raised earth is terrain above it. Paint each wall through

@@ -244,7 +244,8 @@ function DevInspection() {
             return bird ? [{ y: bird.position.y, blinking: bird.getObjectByName('bird-blink')?.visible }] : [];
           });
           const rainPoses = Array.from({ length: 8 }, (_, i) => model?.getObjectByName(`rain-streak-${i}`)).filter(mesh => mesh !== undefined).map(mesh => ({ y: mesh.position.y, height: mesh.scale.y, visible: mesh.visible }));
-          return { id: object.id, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
+          const painted = model?.getObjectByName('painted-prop') as Mesh<PlaneGeometry, MeshStandardMaterial> | undefined;
+          return { id: object.id, artFrame: painted?.material.map?.offset.x, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
         }),
         windowOpacities,
         shadows,

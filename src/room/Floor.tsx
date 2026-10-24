@@ -26,7 +26,7 @@ function PaintedCell({ texture, column, row, columns, rows, elevation }: {
 export function Floor({ config }: { config: RoomConfig }) {
   const room = useSceneStore(state => state.scene.room);
   const art = useArtStore(state => room.art ? state.envs[room.art] : undefined);
-  const texture = usePaintTexture(art?.textures.floor);
+  const texture = usePaintTexture(art?.textures.floor, art?.animations?.floor);
   const { width, depth } = config.dimensions;
   const { columns, rows } = config.grid;
   const thickness = ROOM_FRAME.floorDepth;

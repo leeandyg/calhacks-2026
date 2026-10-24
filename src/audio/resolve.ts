@@ -1,5 +1,6 @@
 import type { SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
+import { managedSoundFor } from './managed.js';
 import { generatedAssetId } from "./generated.js";
 import { loadManifest, type ManifestEntry } from "./manifest.js";
 
@@ -92,15 +93,14 @@ export function resolveSound(
 export function startResolver(): () => void {
   let manifest: ManifestEntry[] | undefined;
   const run = () => {
-    if (!manifest) return;
     const { scene, applyOps } = useSceneStore.getState();
-    const missing = scene.objects.filter((o) => !o.sound.assetId);
+    const missing = scene.objects.filter((o) => !o.sound.assetId && (manifest || managedSoundFor(scene, o)));
     if (!missing.length) return;
     const taken = new Set(scene.objects.flatMap((o) => (o.sound.assetId ? [o.sound.assetId] : [])));
     // "add" with an existing id replaces that object in place, keeping its position and mute.
     const result = applyOps(
       missing.map((object) => {
-        const assetId = resolveSound(object.sound.query, object.kind, manifest!, taken);
+        const assetId = managedSoundFor(scene, object) ?? resolveSound(object.sound.query, object.kind, manifest!, taken);
         taken.add(assetId);
         return { op: "add" as const, object: { ...object, sound: { ...object.sound, assetId } } };
       }),
@@ -114,6 +114,7 @@ export function startResolver(): () => void {
     run();
   });
   const unsubscribe = useSceneStore.subscribe(run);
+  run();
   return () => {
     stopped = true;
     unsubscribe();

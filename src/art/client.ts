@@ -80,7 +80,7 @@ function schedule(job: () => Promise<void>) {
 /** Paints each object's prop once per environment (in the background, a few at a time). */
 export function paintSprites(envId: string, objects: SoundObject[]) {
   const env = useArtStore.getState().envs[envId];
-  if (!env) return;
+  if (!env || env.managed) return;
   for (const object of objects) {
     const key = spriteKey(envId, object);
     if (useArtStore.getState().sprites[key]) continue;

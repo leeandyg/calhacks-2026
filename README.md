@@ -10,7 +10,7 @@ See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluepr
 
 - Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room with the arrows (your ears turn with it), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
 - Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
-- AI: Gemini 3.8 Flash via the Google GenAI SDK (tool use), called from the backend
+- AI: Claude Managed Agents for pxl/chirp worlds when configured; Gemini 3.8 Flash remains the fallback backend when no Anthropic key is set
 
 ## Setup
 
@@ -264,6 +264,45 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
 
 `api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
+
+## Claude Managed Agent (#86)
+
+Set `ANTHROPIC_API_KEY`, `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` in the server's
+`.env` (or deployment environment), then restart the dev server. The supplied IDs are in
+`.env.example`. With this key configured, the prompt uses the **AI Pixel World Director** managed
+agent instead of the Gemini scene/art pipeline. `?demo` stays offline. No provider key reaches
+frontend code, HTML, client requests or generated assets.
+
+`AGENT_CONFIG.yaml` records the supplied architecture. Each new session uses that file's system
+instructions; the managed agent resource owns its model and tool configuration (currently
+Claude Opus 5.5, low effort, with the built-in agent toolset). The agent reads the actual pxl and
+chirp skills, writes and builds code inside Anthropic's sandbox, and publishes PNG strips, audio
+and a validated scene manifest. Generated JavaScript is never executed by this app's backend or
+browser. The existing room/terrain, manual rotation, drag/mute behavior, portals and HRTF audio
+engine consume the compiled results. Open-air scenes omit the structural wall panels, with
+optional transparent landscape backdrops. Sprite/environment strips animate in the room's pixel
+pass; event-source animation plays with its audio and mute freezes source motion.
+
+`POST /api/scene` starts a session or sends a follow-up event and returns a signed session token.
+Authenticated voice/memory turns through `POST /api/agent` use the same flow, passing recalled
+preferences as user data while the current prompt and manually edited scene take precedence.
+`GET /api/world?action=stream` forwards safe progress, replays missed history and deduplicates
+live events. The browser reconnects after each short stream while the remote job continues;
+functions do not need to remain open for the full generation. `POST /api/world` retrieves the
+finished scene and assets, waiting for delayed file publication. The same endpoint proxies only
+image/audio files belonging to the signed session. Tokens expire after 24 hours. The first room
+stays hidden until its output validates and its images have loaded; errors preserve the current
+room and prompt. Follow-up prompts reuse the managed session and receive the latest canonical
+scene, including manual positions and mute settings. New sound IDs are assigned only by the
+existing resolver, using the agent's chirp files.
+
+Run `npm test` for provider/protocol validation and `npm run test:managed` with the dev server
+running for deterministic browser coverage (no API credits). `npm run check:managed` reconnects
+the completed live run in `test-results/managed-live-run.json`, exercising real session history,
+image/audio downloads and animation without rebuilding assets. If that saved run is absent, the check creates and records a fresh managed world;
+delete the ignored run file to request a fresh end-to-end generation. This check spends API credits. Generation can take several minutes because the agent builds
+both artwork and audio; progress remains visible. The runtime asset bindings live in the current
+page, matching the app's existing painted-art lifecycle.
 
 ## Live environment art (#76)
 

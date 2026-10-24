@@ -1,3 +1,4 @@
+import { eventIsPlaying } from '../audio/activity.js';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, DoubleSide, Group, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
@@ -15,7 +16,7 @@ import { usePaintTexture } from './PaintedSurface.js';
 import { paintSprites } from '../art/client.js';
 
 function PaintedProp({ art, object }: { art: Extract<SpriteArt, { status: 'ready' }>; object: SoundObject }) {
-  const texture = usePaintTexture(art.png);
+  const texture = usePaintTexture(art.png, { frames: art.frames ?? 1, fps: art.fps ?? 10 }, () => !object.muted && (object.kind === 'bed' || eventIsPlaying(object.id)), object.kind === 'event' && !object.muted);
   const ref = useRef<Mesh>(null);
   const rotation = useMemo(() => new Quaternion(), []);
   const room = useSceneStore(state => state.scene.room);

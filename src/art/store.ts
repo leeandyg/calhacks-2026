@@ -8,6 +8,9 @@ export type Surface = "floor" | "north" | "east" | "south" | "west";
 export type EnvArt = {
   id: string;
   concept: string;
+  managed?: boolean;
+  openAir?: boolean;
+  animations?: Partial<Record<Surface, { frames: number; fps: number }>>;
   /** Wall tops and the floor's outer edge. */
   shell: string;
   /** The room's pixel pass quantizes to these (plus the prop palette), so paintings keep their colors. */
@@ -18,7 +21,7 @@ export type EnvArt = {
 };
 export type SpriteArt =
   | { status: "painting" }
-  | { status: "ready"; png: string; w: number; h: number }
+  | { status: "ready"; png: string; w: number; h: number; frames?: number; fps?: number }
   | { status: "failed" };
 
 type ArtState = {

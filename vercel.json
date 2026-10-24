@@ -2,7 +2,10 @@
   "buildCommand": "node scripts/vercel-build.mjs",
   "functions": {
     "api/agent.ts": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": [
+        "AGENT_CONFIG.yaml"
+      ]
     },
     "api/voice.ts": {
       "maxDuration": 30
@@ -28,6 +31,18 @@
         "node_modules/pxl-pixelart/**",
         "node_modules/quickjs-emscripten*/**",
         "node_modules/@jitl/quickjs-*/**"
+      ]
+    },
+    "api/scene.ts": {
+      "maxDuration": 60,
+      "includeFiles": [
+        "AGENT_CONFIG.yaml"
+      ]
+    },
+    "api/world.ts": {
+      "maxDuration": 60,
+      "includeFiles": [
+        "AGENT_CONFIG.yaml"
       ]
     }
   }
