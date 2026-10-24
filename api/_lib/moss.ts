@@ -40,12 +40,22 @@ async function search(owner: string, preferences: Preference[], query: string, t
   const client = new MossClient(process.env.MOSS_PROJECT_ID!.trim(), process.env.MOSS_PROJECT_KEY!.trim(),
     { cachePath: join(tmpdir(), "soundscape-moss") });
   try {
+    let synced = true;
     const name = memoryIndexName(owner);
     const memory = await client.session(name);
     const loaded = await memory.loadIndex(name);
     const changed = await reconcile(memory, preferences);
     if (changed) {
-      if (preferences.length) await memory.pushIndex();
+      if (preferences.length) {
+        const job = await memory.pushIndex();
+        const until = Date.now() + 4_000;
+        let status = job.status;
+        while (status !== "completed" && status !== "failed" && Date.now() < until) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          status = (await client.getJobStatus(job.jobId)).status;
+        }
+        synced = status === "completed";
+      }
       else if (loaded) await client.deleteIndex(name);
     }
     const filter = { field: "timeBucket", condition: { $in: timeBucket === "any" ? ["any"] : [timeBucket, "any"] } };
@@ -56,7 +66,8 @@ async function search(owner: string, preferences: Preference[], query: string, t
     const live = await client.session(`turn-${randomUUID()}`);
     if (turns.length) await live.addDocs(turns.map((text, index) => ({ id: String(index), text })));
     const context = turns.length ? (await live.query(query, { topK: 2 })).docs.map((doc) => doc.text) : [];
-    return { preferences: recalled, recentContext: context, notice: "Moss memory ready." };
+    return { preferences: recalled, recentContext: context, synced,
+      notice: synced ? "Moss memory ready." : "Moss recall is ready for this request; cloud index sync is pending." };
   } finally { await client.close(); }
 }
 
@@ -73,7 +84,7 @@ export async function retrieveMemory(owner: string, preferences: Preference[], p
 export async function syncMemory(owner: string, preferences: Preference[]) {
   if (!mossConfigured()) return "Convex memory updated. Moss search sync is pending configuration.";
   try {
-    await deadline(search(owner, preferences, "environment preferences", "any", []), 8_000);
-    return "Moss memory synced.";
+    const result = await deadline(search(owner, preferences, "environment preferences", "any", []), 8_000);
+    return result.synced ? "Moss memory synced." : "Convex memory updated. Moss cloud index sync is pending; exact task/time recall still works.";
   } catch { return "Convex memory updated. Moss search sync is pending; exact task/time recall still works."; }
 }

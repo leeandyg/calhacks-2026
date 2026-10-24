@@ -8,7 +8,8 @@ import { MossClient } from "@moss-js/moss";
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
 const originalFetch = globalThis.fetch;
 const originalEnv = { id: process.env.MOSS_PROJECT_ID, key: process.env.MOSS_PROJECT_KEY };
-const originalMoss = { session: MossClient.prototype.session, close: MossClient.prototype.close, deleteIndex: MossClient.prototype.deleteIndex };
+const originalMoss = { session: MossClient.prototype.session, close: MossClient.prototype.close, deleteIndex: MossClient.prototype.deleteIndex,
+  getJobStatus: MossClient.prototype.getJobStatus };
 let passed = 0;
 async function check(name, test) { await test(); passed++; console.log(`PASS ${name}`); }
 try {
@@ -60,7 +61,7 @@ try {
   });
 
   process.env.MOSS_PROJECT_ID = "test-project"; process.env.MOSS_PROJECT_KEY = "test-key";
-  const cloud = new Map(); let closes = 0;
+  const cloud = new Map(); let closes = 0, pushStatus = "completed";
   MossClient.prototype.session = async function (name) {
     let docs = new Map();
     return { name,
@@ -68,12 +69,13 @@ try {
       getDocs: async () => [...docs.values()],
       deleteDocs: async (ids) => { ids.forEach((id) => docs.delete(id)); },
       addDocs: async (items) => { items.forEach((item) => docs.set(item.id, item)); },
-      pushIndex: async () => { cloud.set(name, new Map(docs)); },
+      pushIndex: async () => { cloud.set(name, new Map(docs)); return { status: pushStatus, jobId: "test-job" }; },
       query: async (_query, options) => ({ docs: [...docs.values()].filter((item) => !options.filter || options.filter.condition.$in.includes(item.metadata.timeBucket)).slice(0, options.topK) }),
     };
   };
   MossClient.prototype.close = async () => { closes++; };
   MossClient.prototype.deleteIndex = async (name) => cloud.delete(name);
+  MossClient.prototype.getJobStatus = async () => ({ status: "failed" });
   await check("Moss indexes are owner-specific and remove stale records before retrieval", async () => {
     assert.notEqual(moss.memoryIndexName("owner-a"), moss.memoryIndexName("owner-b"));
     cloud.set(moss.memoryIndexName("owner-a"), new Map([["deleted", { id: "deleted", text: "Old preference", metadata: { updatedAt: "0", timeBucket: "morning" } }]]));
@@ -88,6 +90,13 @@ try {
     assert.match(cloud.get(moss.memoryIndexName("owner-a")).get("one").text, /No clinks/);
     await moss.syncMemory("owner-a", []);
     assert.equal(cloud.has(moss.memoryIndexName("owner-a")), false);
+  });
+  await check("an unfinished cloud index build cannot report memory as synced", async () => {
+    pushStatus = "building";
+    const notice = await moss.syncMemory("owner-pending", [morning]);
+    assert.match(notice, /sync is pending/);
+    assert.doesNotMatch(notice, /Moss memory synced/);
+    pushStatus = "completed";
   });
 
   await check("mic PCM conversion flushes the last partial chunk before finalization", async () => {
