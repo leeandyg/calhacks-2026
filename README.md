@@ -45,16 +45,16 @@ defaults never rearrange manually positioned objects during unrelated edits.
 each followed by "make it rainier" after a manual move. It checks placement defaults,
 speech restrictions, and preservation of existing positions and unrelated objects.
 
-The agent only supplies `sound.query`. New sounds need the resolver in #17 to fill
-`assetId` before they can play; existing resolved objects keep their assets during edits.
+The agent only supplies `sound.query`. Valid live scenes and additions go into the
+scene store without an `assetId`; the active resolver fills it with a pack sound or
+a `gen:` ID for ElevenLabs. Existing resolved objects keep their assets during edits.
 The prompt bar offers six local presets and an **Offline demo** checkbox. Presets
 use bundled sounds and do not need an API key. If an AI request fails, returns bad
 output, or takes longer than 15 seconds, supported prompts use a local preset or a
 saved edit and show an **AI unavailable** notice. Unsupported edits keep the current
 room intact and ask you to choose a preset or a supported demo prompt.
-Until #17 supplies playable asset IDs, live create/add responses also use this
-fallback and explain that their sounds are not linked to files yet. Resolved live
-responses and edits to existing sounds continue normally.
+Missing asset IDs in a valid AI response are part of normal live resolution and do
+not trigger offline replay. Enable **Offline demo** when you want saved responses.
 
 ## Offline demo
 
