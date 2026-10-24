@@ -50,6 +50,9 @@ use bundled sounds and do not need an API key. If an AI request fails, returns b
 output, or takes longer than 15 seconds, supported prompts use a local preset or a
 saved edit and show an **AI unavailable** notice. Unsupported edits keep the current
 room intact and ask you to choose a preset or a supported demo prompt.
+Until #17 supplies playable asset IDs, live create/add responses also use this
+fallback and explain that their sounds are not linked to files yet. Resolved live
+responses and edits to existing sounds continue normally.
 
 ## Offline demo
 
@@ -72,6 +75,8 @@ not arbitrary offline AI requests. Uncheck **Offline demo** to resume live AI re
 
 Run `npm run check:offline` for preset asset checks, the recorded sequence, preservation
 of manual edits, and simulated API/timeout failures. This check makes no real API calls.
+Run `npm run check:audio` for sound replacement, removal, download recovery, and event
+cleanup checks using a simulated audio clock; it does not play through your speakers.
 
 Wear headphones. The spatial effect depends on them.
 

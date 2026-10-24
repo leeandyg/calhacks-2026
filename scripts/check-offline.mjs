@@ -111,6 +111,38 @@ try {
     };
     assert.deepEqual(await requestScene("make the rain quieter", presets[0].scene), SceneResponse.parse(live));
   });
+  await check("unresolved live creations use a playable fallback instead of a silent room", async () => {
+    const unresolved = structuredClone(presets[0].scene);
+    unresolved.objects.forEach((object) => { delete object.sound.assetId; });
+    globalThis.fetch = async () => Response.json({ kind: "create", scene: unresolved });
+    const result = await requestScene("rainy cafe", presets[0].scene);
+    playable(result.scene);
+    assert.match(result.notice, /not linked to audio files/);
+  });
+  await check("unsupported unresolved additions preserve the current room", async () => {
+    const scene = structuredClone(presets[0].scene);
+    const before = structuredClone(scene);
+    globalThis.fetch = async () => Response.json({ kind: "edit", ops: [{ op: "add", object: {
+      ...scene.objects[0], id: "unknown-sound", sound: { query: "a new mystery sound" },
+    } }] });
+    await assert.rejects(requestScene("add a mystery sound", scene), /kept unchanged/);
+    assert.deepEqual(scene, before);
+  });
+  await check("unknown or wrong-kind live assets fall back; resolved live assets pass through", async () => {
+    let liveScene;
+    globalThis.fetch = async (url) => url === "/sounds/manifest.json"
+      ? Response.json([...manifest.values()])
+      : Response.json({ kind: "create", scene: liveScene });
+    for (const assetId of ["missing-file", "cup_clink"]) {
+      liveScene = structuredClone(presets[0].scene);
+      liveScene.objects[0].sound.assetId = assetId;
+      const result = await requestScene("cafe", presets[0].scene);
+      playable(result.scene);
+      assert.match(result.notice, /missing from the local sound pack/);
+    }
+    liveScene = structuredClone(presets[0].scene);
+    assert.deepEqual(await requestScene("cafe", presets[0].scene), { kind: "create", scene: liveScene });
+  });
   console.log(`Passed ${passed} offline checks; no real API requests were sent.`);
 } finally {
   globalThis.fetch = originalFetch;
