@@ -23,8 +23,10 @@ npm run build          # typecheck + production build
 ```
 
 Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
-`GEMINI_API_KEY` in `.env`. Restart the dev server after changing it. On Vercel, add
-the same environment variable to the deployment's environment and redeploy.
+`GEMINI_API_KEY` in `.env`. For sounds the pack doesn't have, also set `ELEVENLABS_API_KEY`
+(a key restricted to Sound Effects is enough); without it those sounds fall back to the closest
+pack sound. Restart the dev server after changing `.env`. On Vercel, add the same environment
+variables to the deployment's environment and redeploy.
 Node.js 24 is recommended; on Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
 `POST /api/scene` sends the prompt and current scene to `gemini-3.8-flash`, which calls
@@ -98,15 +100,32 @@ npm run sounds:pack    # builds public/sounds/ + manifest.json + CREDITS.md
 
 Add a sound by adding it to `SOUNDS` in `scripts/fetch-freesound.mjs` and `TAGS` in `scripts/pack.mjs`. Tags are what the resolver matches the agent's descriptions against.
 
+To replace a weak sound with an ElevenLabs-generated one (rain_window, fireplace, cup_clink and sparrow already are):
+
+```sh
+node --env-file=.env scripts/generate-pack.mjs fireplace "crackling fireplace in a small wooden cabin"   # costs credits
+node scripts/generate-pack.mjs fireplace "<prompt>" --file take.mp3   # or use a take you already have
+npm run sounds:pack -- fireplace   # rebuilds only that sound; the rest of the pack is kept
+```
+
+The Freesound candidates move to `assets/raw/<sound>/_unused/`; move them back and rebuild to undo.
+
+### Sounds on command
+
+The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one: a pack sound when the tags match well, otherwise `gen:<kind>:<query>`, which the audio engine generates through `GET /api/sound?kind=bed|event&q=...` (ElevenLabs: v2 for 15 s loops, v3 for 2 s one-shots). Generated sounds are converted to mono, matched to pack loudness and cached, and fall back to the closest pack sound if generation fails. `useSoundStatus` in `src/audio/generated.ts` says which sounds are still generating.
+
+Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
+
 ## Layout
 
 | Path | What | Owner |
 | --- | --- | --- |
 | `src/scene/` | Scene schema (`scene.ts`), store with `applyOps` (`store.ts`), sample scenes (`fixtures.ts`) | @OakleySun |
-| `src/audio/` | Store-driven audio engine, AudioContext, sound manifest | @leeandyg |
+| `src/audio/` | Store-driven audio engine, AudioContext, sound manifest, resolver (`resolve.ts`), generated sounds (`generated.ts`) | @leeandyg |
 | `src/room/` | R3F room view | @coinleftt |
 | `src/ui/` | Enter-room gate, prompt bar | @coinleftt |
-| `src/ai/`, `api/` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
+| `src/ai/`, `api/scene.ts` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
+| `api/sound.ts` | `GET /api/sound`: ElevenLabs generation for sounds the pack lacks | @leeandyg |
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
 
-`api/*.ts` files export `POST(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
+`api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.

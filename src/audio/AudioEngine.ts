@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
+import { isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
 import { loadManifest } from "./manifest.js";
+import { matchSound, startResolver } from "./resolve.js";
 
 // Renders the scene store as sound. It reads only from the store, never from the 3D view,
 // so drags, agent edits and presets all reach the audio the same way.
@@ -248,37 +250,52 @@ function distance([ax, ay, az]: readonly number[], [bx, by, bz]: readonly number
 
 const buffers = new Map<string, Promise<AudioBuffer | undefined>>();
 
-function loadBuffer(ctx: AudioContext, assetId: string | undefined) {
-  if (!assetId) return Promise.resolve(undefined); // not resolved yet (#17)
+function loadBuffer(ctx: AudioContext, assetId: string | undefined): Promise<AudioBuffer | undefined> {
+  if (!assetId) return Promise.resolve(undefined); // not resolved yet (see resolve.ts)
   let buffer = buffers.get(assetId);
   if (!buffer) {
-    buffer = loadManifest()
-      .then((manifest) => {
-        const entry = manifest.get(assetId);
-        if (!entry) throw new Error(`no manifest entry "${assetId}"`);
-        return fetch(`/sounds/${entry.file}`);
-      })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Sound file failed: ${res.status}`);
-        return res.arrayBuffer();
-      })
-      .then((data) => ctx.decodeAudioData(data))
-      .catch((err) => {
-        buffers.delete(assetId); // Retry after transient network/decode failures.
-        console.warn(`audio: could not load "${assetId}"`, err);
-        return undefined;
-      });
+    buffer = (isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
+      // Retry pack files after transient network/decode failures. A failed generation is not
+      // retried: each scene update (every drag frame) would otherwise call /api/sound again.
+      if (!isGenerated(assetId)) buffers.delete(assetId);
+      console.warn(`audio: could not load "${assetId}"`, err);
+      return undefined;
+    });
     buffers.set(assetId, buffer);
   }
   return buffer;
 }
 
-/** Runs the engine while `enabled` (after the "Enter room" click). */
+async function loadPackSound(ctx: AudioContext, assetId: string) {
+  const entry = (await loadManifest()).get(assetId);
+  if (!entry) throw new Error(`no manifest entry "${assetId}"`);
+  const res = await fetch(`/sounds/${entry.file}`);
+  if (!res.ok) throw new Error(`Sound file failed: ${res.status}`);
+  return ctx.decodeAudioData(await res.arrayBuffer());
+}
+
+/** If generation fails (no key, no credits, offline), play the closest pack sound so something still plays. */
+async function loadGeneratedOrFallback(ctx: AudioContext, assetId: string): Promise<AudioBuffer | undefined> {
+  try {
+    return await loadGenerated(ctx, assetId);
+  } catch (err) {
+    const { kind, query } = parseGeneratedAssetId(assetId);
+    const fallback = matchSound(query, kind, (await loadManifest()).values());
+    console.warn(`audio: generating "${query}" failed; ${fallback ? `using "${fallback.assetId}"` : "no fallback"}`, err);
+    return fallback ? loadBuffer(ctx, fallback.assetId) : undefined;
+  }
+}
+
+/** Runs the engine (and the resolver that fills in assetIds) while `enabled` (after "Enter room"). */
 export function useAudioEngine(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
+    const stopResolver = startResolver();
     const engine = new AudioEngine(getAudioContext());
     engine.start();
-    return () => engine.stop();
+    return () => {
+      engine.stop();
+      stopResolver();
+    };
   }, [enabled]);
 }

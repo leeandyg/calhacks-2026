@@ -154,7 +154,7 @@
       "dishes"
     ],
     "kind": "event",
-    "license": "CC0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "dog_distant",
@@ -236,7 +236,7 @@
       "warm"
     ],
     "kind": "bed",
-    "license": "CC0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "forest",
@@ -376,7 +376,7 @@
       "bedroom"
     ],
     "kind": "bed",
-    "license": "CC-BY 4.0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "songbird",
@@ -403,7 +403,7 @@
       "outdoor"
     ],
     "kind": "event",
-    "license": "CC-BY 4.0"
+    "license": "Generated (ElevenLabs)"
   },
   {
     "id": "spoon_stir",
