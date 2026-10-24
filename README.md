@@ -86,6 +86,11 @@ The room reverb follows `room.reverb` (`small-room`, `large-room`, `outdoor`, `n
 the agent picks from the prompt. Farther sounds get more of it, which is most of what makes
 distance audible.
 
+Intermittent sounds such as cup clinks play once from the start of the clip, then wait
+a fresh random silent gap from `intervalSec` before playing again. Each occurrence has
+slight pitch and volume variation without exceeding the object's volume. The café
+preset's cup clinks wait 8–25 seconds after each clink finishes; rain and room tone loop.
+
 Wear headphones. The spatial effect depends on them.
 
 In dev, the scene store is on `window.sceneStore`, so you can try edits from the browser console:

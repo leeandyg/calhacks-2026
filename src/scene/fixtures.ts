@@ -30,7 +30,7 @@ export const cafe: Scene = {
       sound: { query: "ceramic cup clink", assetId: "cup_clink" },
       position: [3, 1, 2],
       volume: 0.25,
-      intervalSec: [6, 15],
+      intervalSec: [8, 25],
     },
   ],
   session: { task: "writing an essay", mode: "focus", minutesLeft: 50 },
