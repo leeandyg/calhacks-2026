@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
+import { useHeadPose } from "../sensors/headPose.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
 import { addMeter, removeMeter } from "./levels.js";
@@ -31,6 +32,7 @@ export class AudioEngine {
   private master: GainNode;
   private reverb: Reverb;
   private unsubscribe?: () => void;
+  private unsubscribeHead?: () => void;
 
   constructor(private ctx: AudioContext) {
     this.master = ctx.createGain();
@@ -41,10 +43,15 @@ export class AudioEngine {
   start() {
     this.sync(useSceneStore.getState().scene, undefined);
     this.unsubscribe = useSceneStore.subscribe((state, prev) => this.sync(state.scene, prev.scene));
+    // Turning your head (head tracking, #21) turns your ears; the sounds stay where they are in the room.
+    this.unsubscribeHead = useHeadPose.subscribe((state, prev) => {
+      if (state.yaw !== prev.yaw) this.setListener(useSceneStore.getState().scene.listener);
+    });
   }
 
   stop() {
     this.unsubscribe?.();
+    this.unsubscribeHead?.();
     for (const voice of this.voices.values()) voice.dispose();
     this.voices.clear();
     this.master.disconnect();
@@ -85,12 +92,13 @@ export class AudioEngine {
   }
 
   /**
-   * The listener sits in the room and faces scene.listener.yaw. Turning the room view only moves the
-   * camera around the room, so it never changes what you hear; head tracking changes the yaw (#21).
+   * The listener sits in the room and faces scene.listener.yaw plus the tracked head's yaw (#21).
+   * Turning the room view only moves the camera around the room, so it never changes what you hear.
    */
-  private setListener({ position: [x, y, z], yaw }: Listener) {
+  private setListener({ position: [x, y, z], yaw: sceneYaw }: Listener) {
     const l = this.ctx.listener;
     const now = this.ctx.currentTime;
+    const yaw = sceneYaw + useHeadPose.getState().yaw;
     const forward = [-Math.sin(yaw), 0, -Math.cos(yaw)];
     if (l.positionX) {
       l.positionX.setTargetAtTime(x, now, RAMP_SEC);

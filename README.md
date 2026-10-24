@@ -97,6 +97,16 @@ preset's cup clinks wait 8–25 seconds after each clink finishes; rain and room
 
 Wear headphones. The spatial effect depends on them.
 
+## Head tracking (webcam)
+
+Tick **Head tracking** in the demo controls and allow the camera. MediaPipe Face Landmarker runs in the
+browser (frames never leave it; the model and wasm load from a CDN the first time), and turning your
+head turns your ears: the sounds stay where they are in the room. The direction you face when it
+starts is straight ahead; **Recenter** resets that. If your face is lost (turned away, out of frame),
+the last direction holds, and when it's found again the sound glides back to where your head really
+is. The status shows the current angle, e.g. "20° left". Head yaw lives in `src/sensors/headPose.ts`,
+never in the scene, so saved rooms don't capture it.
+
 ## Save and load rooms with Convex
 
 Run `npm run convex:dev` in a separate terminal and keep it running. The first run
@@ -246,6 +256,7 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | `src/scene/` | Scene schema (`scene.ts`), store with `setScene` / `applyOps` (`store.ts`), grid placement rules (`layout.ts`), presets and fixtures | @OakleySun |
 | `src/scene/SavedRooms.tsx`, `convex/` | Named scene save/load and anonymous session ownership | @OakleySun |
 | `src/audio/` | Store-driven audio engine, AudioContext, sound manifest, resolver (`resolve.ts`), generated sounds (`generated.ts`) | @leeandyg |
+| `src/sensors/` | Head pose store (`headPose.ts`); webcam head tracking with MediaPipe (`webcamHeadTracking.ts`, `headYaw.ts`) | @leeandyg |
 | `src/room/` | Pixel room view, view-only camera/rotation store (`useRoomStore.ts`), "generating…" labels (see [LAYOUT.md](LAYOUT.md)) | @coinleftt |
 | `src/ui/` | Enter-room gate, prompt bar, demo controls, rotation arrows | @coinleftt |
 | `src/ai/`, `api/scene.ts` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
