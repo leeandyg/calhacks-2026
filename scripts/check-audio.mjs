@@ -124,14 +124,14 @@ try {
     assert.deepEqual(active().map((source) => source.buffer.asset), ["wind"]);
   });
   await check("swapping event sounds stops active one-shots and their old schedule", async () => {
-    setSound("cup_clink", "event"); await flush(); await advance(1);
+    setSound("cup_clink", "event"); await flush(); await advance(3);
     assert.ok(active().some((source) => source.buffer.asset === "cup_clink"));
-    setSound("page_flip", "event"); await flush(); await advance(0.7);
+    setSound("page_flip", "event"); await flush(); await advance(0.4); // the old clip fades out within 0.3 s
     assert.equal(active().length, 0);
-    await advance(0.3);
+    await advance(2.7); // a new sound plays within 3 s
     assert.deepEqual(active().map((source) => source.buffer.asset), ["page_flip"]);
   });
-  await check("one-shots finish before fresh random gaps, with varied gain/pitch and unchanged placement", async () => {
+  await check("a new event plays within 3 s, then waits fresh random gaps, with varied gain/pitch and unchanged placement", async () => {
     const random = Math.random;
     let seed = 41;
     Math.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
@@ -143,7 +143,7 @@ try {
       await flush(); await advance(100);
       const hits = sources.slice(first);
       assert.ok(hits.length >= 5);
-      assert.ok(hits[0].startedAt - started >= 2 && hits[0].startedAt - started <= 5);
+      assert.ok(hits[0].startedAt - started >= 0.5 && hits[0].startedAt - started <= 3, "the first play comes soon, not after a full gap");
       for (const [index, hit] of hits.entries()) {
         assert.equal(hit.loop, false); assert.equal(hit.offset, 0);
         assert.ok(Math.abs(hit.detune) <= 100);
@@ -159,10 +159,20 @@ try {
       assert.equal(requests.get("cup_clink"), 1, "Reuse the decoded clip for every hit");
     } finally { Math.random = random; }
   });
+  await check("long event gaps are capped at 30 s", async () => {
+    const first = sources.length;
+    setSound("songbird", "event", "rare-birds", [40, 90]);
+    const started = now;
+    await flush(); await advance(200);
+    const hits = sources.slice(first);
+    assert.ok(hits[0].startedAt - started <= 3);
+    for (let i = 1; i < hits.length; i++) assert.ok(hits[i].startedAt - hits[i - 1].endedAt <= 30 + 1e-8);
+    assert.ok(hits.length >= 5, `${hits.length} plays in 200 s`); // 10 s clips + 30 s gaps; uncapped gives at most 4
+  });
   await check("moving an event during a slow download does not stack pending copies", async () => {
     let release; const promise = new Promise((resolve) => { release = resolve; });
     held.set("bird_chirp", { promise });
-    setSound("bird_chirp", "event", "loading-bird"); await flush(); await advance(1);
+    setSound("bird_chirp", "event", "loading-bird"); await flush(); await advance(3); // a new event plays within 3 s
     const first = sources.length;
     for (let index = 0; index < 5; index++) {
       useSceneStore.getState().applyOps([{ op: "move", id: "loading-bird", position: [index / 5, 1.6, 0] }]);
@@ -173,7 +183,7 @@ try {
     assert.equal(active().length, 1);
   });
   await check("changing intervals during a one-shot preserves it and uses the new gap after its end", async () => {
-    setSound("page_flip", "event", "interval-change"); await flush(); await advance(1);
+    setSound("page_flip", "event", "interval-change"); await flush(); await advance(3); // a new event plays within 3 s
     const hit = active()[0];
     setSound("page_flip", "event", "interval-change", [4, 4]); await flush();
     assert.equal(active()[0], hit);
@@ -186,7 +196,7 @@ try {
   await check("removing an event prevents an in-flight download from starting later", async () => {
     let release; const promise = new Promise((resolve) => { release = resolve; });
     held.set("owl", { promise });
-    setSound("owl", "event"); await flush(); await advance(1);
+    setSound("owl", "event"); await flush(); await advance(3); // a new event plays within 3 s
     useSceneStore.getState().setScene({ ...bedroom, objects: [] });
     release(); held.delete("owl"); await flush(); await advance(2);
     assert.equal(active().length, 0);

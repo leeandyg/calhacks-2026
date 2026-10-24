@@ -21,6 +21,8 @@ const LOOP_TRIM_SEC = 0.03; // skip the silence mp3 encoders add at each end, or
 const MAX_HRTF = 12; // HRTF is expensive; quieter voices beyond this use equal-power panning
 const EVENT_DETUNE_CENTS = 100; // random pitch spread so repeated events don't sound identical
 const EVENT_MIN_GAIN = 0.75; // vary each occurrence below the user's chosen volume
+const FIRST_EVENT_SEC: [number, number] = [0.5, 3]; // a new event sound plays soon, so its prop isn't silent
+const MAX_EVENT_GAP_SEC = 30; // longer gaps make an event prop seem broken
 const MUTE_FADE_SEC = 0.25; // muting or unmuting fades instead of cutting
 
 export class AudioEngine {
@@ -111,7 +113,8 @@ export class AudioEngine {
  * One sound object: source(s) -> gain -> HRTF panner -> master, plus gain -> send -> reverb.
  * The send is taken before the panner, so the reverb doesn't fade with distance (see reverb.ts).
  * Beds loop one source (with its own fade gain so sound swaps crossfade).
- * Events play once, then wait a fresh random silent gap within intervalSec.
+ * Events play soon after a new sound arrives, then wait a fresh random silent gap within intervalSec
+ * (at most MAX_EVENT_GAP_SEC) after each play.
  */
 type Playback = { source: AudioBufferSourceNode; fade: GainNode };
 
@@ -122,6 +125,7 @@ class Voice {
   private bed?: Playback;
   private events = new Set<Playback>();
   private eventLoading = false;
+  private firstPlay = true; // the current event sound hasn't played yet
   private timer?: ReturnType<typeof setTimeout>;
   private loadedAssetId?: string;
   private loadVersion = 0;
@@ -166,6 +170,7 @@ class Voice {
         this.loadedAssetId = object.sound.assetId;
         this.loadVersion++;
         this.eventLoading = false;
+        this.firstPlay = true;
         this.stopEvents();
       }
       if (changedAsset || previous.kind !== "event" ||
@@ -238,10 +243,11 @@ class Voice {
     this.events.clear();
   }
 
-  private scheduleEvent() {
+  private scheduleEvent(soon = this.firstPlay) {
     if (this.object.kind !== "event" || this.disposed || this.timer !== undefined || this.eventLoading || this.events.size) return;
     const [a, b] = this.object.intervalSec;
-    const delaySec = randomBetween(Math.min(a, b), Math.max(a, b));
+    const delaySec = soon ? randomBetween(...FIRST_EVENT_SEC)
+      : randomBetween(Math.min(a, b, MAX_EVENT_GAP_SEC), Math.min(Math.max(a, b), MAX_EVENT_GAP_SEC));
     this.timer = setTimeout(() => {
       this.timer = undefined;
       void this.playEvent();
@@ -255,9 +261,11 @@ class Voice {
     if (this.disposed || this.loadVersion !== version) return;
     this.eventLoading = false;
     if (!buffer) {
-      this.scheduleEvent();
+      // Retry at the normal pace; a newly resolved sound arrives through update() and plays soon.
+      this.scheduleEvent(false);
       return;
     }
+    this.firstPlay = false;
     const detune = randomBetween(-EVENT_DETUNE_CENTS, EVENT_DETUNE_CENTS);
     const source = new AudioBufferSourceNode(this.ctx, { buffer, detune, loop: false });
     const fade = new GainNode(this.ctx, { gain: randomBetween(EVENT_MIN_GAIN, 1) });
