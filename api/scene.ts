@@ -45,7 +45,8 @@ to change, including manually moved positions. Added objects must have new uniqu
 Positions are meters, y is up, and the listener faces -z at yaw 0. Room dimensions
 must be positive. Volumes are between 0 and 1. Use at most 12 objects.
 Describe each sound in sound.query. Never supply assetId, a filename, or a URL.
-Event intervals are [minimum, maximum] positive seconds, with minimum <= maximum.
+Object kind must be exactly "bed" for a continuous loop or "event" for a one-shot.
+Every event must include intervalSec: [minimum, maximum] positive seconds, with minimum <= maximum.
 If validation feedback is supplied, fix the error and call the tool again.`;
 
 export async function POST(request: Request): Promise<Response> {
@@ -78,11 +79,21 @@ export async function POST(request: Request): Promise<Response> {
         input: JSON.stringify({ ...parsed.data, validationError: feedback }),
         tools: parsed.data.scene ? tools : tools.slice(0, 1),
         generation_config: { tool_choice: "any", thinking_level: "low", max_output_tokens: 8192 },
-      }, { timeout: 30_000, maxRetries: 0 });
+      }, {
+        timeout: 20_000,
+        retries: {
+          strategy: "attempt-count-backoff", maxRetries: 2, retryConnectionErrors: true,
+          backoff: { initialInterval: 1000, exponent: 2, maxInterval: 4000 },
+        },
+        retry_codes: ["408", "429", "500", "502", "503", "504"],
+      });
     } catch (error) {
       // Never return provider error bodies: they can contain request details or credentials.
       const status = error && typeof error === "object" && "status" in error ? error.status : undefined;
       console.warn("Gemini request failed:", status ?? (error instanceof Error ? error.name : "unknown error"));
+      if (status === 408 || status === 504 || (error instanceof Error && error.name.includes("Timeout"))) {
+        return Response.json({ error: "Gemini took too long to respond, even after retrying. Please try again." }, { status: 504 });
+      }
       if (status === 429) {
         return Response.json({ error: "Gemini's request limit was reached. Check your AI Studio quota and try again." }, { status: 429 });
       }
@@ -92,7 +103,10 @@ export async function POST(request: Request): Promise<Response> {
       if (status === 400 || status === 404) {
         return Response.json({ error: "Gemini could not process this scene request. Check model access in AI Studio." }, { status: 502 });
       }
-      return Response.json({ error: "Gemini is temporarily unavailable. Please try again shortly." }, { status: 503 });
+      if (status === 503) {
+        return Response.json({ error: "Gemini is busy or temporarily unavailable, even after retrying. Please try again shortly." }, { status: 503 });
+      }
+      return Response.json({ error: "Could not reach Gemini. Please check the server connection and try again." }, { status: 502 });
     }
 
     try {
@@ -164,12 +178,16 @@ function validateScene(scene: Scene) {
   }
 }
 
-/** Gemini uses homogeneous arrays for numeric tuples; Zod still enforces tuple lengths. */
+/** Adapt Zod literals and numeric tuples to Gemini's supported JSON Schema subset. */
 function toolSchema(schema: z.ZodType): Record<string, unknown> {
   const json = z.toJSONSchema(schema, { target: "draft-7" });
   return JSON.parse(JSON.stringify(json, (key, value) => {
     if (key === "$schema") return undefined;
     if (key === "items" && Array.isArray(value)) return value[0];
+    if (value && typeof value === "object" && "const" in value) {
+      const { const: literal, ...rest } = value;
+      return { ...rest, enum: [literal] };
+    }
     return value;
   }));
 }

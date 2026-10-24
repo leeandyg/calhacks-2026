@@ -29,7 +29,10 @@ Node.js 24 is recommended; on Windows, use `npm.cmd` if PowerShell blocks `npm.p
 
 `POST /api/scene` sends the prompt and current scene to `gemini-3.8-flash`, which calls
 `create_scene` or `edit_scene`. The endpoint validates tool arguments with Zod,
-clamps positions to room bounds, and retries invalid output once. A new environment
+clamps positions to room bounds, and retries invalid output once. Transient provider
+and connection errors get up to two retries with increasing delays (about 1s, then
+2s, with jitter), with a 20-second timeout per attempt. Timeouts return HTTP 504;
+provider overload returns HTTP 503, and quota errors return HTTP 429. A new environment
 request can replace the starter scene; follow-up changes return edit ops so manual
 placements survive. Try "rainy cafe, I'm writing an essay", then "make the rain quieter".
 
