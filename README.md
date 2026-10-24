@@ -48,6 +48,18 @@ In dev, the scene store is on `window.sceneStore`, so you can try edits from the
 sceneStore.getState().applyOps([{ op: "move", id: "rain-1", position: [3, 1.5, 0] }])
 ```
 
+## Sound pack
+
+`public/sounds/` holds the sound pack: 30 s seamless mono loops (beds), short one-shots (events), `manifest.json` and `CREDITS.md`. To rebuild it (needs ffmpeg and `FREESOUND_API_KEY` in `.env`):
+
+```sh
+npm run sounds:fetch   # downloads 3 candidates per sound into assets/raw/<sound>/ (gitignored)
+# listen and delete the candidates you don't want; keep one per folder
+npm run sounds:pack    # builds public/sounds/ + manifest.json + CREDITS.md
+```
+
+Add a sound by adding it to `SOUNDS` in `scripts/fetch-freesound.mjs` and `TAGS` in `scripts/pack.mjs`. Tags are what the resolver matches the agent's descriptions against.
+
 ## Layout
 
 | Path | What | Owner |

@@ -1,0 +1,181 @@
+#!/usr/bin/env node
+// Builds the sound pack (#4): assets/raw/<slug>/*.mp3 -> public/sounds/<slug>.mp3,
+// plus public/sounds/manifest.json and public/sounds/CREDITS.md.
+//
+//   node scripts/pack.mjs            (needs ffmpeg on PATH)
+//
+// Keep one candidate per assets/raw/<slug>/ folder (see fetch-freesound.mjs). If a folder still
+// has several, the most-downloaded one is used and a warning is printed.
+//
+// Beds: mono, a 30 s slice whose tail is crossfaded into its head so it loops seamlessly,
+//       loudness-normalized. Events: mono, leading/trailing silence trimmed, normalized.
+// Noise beds (brown/pink/white) are generated, not downloaded.
+
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+const RAW_DIR = process.env.RAW_DIR ?? "assets/raw";
+const OUT_DIR = "public/sounds";
+const BED_SEC = 30; // loop length
+const XFADE_SEC = 1.5; // tail-into-head crossfade
+const SKIP_SEC = 2; // skip fade-ins at the start of recordings
+const BED_LUFS = -20;
+const EVENT_LUFS = -18;
+
+// Tags are the resolver's whole vocabulary (#17): noun, setting, texture.
+const TAGS = {
+  rain_window: ["rain", "window", "glass", "steady", "indoor", "cozy", "cafe", "bedroom"],
+  rain_roof: ["rain", "roof", "patter", "steady", "indoor", "cabin", "attic"],
+  rain_heavy: ["rain", "heavy", "downpour", "storm", "steady", "masking", "outdoor"],
+  thunder_distant: ["thunder", "storm", "rain", "distant", "rumble"],
+  cafe_murmur: ["cafe", "coffee shop", "murmur", "chatter", "crowd", "indoor", "busy"],
+  espresso: ["espresso", "coffee machine", "steam", "hiss", "cafe", "barista"],
+  fireplace: ["fire", "fireplace", "crackling", "cozy", "cabin", "warm"],
+  wind: ["wind", "gusts", "howling", "outdoor", "storm"],
+  wind_trees: ["wind", "trees", "leaves", "rustling", "forest", "breeze", "outdoor"],
+  creek: ["creek", "stream", "water", "brook", "flowing", "forest", "river"],
+  ocean: ["ocean", "waves", "sea", "beach", "surf", "shore"],
+  fan: ["fan", "electric fan", "hum", "steady", "masking", "bedroom"],
+  ac_hum: ["air conditioner", "hum", "hvac", "drone", "steady", "masking", "office"],
+  library: ["library", "quiet", "room tone", "indoor", "study"],
+  office: ["office", "workplace", "murmur", "indoor", "typing"],
+  keyboard: ["keyboard", "typing", "computer", "office", "clicks"],
+  clock: ["clock", "ticking", "tick tock", "quiet", "indoor", "library"],
+  traffic_distant: ["traffic", "city", "cars", "urban", "distant", "street"],
+  crickets: ["crickets", "night", "insects", "outdoor", "summer", "countryside"],
+  forest: ["forest", "birds", "nature", "woods", "outdoor", "morning"],
+  brown_noise: ["brown noise", "noise", "deep", "rumble", "masking", "steady", "focus"],
+  pink_noise: ["pink noise", "noise", "soft", "masking", "steady", "focus"],
+  white_noise: ["white noise", "noise", "hiss", "static", "masking", "bright"],
+  bird_chirp: ["bird", "chirp", "tweet", "songbird", "outdoor", "forest"],
+  sparrow: ["sparrow", "bird", "chirp", "tweet", "outdoor"],
+  songbird: ["songbird", "bird", "song", "call", "forest", "morning"],
+  cup_clink: ["cup", "clink", "ceramic", "mug", "cafe", "dishes"],
+  spoon_stir: ["spoon", "stir", "cup", "tea", "coffee", "cafe"],
+  door_distant: ["door", "close", "distant", "indoor", "building"],
+  page_flip: ["page", "turn", "book", "paper", "library", "study"],
+  owl: ["owl", "hoot", "night", "forest", "bird"],
+  fire_pop: ["fire", "crack", "pop", "wood", "fireplace", "campfire"],
+  thunder_clap: ["thunder", "clap", "storm", "lightning"],
+  dog_distant: ["dog", "bark", "distant", "neighborhood", "outdoor"],
+  chair_creak: ["chair", "creak", "wood", "indoor", "furniture"],
+};
+
+const NOISES = { brown_noise: "brown", pink_noise: "pink", white_noise: "white" };
+
+const candidates = JSON.parse(readFileSync(path.join(RAW_DIR, "candidates.json"), "utf8"));
+const manifest = [];
+const credits = [];
+
+// Clear previous output (including the skeleton's placeholders) so the pack is exactly what's built here
+for (const f of readdirSync(OUT_DIR)) if (f.endsWith(".mp3")) rmSync(path.join(OUT_DIR, f));
+
+for (const [slug, color] of Object.entries(NOISES)) {
+  const out = path.join(OUT_DIR, `${slug}.mp3`);
+  const amplitude = color === "white" ? 0.25 : 0.5;
+  const src = `anoisesrc=color=${color}:duration=${BED_SEC + XFADE_SEC + SKIP_SEC}:sample_rate=44100:amplitude=${amplitude}`;
+  encode(["-f", "lavfi", "-i", src], bedFilter(SKIP_SEC + BED_SEC + XFADE_SEC), BED_LUFS, "96k", out);
+  manifest.push({ id: slug, file: `${slug}.mp3`, tags: TAGS[slug], kind: "bed", license: "CC0 (generated)" });
+  console.log(`${slug}: generated`);
+}
+
+for (const slug of readdirSync(RAW_DIR).sort()) {
+  const dir = path.join(RAW_DIR, slug);
+  if (!TAGS[slug] || !existsSync(dir)) continue;
+  const files = readdirSync(dir).filter((f) => f.endsWith(".mp3"));
+  if (!files.length) {
+    console.warn(`${slug}: no candidates, skipping`);
+    continue;
+  }
+  const keyOf = (f) => `${slug}/${path.basename(f, ".mp3")}`;
+  // Candidates were saved most-downloaded first; prefer that order among what's left
+  const ranked = Object.keys(candidates).filter((k) => k.startsWith(`${slug}/`)).map((k) => `${k.split("/")[1]}.mp3`);
+  const pick = ranked.find((f) => files.includes(f)) ?? files[0];
+  if (files.length > 1) console.warn(`${slug}: ${files.length} candidates left, using ${pick} (delete the others to choose)`);
+
+  const info = candidates[keyOf(pick)];
+  const input = path.join(dir, pick);
+  const out = path.join(OUT_DIR, `${slug}.mp3`);
+  if (info.kind === "bed") encode(["-i", input], bedFilter(probeDuration(input)), BED_LUFS, "96k", out);
+  else encode(["-i", input], eventFilter(), EVENT_LUFS, "128k", out);
+
+  const license = shortLicense(info.license);
+  manifest.push({ id: slug, file: `${slug}.mp3`, tags: TAGS[slug], kind: info.kind, license });
+  credits.push(`| \`${slug}\` | [${info.name}](${info.url}) | ${info.author} | ${license} |`);
+  console.log(`${slug}: ${pick} (${info.kind}, ${license})`);
+}
+
+writeFileSync(path.join(OUT_DIR, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+writeFileSync(
+  path.join(OUT_DIR, "CREDITS.md"),
+  [
+    "# Sound credits",
+    "",
+    "Sounds from [Freesound](https://freesound.org), used under their Creative Commons licenses (CC0 or CC-BY).",
+    "Each was trimmed, converted to mono, loudness-normalized, and (for loops) crossfaded. Noise beds are generated.",
+    "",
+    "| File | Original | Author | License |",
+    "| --- | --- | --- | --- |",
+    ...credits,
+    "",
+  ].join("\n"),
+);
+console.log(`\n${manifest.length} sounds -> ${OUT_DIR}/manifest.json`);
+
+/**
+ * Loop recipe: take BED_SEC + XFADE_SEC of audio, then crossfade the extra tail into the head.
+ * The result ends exactly where its head picks up, so it loops with no seam. Output label: [shaped].
+ */
+function bedFilter(duration) {
+  const start = Math.max(0, Math.min(SKIP_SEC, duration - BED_SEC - XFADE_SEC));
+  const len = Math.min(BED_SEC, duration - start - XFADE_SEC);
+  return [
+    `[0:a]aformat=channel_layouts=mono,atrim=start=${start}:duration=${len + XFADE_SEC},asetpts=PTS-STARTPTS,asplit=3[a][b][c]`,
+    `[a]atrim=0:${XFADE_SEC},asetpts=PTS-STARTPTS,afade=t=in:d=${XFADE_SEC}:curve=qsin[head]`,
+    `[b]atrim=${len}:${len + XFADE_SEC},asetpts=PTS-STARTPTS,afade=t=out:d=${XFADE_SEC}:curve=qsin[tail]`,
+    `[c]atrim=${XFADE_SEC}:${len},asetpts=PTS-STARTPTS[body]`,
+    `[head][tail]amix=inputs=2:normalize=0[joined]`,
+    `[joined][body]concat=n=2:v=0:a=1[shaped]`,
+  ].join(";");
+}
+
+/** Trim silence at both ends (reverse trick for the tail), cap at 6 s, short fade-out. Output label: [shaped]. */
+function eventFilter() {
+  const trim = "silenceremove=start_periods=1:start_threshold=-50dB";
+  return `[0:a]aformat=channel_layouts=mono,${trim},areverse,${trim},areverse,atrim=0:6,afade=t=out:st=5.9:d=0.1[shaped]`;
+}
+
+/**
+ * Two-pass loudness normalization: measure first, then apply one constant gain (linear=true).
+ * Single-pass loudnorm rides the gain over time, which misses the target on transient sounds
+ * and leaves loops ending at a different level than they start.
+ */
+function encode(inputArgs, shapedFilter, lufs, bitrate, out) {
+  const target = `I=${lufs}:TP=-1.5:LRA=20`;
+  const measure = spawnSync(
+    "ffmpeg",
+    ["-hide_banner", "-nostats", ...inputArgs, "-filter_complex", `${shapedFilter};[shaped]loudnorm=${target}:print_format=json[out]`, "-map", "[out]", "-f", "null", "-"],
+    { encoding: "utf8" },
+  ).stderr;
+  const m = JSON.parse(measure.slice(measure.lastIndexOf("{"), measure.lastIndexOf("}") + 1));
+  const measured = `measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}`;
+  const filter = `${shapedFilter};[shaped]loudnorm=${target}:${measured}:linear=true,aresample=44100,asetpts=N/SR/TB[out]`;
+  ffmpeg([...inputArgs, "-filter_complex", filter, "-map", "[out]", "-ac", "1", "-b:a", bitrate, out]);
+}
+
+function ffmpeg(args) {
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...args], { stdio: "inherit" });
+}
+
+function probeDuration(file) {
+  const out = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]);
+  return parseFloat(out.toString());
+}
+
+function shortLicense(url) {
+  if (url.includes("publicdomain/zero")) return "CC0";
+  const version = url.match(/by\/(\d\.\d)/)?.[1];
+  if (url.includes("/by/")) return `CC-BY ${version ?? ""}`.trim();
+  return url;
+}

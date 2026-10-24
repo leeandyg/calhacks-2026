@@ -1,7 +1,7 @@
 import type { Scene } from "./scene.js";
 
 // Hand-written scenes so the room and audio can be built before the agent exists.
-// Asset ids point at the placeholder sounds in public/sounds until the real pack (#4) lands.
+// Asset ids are files in the sound pack (public/sounds/manifest.json).
 
 export const cafe: Scene = {
   room: { preset: "cafe", size: [8, 3, 8], reverb: "small-room" },
@@ -11,7 +11,7 @@ export const cafe: Scene = {
       id: "rain-1",
       label: "Rain on window",
       kind: "bed",
-      sound: { query: "steady rain on glass", assetId: "rain_placeholder" },
+      sound: { query: "steady rain on glass", assetId: "rain_window" },
       position: [-3, 1.5, 1],
       volume: 0.6,
     },
@@ -19,7 +19,7 @@ export const cafe: Scene = {
       id: "murmur-1",
       label: "Café murmur",
       kind: "bed",
-      sound: { query: "soft indistinct café murmur", assetId: "brown_noise" },
+      sound: { query: "soft indistinct café murmur", assetId: "cafe_murmur" },
       position: [2.5, 1.2, -2.5],
       volume: 0.3,
     },
@@ -27,7 +27,7 @@ export const cafe: Scene = {
       id: "cups-1",
       label: "Cups clinking",
       kind: "event",
-      sound: { query: "ceramic cup clink", assetId: "chirp_placeholder" },
+      sound: { query: "ceramic cup clink", assetId: "cup_clink" },
       position: [3, 1, 2],
       volume: 0.25,
       intervalSec: [6, 15],
@@ -44,7 +44,7 @@ export const bedroom: Scene = {
       id: "rain-1",
       label: "Rain on roof",
       kind: "bed",
-      sound: { query: "heavy rain on a roof", assetId: "rain_placeholder" },
+      sound: { query: "heavy rain on a roof", assetId: "rain_roof" },
       position: [0, 2.4, -1.5],
       volume: 0.7,
     },
@@ -52,7 +52,7 @@ export const bedroom: Scene = {
       id: "fan-1",
       label: "Desk fan",
       kind: "bed",
-      sound: { query: "steady electric fan hum", assetId: "brown_noise" },
+      sound: { query: "steady electric fan hum", assetId: "fan" },
       position: [1.8, 0.8, 1.5],
       volume: 0.35,
     },
@@ -67,7 +67,7 @@ export const forest: Scene = {
       id: "stream-1",
       label: "Creek",
       kind: "bed",
-      sound: { query: "gentle flowing creek", assetId: "rain_placeholder" },
+      sound: { query: "gentle flowing creek", assetId: "creek" },
       position: [-4, 0.3, -2],
       volume: 0.5,
     },
@@ -75,7 +75,7 @@ export const forest: Scene = {
       id: "wind-1",
       label: "Wind in trees",
       kind: "bed",
-      sound: { query: "soft wind through leaves", assetId: "brown_noise" },
+      sound: { query: "soft wind through leaves", assetId: "wind_trees" },
       position: [3, 4, 3],
       volume: 0.3,
     },
@@ -83,7 +83,7 @@ export const forest: Scene = {
       id: "birds-1",
       label: "Distant birds",
       kind: "event",
-      sound: { query: "sparrow chirps", assetId: "chirp_placeholder" },
+      sound: { query: "sparrow chirps", assetId: "sparrow" },
       position: [5, 3, -5],
       volume: 0.25,
       intervalSec: [8, 25],

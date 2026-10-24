@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "typecheck": "tsc",
     "check:gemini": "node --env-file=.env scripts/check-gemini.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sounds:fetch": "node --env-file=.env scripts/fetch-freesound.mjs",
+    "sounds:pack": "node scripts/pack.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
