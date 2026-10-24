@@ -11,7 +11,7 @@ type Props = { disabled: boolean; demoMode: boolean; refresh: number;
   onCommand: (text: string, context: AgentContext) => Promise<string> };
 
 export function AgentControls(props: Props) {
-  if (!convex) return <p className="agent-controls">Voice and memory need the saved-rooms connection.</p>;
+  if (!convex) return null;
   return <ConnectedAgentControls {...props} />;
 }
 
