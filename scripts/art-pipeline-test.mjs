@@ -33,14 +33,14 @@ await page.route('**/api/sprite',async route=>{spriteRequests++; await spritesHe
 await page.route('**/api/sound*',route=>route.fulfill({status:503,json:{error:'offline test'}}));
 try {
   await page.goto(process.env.TEST_URL??'http://localhost:5173');
-  await page.getByRole('button',{name:'Enter room'}).click();
-  await page.waitForFunction(()=>window.__pixelRoom?.().rendering);
+  assert.equal(await page.locator('canvas').count(),0,'no environment before a prompt');
   await page.getByLabel('Prompt',{exact:true}).fill('A mossy forest with birds on a branch');
   await page.getByRole('button',{name:'Send',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Imagining'}).waitFor();
   assert.equal(spriteRequests,0,'no sprite generation before the environment');
+  assert.equal(await page.locator('canvas').count(),0,'creation keeps the page centered and empty');
   releaseEnvironment();
-  await page.waitForFunction(()=>window.__pixelRoom().scene.room.art==='test-forest' && window.__pixelRoom().objects.length===2);
+  await page.waitForFunction(()=>window.__pixelRoom?.().scene.room.art==='test-forest' && window.__pixelRoom().objects.length===2);
   await page.waitForFunction(()=>document.querySelectorAll('.sound-status').length===2 && window.__spawnBusy);
   assert.deepEqual(await page.evaluate(()=>window.__pixelRoom().scene.room.terrain),terrain);
   assert.ok((await page.evaluate(()=>window.__pixelRoom().scene.objects.find(o=>o.id==='oak').position[1]))>=1.25,'audio/source position is above raised ground');

@@ -1,3 +1,4 @@
+import { createFixtureRoom } from './create-fixture-room.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir, readdir } from 'node:fs/promises';
@@ -60,7 +61,7 @@ try {
   await mkdir('test-results', { recursive: true });
   assert.ok((await readdir('public/pixel-room')).every(file => !file.endsWith('.html')), 'there is no separate pixel frontend');
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
+  await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().rendering && window.__pixelRoomWallSolid && window.__spawnBusy === false);
   assert.equal(await page.getByRole('button').count(), 3);
   assert.equal(await page.getByRole('textbox', { name: 'Prompt' }).count(), 1);

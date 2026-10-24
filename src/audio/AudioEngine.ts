@@ -344,7 +344,7 @@ async function loadGeneratedOrFallback(ctx: AudioContext, assetId: string): Prom
   }
 }
 
-/** Runs the engine (and the resolver that fills in assetIds) while `enabled` (after "Enter room"). */
+/** Runs the engine and resolver after the user's first room has been created. */
 export function useAudioEngine(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;

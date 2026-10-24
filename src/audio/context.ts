@@ -1,5 +1,5 @@
 // One AudioContext for the whole app. Browsers start it suspended until a user gesture,
-// so the "Enter room" click calls resumeAudio().
+// so prompt submission calls resumeAudio() before starting asynchronous creation.
 
 let ctx: AudioContext | undefined;
 

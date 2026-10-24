@@ -20,7 +20,7 @@ export async function memoryRequest(context: AgentContext, body: Record<string, 
   return result as AgentReply & { kind?: string; preferences?: Preference[] };
 }
 
-export async function requestAgent(prompt: string, scene: Scene, context?: AgentContext, demoMode = false): Promise<AgentReply> {
+export async function requestAgent(prompt: string, scene: Scene | null, context?: AgentContext, demoMode = false): Promise<AgentReply> {
   if (demoMode || !context?.token) {
     if (memoryCommand(prompt)) throw new Error(demoMode ? "Memory commands need a live connection. Turn off Offline demo." : "Connect to saved rooms to use memory.");
     const response = await requestScene(prompt, scene, demoMode);

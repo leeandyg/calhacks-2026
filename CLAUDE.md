@@ -40,7 +40,7 @@ Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an
 
 ## Frontend (pixel room)
 
-Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, the Enter-room overlay, and one BorderBeam-wrapped prompt bar with its status line. No preset or demo controls; the offline demo is `?demo`.
+Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, and one BorderBeam-wrapped prompt bar with its status line. A fresh page shows only the centered prompt; reveal the room and rotation arrows and move the prompt below the room after successful creation. Prompt submission unlocks audio; there is no Enter-room overlay. No preset or demo controls; the offline demo is `?demo`.
 
 - Keep view rotation separate from canonical source positions. Room rotation is manual only, through the arrows; no edge-triggered, delayed, or automatic turns.
 - No shadows and no decorative non-source objects. Every model is one sound object.

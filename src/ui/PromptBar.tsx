@@ -8,6 +8,7 @@ import { convex } from '../scene/convex.js';
 import { SavedRooms } from '../scene/SavedRooms.js';
 import { useSceneStore } from '../scene/store.js';
 import { paintEnvironment, paintSprites } from '../art/client.js';
+import { resumeAudio } from '../audio/context.js';
 
 type Status = { tone: 'busy' | 'notice' | 'error'; text: string };
 const NOTICE_MS = 8000;
@@ -16,7 +17,7 @@ const DEMO_MODE = new URLSearchParams(window.location.search).has('demo');
 
 // Sends the prompt and current scene to POST /api/scene (Gemini) and applies the reply. Without AI,
 // the client falls back to the local presets and recorded demo, and says so in the status line.
-export function PromptBar() {
+export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSceneReady: () => void }) {
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<Status>();
   const demoMode = DEMO_MODE;
@@ -33,13 +34,15 @@ export function PromptBar() {
     const prompt = text.trim();
     if (!prompt || working.current) return 'A command is already running.';
     working.current = true;
+    void resumeAudio().catch(error => console.warn('Audio could not be enabled.', error));
     setStatus({ tone: 'busy', text: 'Building your room…' });
     try {
       const before = useSceneStore.getState().scene;
-      const reply = await requestAgent(prompt, before, override ?? agentContext, demoMode);
+      const reply = await requestAgent(prompt, hasScene ? before : null, override ?? agentContext, demoMode);
       const initialResponse = reply.response;
       if (initialResponse) {
         const response = initialResponse;
+        if (!hasScene && response.kind !== 'create') throw new Error('Describe a place to create your first room.');
       let artNotice: string | undefined;
       if (response.kind === 'create' && !DEMO_MODE && !response.notice) {
         setStatus({ tone: 'busy', text: 'Imagining the ground and surroundings…' });
@@ -66,6 +69,7 @@ export function PromptBar() {
           setValue('');
           setStatus(artNotice ? { tone: 'notice', text: artNotice } : undefined);
           setRefresh(value => value + 1);
+          onSceneReady();
           return 'Room created.';
         } catch (error) {
           console.warn('environment: using the standard room', error);
@@ -90,6 +94,7 @@ export function PromptBar() {
         if (!result.ok) throw new Error(`The room could not apply that change: ${result.error}`);
         if (!DEMO_MODE && !reply.notice && store.scene.room.art) paintSprites(store.scene.room.art, useSceneStore.getState().scene.objects);
       }
+      if (response) onSceneReady();
       setValue('');
       const notice = [reply.message, reply.notice, reply.recalled?.length ? `Recalled: ${reply.recalled.join(', ')}.` : undefined].filter(Boolean).join(' ');
       setStatus(notice ? { tone: 'notice', text: notice } : undefined);
@@ -101,7 +106,7 @@ export function PromptBar() {
     } finally {
       working.current = false;
     }
-  }, [agentContext, demoMode]);
+  }, [agentContext, demoMode, hasScene, onSceneReady]);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void submitPrompt(value).catch(() => {});
@@ -109,9 +114,9 @@ export function PromptBar() {
   return <>
     {status && <p className={`prompt-status prompt-status-${status.tone}`} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
     {/* Hidden until Convex is deployed (#54). */}
-    {convex && <SavedRooms disabled={busy} onLoad={name => setStatus({ tone: 'notice', text: `Loaded “${name}” from saved rooms.` })}/>}
-    <HeadTrackingControl/>
-    <AgentControls disabled={busy} demoMode={demoMode} refresh={refresh} onContext={setAgentContext} onCommand={submitPrompt}/>
+    {hasScene && convex && <SavedRooms disabled={busy} onLoad={name => setStatus({ tone: 'notice', text: `Loaded “${name}” from saved rooms.` })}/>}
+    {hasScene && <HeadTrackingControl/>}
+    {hasScene && <AgentControls disabled={busy} demoMode={demoMode} refresh={refresh} onContext={setAgentContext} onCommand={submitPrompt}/>}
     <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={38} className="prompt-beam">
       <form className="prompt-bar" onSubmit={submit} aria-busy={busy}>
         <input type="text" aria-label="Prompt" placeholder="Generate anything..." value={value} onChange={event => setValue(event.target.value)} autoComplete="off"/>
