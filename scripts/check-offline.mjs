@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync, statSync } from "node:fs";
+import { setImmediate } from "node:timers/promises";
 import { createServer } from "vite";
 
 // Exercises the demo and failure paths without Gemini calls or API credentials.
@@ -10,7 +11,8 @@ try {
   const { requestScene } = await server.ssrLoadModule("/src/ai/client.ts");
   const { offlineResponse, demoPrompts } = await server.ssrLoadModule("/src/ai/offline.ts");
   const { Scene, SceneResponse } = await server.ssrLoadModule("/src/scene/scene.ts");
-  const { applyOp } = await server.ssrLoadModule("/src/scene/store.ts");
+  const { applyOp, useSceneStore } = await server.ssrLoadModule("/src/scene/store.ts");
+  const { startResolver } = await server.ssrLoadModule("/src/audio/resolve.ts");
   const manifest = new Map(JSON.parse(readFileSync("public/sounds/manifest.json", "utf8")).map((entry) => [entry.id, entry]));
   let passed = 0;
   async function check(name, test) { await test(); passed++; console.log(`PASS ${name}`); }
@@ -111,37 +113,62 @@ try {
     };
     assert.deepEqual(await requestScene("make the rain quieter", presets[0].scene), SceneResponse.parse(live));
   });
-  await check("unresolved live creations use a playable fallback instead of a silent room", async () => {
-    const unresolved = structuredClone(presets[0].scene);
+  await check("live creations reach the resolver and become playable pack scenes", async () => {
+    const unresolved = structuredClone(presets.find((preset) => preset.id === "forest").scene);
     unresolved.objects.forEach((object) => { delete object.sound.assetId; });
-    globalThis.fetch = async () => Response.json({ kind: "create", scene: unresolved });
-    const result = await requestScene("rainy cafe", presets[0].scene);
-    playable(result.scene);
-    assert.match(result.notice, /not linked to audio files/);
-  });
-  await check("unsupported unresolved additions preserve the current room", async () => {
-    const scene = structuredClone(presets[0].scene);
-    const before = structuredClone(scene);
-    globalThis.fetch = async () => Response.json({ kind: "edit", ops: [{ op: "add", object: {
-      ...scene.objects[0], id: "unknown-sound", sound: { query: "a new mystery sound" },
-    } }] });
-    await assert.rejects(requestScene("add a mystery sound", scene), /kept unchanged/);
-    assert.deepEqual(scene, before);
-  });
-  await check("unknown or wrong-kind live assets fall back; resolved live assets pass through", async () => {
-    let liveScene;
     globalThis.fetch = async (url) => url === "/sounds/manifest.json"
       ? Response.json([...manifest.values()])
-      : Response.json({ kind: "create", scene: liveScene });
-    for (const assetId of ["missing-file", "cup_clink"]) {
-      liveScene = structuredClone(presets[0].scene);
+      : Response.json({ kind: "create", scene: unresolved });
+    // This wording has no saved preset/demo match: a healthy API reply must still work.
+    const result = await requestScene("A peaceful riverside clearing at night", presets[0].scene);
+    assert.deepEqual(result, { kind: "create", scene: unresolved });
+    const stop = startResolver();
+    try {
+      useSceneStore.getState().setScene(result.scene); await setImmediate();
+      const resolved = useSceneStore.getState().scene;
+      playable(resolved);
+      assert.deepEqual(resolved.objects.map((object) => object.position), unresolved.objects.map((object) => object.position));
+      assert.deepEqual(resolved.objects.map((object) => object.volume), unresolved.objects.map((object) => object.volume));
+    } finally { stop(); }
+  });
+  await check("live additions reach generated IDs while preserving manually edited objects", async () => {
+    const scene = structuredClone(presets[0].scene);
+    scene.objects[0].position = [0.5, 1.2, 0.5];
+    const before = structuredClone(scene);
+    const calls = [];
+    const live = { kind: "edit", ops: [{ op: "add", object: {
+      ...scene.objects[0], id: "cat-1", label: "Purring cat", sound: { query: "a cat purring softly" },
+    } }] };
+    globalThis.fetch = async (url) => {
+      calls.push(url);
+      assert.equal(url, "/api/scene");
+      return Response.json(live);
+    };
+    const result = await requestScene("add a softly purring cat", scene);
+    assert.deepEqual(result, live);
+    useSceneStore.getState().setScene(scene);
+    const stop = startResolver();
+    try {
+      useSceneStore.getState().applyOps(result.ops); await setImmediate();
+      const edited = useSceneStore.getState().scene;
+      assert.deepEqual(edited.objects.slice(0, scene.objects.length), before.objects);
+      const cat = edited.objects.find((object) => object.id === "cat-1");
+      assert.equal(cat.sound.assetId, "gen:bed:a cat purring softly");
+      assert.deepEqual(cat.position, live.ops[0].object.position);
+      assert.deepEqual(calls, ["/api/scene"], "Resolving an ID must not trigger paid sound generation in this test");
+    } finally { stop(); }
+    assert.deepEqual(scene, before);
+  });
+  await check("resolved pack and generated asset responses pass through without manifest gating", async () => {
+    for (const assetId of ["rain_window", "gen:bed:a cat purring softly"]) {
+      const liveScene = structuredClone(presets[0].scene);
       liveScene.objects[0].sound.assetId = assetId;
-      const result = await requestScene("cafe", presets[0].scene);
-      playable(result.scene);
-      assert.match(result.notice, /missing from the local sound pack/);
+      globalThis.fetch = async (url) => {
+        assert.equal(url, "/api/scene");
+        return Response.json({ kind: "create", scene: liveScene });
+      };
+      assert.deepEqual(await requestScene("a custom environment", presets[0].scene), { kind: "create", scene: liveScene });
     }
-    liveScene = structuredClone(presets[0].scene);
-    assert.deepEqual(await requestScene("cafe", presets[0].scene), { kind: "create", scene: liveScene });
   });
   console.log(`Passed ${passed} offline checks; no real API requests were sent.`);
 } finally {
