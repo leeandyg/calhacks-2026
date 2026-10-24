@@ -20,6 +20,8 @@ const GENERIC = new Set(
     "smooth small large big little old new like room tone away").split(" "),
 );
 const NEGATIONS = new Set(["no", "not", "without", "never"]);
+/** Words after these say where a sound is, not what it is: "hum of a fridge in a cafe" isn't a cafe. */
+const LOCATIONS = new Set(["in", "at", "inside", "within", "around", "throughout", "outside", "across", "near", "by", "behind", "beside", "from"]);
 /** Verbs that can follow a sound's noun ("rain falls", "birds sing") without making it a modifier. */
 const SOUND_VERBS = new Set(
   ("fall drip patter pour tap flow run blow howl rustle crackle pop hum buzz whir sing chirp call bark purr " +
@@ -58,11 +60,12 @@ export function matchSound(
     const all = new Set(entry.tags.flatMap(tagWords));
     const matched = words.filter((w) => all.has(w));
     if (!matched.length) continue;
-    // The entry's main noun appears as the thing itself, not as a modifier: "wind chimes" and
-    // "fire alarm" don't count as wind or fire, but "rainfall on forest leaves" and "rain falling" count as rain.
+    // The entry's main noun appears as the thing itself, not as a modifier or a place: "wind chimes",
+    // "fire alarm" and "hum of a fridge in a cafe" don't count as wind, fire or cafe, but
+    // "rainfall on forest leaves" and "rain falling" count as rain.
     const nounMatched = tokens.some((t, i) => {
       const next = tokens[i + 1];
-      return !t.generic && primary.has(t.word) && (!next || next.generic || next.verb || all.has(next.word));
+      return !t.generic && !t.location && primary.has(t.word) && (!next || next.generic || next.verb || all.has(next.word));
     });
     const score =
       matched.reduce((sum, w) => sum + (primary.has(w) ? PRIMARY_WEIGHT : 1), 0) -
@@ -115,24 +118,36 @@ export function startResolver(): () => void {
   };
 }
 
-/** Query words in order (negated ones dropped), stemmed, with generic words flagged. */
-type Token = { word: string; generic: boolean; verb: boolean };
+type Token = { word: string; generic: boolean; verb: boolean; location: boolean };
 
+/**
+ * Query words in order (negated ones dropped), stemmed, with generic words, verbs and place words
+ * flagged. Each comma-separated clause starts fresh: "rain in the forest, distant thunder".
+ */
 function queryTokens(query: string): Token[] {
   const tokens: Token[] = [];
-  let negated = false;
-  for (const raw of normalize(query).split(" ")) {
-    if (!raw) continue;
-    if (NEGATIONS.has(raw)) {
-      negated = true; // "no voices": drop the next word
-      continue;
+  for (const clause of query.split(/[,;.]/)) {
+    let negated = false;
+    let location = false;
+    for (const raw of normalize(clause).split(" ")) {
+      if (!raw) continue;
+      if (NEGATIONS.has(raw)) {
+        negated = true; // "no voices": drop the next word
+        continue;
+      }
+      if (negated) {
+        negated = false;
+        continue;
+      }
+      if (LOCATIONS.has(raw)) location = true;
+      const w = stem(raw);
+      tokens.push({
+        word: SYNONYMS.get(w) ?? w,
+        generic: GENERIC.has(raw),
+        verb: raw.endsWith("ing") || SOUND_VERBS.has(w),
+        location,
+      });
     }
-    if (negated) {
-      negated = false;
-      continue;
-    }
-    const w = stem(raw);
-    tokens.push({ word: SYNONYMS.get(w) ?? w, generic: GENERIC.has(raw), verb: raw.endsWith("ing") || SOUND_VERBS.has(w) });
   }
   return tokens;
 }

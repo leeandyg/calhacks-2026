@@ -114,7 +114,7 @@ The Freesound candidates move to `assets/raw/<sound>/_unused/`; move them back a
 
 The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one: a pack sound when the tags match well, otherwise `gen:<kind>:<query>`, which the audio engine generates through `GET /api/sound?kind=bed|event&q=...` (ElevenLabs: v2 for 15 s loops, v3 for 2 s one-shots). Generated sounds are converted to mono, matched to pack loudness and cached, and fall back to the closest pack sound if generation fails. `useSoundStatus` in `src/audio/generated.ts` says which sounds are still generating.
 
-Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
+Run `npm run check:resolver` to see which descriptions use a pack sound and which get generated; it reads the local manifest and makes no API calls. Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
 
 ## Layout
 
