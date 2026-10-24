@@ -1,7 +1,7 @@
 import { Html } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { createContext, useContext, useRef, type RefObject } from "react";
-import type { Listener as ListenerState, SoundObject } from "../scene/scene.js";
+import { roomSize, type Listener as ListenerState, type SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
 
 // The 3D view of the scene store. It only renders; changes go back through applyOps.
@@ -25,7 +25,7 @@ export function Room() {
 
 function RoomCanvas() {
   const scene = useSceneStore((s) => s.scene);
-  const [w, , d] = scene.room.size;
+  const [w, , d] = roomSize(scene.room);
 
   return (
     <Canvas orthographic camera={{ position: [10, 10, 10], zoom: 50 }}>

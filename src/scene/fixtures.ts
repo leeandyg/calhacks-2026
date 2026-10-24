@@ -1,10 +1,10 @@
-import type { Scene } from "./scene.js";
+import { DEFAULT_GRID, type Scene } from "./scene.js";
 
 // Hand-written scenes so the room and audio can be built before the agent exists.
 // Asset ids are files in the sound pack (public/sounds/manifest.json).
 
 export const cafe: Scene = {
-  room: { preset: "cafe", size: [8, 3, 8], reverb: "small-room" },
+  room: { preset: "cafe", grid: DEFAULT_GRID, openings: [], reverb: "small-room" },
   listener: { position: [0, 1.6, 0], yaw: 0 },
   objects: [
     {
@@ -37,7 +37,7 @@ export const cafe: Scene = {
 };
 
 export const bedroom: Scene = {
-  room: { preset: "bedroom", size: [5, 2.6, 5], reverb: "small-room" },
+  room: { preset: "bedroom", grid: DEFAULT_GRID, openings: [], reverb: "small-room" },
   listener: { position: [0, 1.6, 0], yaw: 0 },
   objects: [
     {
@@ -61,7 +61,7 @@ export const bedroom: Scene = {
 };
 
 export const forest: Scene = {
-  room: { preset: "forest", size: [14, 6, 14], reverb: "outdoor" },
+  room: { preset: "forest", grid: DEFAULT_GRID, openings: [], reverb: "outdoor" },
   listener: { position: [0, 1.6, 0], yaw: 0 },
   objects: [
     {

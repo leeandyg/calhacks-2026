@@ -40,7 +40,7 @@ try {
     const angles = beds.map((object) => Math.atan2(object.position[2], object.position[0]));
     const spread = Math.max(...angles.flatMap((a) => angles.map((b) => Math.acos(Math.cos(a - b)))));
     assert.ok(spread >= Math.PI / 3, `${preset}: masking beds are clustered together`);
-    const far = Math.min(3, 0.7 * Math.hypot(scene.room.size[0] / 2, scene.room.size[2] / 2));
+    const far = Math.min(3, 0.7 * Math.hypot(scene.room.grid.columns / 2, scene.room.grid.rows / 2));
     for (const event of scene.objects.filter((object) => object.kind === "event")) {
       assert.ok(event.volume <= 0.25, `${preset}: ${event.label} is too loud`);
       assert.ok(distance(event, scene) >= far, `${preset}: ${event.label} is too close`);

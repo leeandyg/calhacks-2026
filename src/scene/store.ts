@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { cafe } from "./fixtures.js";
-import { EditOp, Scene, type Room, type SoundObject, type Vec3 } from "./scene.js";
+import { EditOp, Scene, roomSize, type Room, type SoundObject, type Vec3 } from "./scene.js";
 
 // The one place scene state lives. The room view and the audio engine render whatever is here;
 // drags, the agent and presets change it only through setScene / applyOps.
@@ -29,17 +29,24 @@ export function applyOp(scene: Scene, op: EditOp): Scene {
     case "remove":
       return { ...scene, objects: scene.objects.filter((o) => o.id !== op.id) };
     case "move":
-      return updateObject(scene, op.id, (o) => ({ ...o, position: clampPosition(op.position, scene.room) }));
+      return updateObject(scene, op.id, (o) => ({
+        ...o,
+        position: clampPosition(op.position, scene.room),
+        wall: op.wall === undefined ? o.wall : op.wall,
+      }));
     case "set_volume":
       return updateObject(scene, op.id, (o) => ({ ...o, volume: op.volume }));
     case "set_room": {
       const room: Room = {
         preset: op.preset,
-        size: op.size ?? scene.room.size,
+        grid: op.grid ?? scene.room.grid,
+        openings: op.openings ?? scene.room.openings,
         reverb: op.reverb ?? scene.room.reverb,
       };
       return clampScene({ ...scene, room });
     }
+    case "set_muted":
+      return updateObject(scene, op.id, (o) => ({ ...o, muted: op.muted }));
   }
 }
 
@@ -53,7 +60,7 @@ function updateObject(scene: Scene, id: string, fn: (o: SoundObject) => SoundObj
 
 /** Keeps x and z inside the floor and y between the floor and the ceiling. */
 export function clampPosition([x, y, z]: Vec3, room: Room): Vec3 {
-  const [w, h, d] = room.size;
+  const [w, h, d] = roomSize(room);
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   return [clamp(x, -w / 2, w / 2), clamp(y, 0, h), clamp(z, -d / 2, d / 2)];
 }
