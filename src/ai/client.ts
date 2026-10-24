@@ -1,20 +1,15 @@
 import { SceneResponse, type Scene, type SceneRequest } from "../scene/scene.js";
 import { currentAgentSession, followManagedRun } from './managedClient.js';
 import type { ManagedAssets } from './world.js';
-import { offlineResponse } from "./offline.js";
 
 // Browser side of POST /api/scene. Keys stay on the server; this only sends the prompt and scene.
 
 export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void): Promise<SceneResponse & { notice?: string; managed?: ManagedAssets }> {
-  function localResponse() {
-    try {
-      const saved = offlineResponse(prompt, scene);
-      return { ...saved.response, notice: `${demoMode ? "Demo mode." : "AI unavailable."} ${saved.notice}` };
-    } catch (error) {
-      throw new Error(`${demoMode ? "" : "AI unavailable. "}${error instanceof Error ? error.message : "Choose a local preset."}`);
-    }
+  if (demoMode) {
+    const { offlineResponse } = await import("./offline.js");
+    const saved = offlineResponse(prompt, scene);
+    return { ...saved.response, notice: `Demo mode. ${saved.notice}` };
   }
-  if (demoMode) return localResponse();
 
   const body: SceneRequest = { prompt, scene };
   let res: Response;
@@ -26,11 +21,11 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
-    return localResponse();
+    throw new Error("Could not reach the scene agent. Your room was kept unchanged. Please try again.");
   }
   if (!res.ok) {
-    if (res.status === 429 || res.status >= 500) return localResponse();
-    throw new Error(`/api/scene failed: ${res.status} ${await res.text()}`);
+    const error = await res.json().catch(() => null);
+    throw new Error(`Scene agent (${res.status}): ${error?.error || 'Generation failed.'} Your room was kept unchanged.`);
   }
   const json = await res.json().catch(() => null);
   if (json?.kind === 'managed' && typeof json.token === 'string') {
@@ -41,6 +36,6 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
     // Missing assetIds are expected: the store's resolver assigns pack or generated IDs.
     return SceneResponse.parse(json);
   } catch {
-    return localResponse();
+    throw new Error("The scene agent returned an invalid scene. Your room was kept unchanged. Please try again.");
   }
 }

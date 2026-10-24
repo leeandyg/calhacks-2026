@@ -9,6 +9,7 @@ export type EnvArt = {
   id: string;
   concept: string;
   managed?: boolean;
+  /** Legacy environment hint; never hides the fixed structural shell. */
   openAir?: boolean;
   animations?: Partial<Record<Surface, { frames: number; fps: number }>>;
   /** Wall tops and the floor's outer edge. */
@@ -48,11 +49,13 @@ export function setSprite(key: string, sprite: SpriteArt) {
 }
 
 /** One prop per object per environment; its label says what to paint. */
-export function spriteKey(envId: string, object: Pick<SoundObject, "label" | "sound" | "wall">): string {
+export function spriteKey(envId: string, object: Pick<SoundObject, "id" | "label" | "sound" | "wall">): string {
+  // Managed art belongs to the canonical source, including after dragging onto/off a wall.
+  if (useArtStore.getState().envs[envId]?.managed) return JSON.stringify([envId, object.id]);
   return JSON.stringify([envId, object.label, object.sound.query, object.wall ? 'wall' : 'floor']);
 }
 
 /** The prop art an object waits for before it comes out of its portal, if any. */
-export function spriteFor(envId: string | undefined, object: Pick<SoundObject, "label" | "sound" | "wall">): SpriteArt | undefined {
+export function spriteFor(envId: string | undefined, object: Pick<SoundObject, "id" | "label" | "sound" | "wall">): SpriteArt | undefined {
   return envId ? useArtStore.getState().sprites[spriteKey(envId, object)] : undefined;
 }

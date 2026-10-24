@@ -44,6 +44,7 @@ function Source({ object }: { object: SoundObject }) {
   const startGesture = useSourceDrag(object.id, group);
   const schedule = useSpawnSchedule();
   const room = useSceneStore(state => state.scene.room);
+  const managed = useArtStore(state => room.art ? state.envs[room.art]?.managed : false);
   const art = useArtStore(state => room.art ? state.sprites[spriteKey(room.art, object)] : undefined);
   useEffect(() => {
     if (room.art && !art) paintSprites(room.art, [object]);
@@ -89,7 +90,7 @@ function Source({ object }: { object: SoundObject }) {
   const height = object.position[1] / object.scale;
   const footprint = gridFootprint(object);
   return <group ref={group} name={`sound-${object.id}`} position={object.position} rotation={[0, rotation, 0]} scale={object.scale} userData={{ model, muted: object.muted, wall: object.wall }} onPointerDown={startGesture} onPointerOver={event => { event.stopPropagation(); if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = 'grab'; }} onPointerOut={() => { if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = ''; }}>
-    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
+    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : managed || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
   </group>;
 }
 

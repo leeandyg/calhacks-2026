@@ -7,7 +7,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [], requests = [];
 // This suite tests prompts and the standard-room fallback. The art pipeline has its own suite.
 await page.route('**/api/environment', route => route.fulfill({ json: { error: 'Art disabled for prompt test' } }));
-// /api/scene is stubbed: a live agent reply, then an outage that must fall back to a local preset.
+// /api/scene is stubbed: live replies and outages that must never insert fixtures.
 let reply;
 await page.route('**/api/scene', async route => { requests.push(route.request().postDataJSON()); await reply(route); });
 page.on('pageerror', error => errors.push(error.message));
@@ -38,6 +38,7 @@ try {
   await input.fill('   '); await input.press('Enter');
   assert.ok(await send.isDisabled());
   assert.equal(requests.length, 0);
+  assert.deepEqual(await page.evaluate(() => window.sceneStore.getState().scene.objects), [], 'canonical startup contains no hidden dummy objects');
   // A failed first creation leaves the page empty and the original prompt editable.
   reply = route => route.fulfill({ json: { kind: 'edit', ops: [] } });
   await input.fill('Make it quieter'); await send.click();
@@ -103,16 +104,17 @@ try {
   await page.waitForFunction(() => document.querySelector('.sound-status')?.textContent.includes('using the closest sound'));
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'remove', id: 'cat-1' }]));
   await label.waitFor({ state: 'detached' });
-  // Without the AI, a supported prompt loads its local preset and says so.
-  reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Set GEMINI_API_KEY' } }), { outage: true });
+  // Live failures preserve the generated room rather than silently loading a preset.
+  const beforeFailure = await scene();
+  reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Scene generation unavailable' } }), { outage: true });
   await input.fill('cabin'); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'cabin');
-  assert.match(await page.getByRole('status').innerText(), /AI unavailable/);
-  assert.ok((await scene()).objects.every(object => object.sound.assetId));
-  // An unsupported prompt keeps the room and shows an error.
+  await page.getByRole('alert').filter({ hasText: 'kept unchanged' }).waitFor();
+  assert.deepEqual(await scene(), beforeFailure);
+  assert.equal(await input.inputValue(), 'cabin');
   await input.fill('paint the walls blue'); await send.click();
+  await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'false');
   assert.match(await page.getByRole('alert').innerText(), /kept unchanged/);
-  assert.equal((await scene()).room.preset, 'cabin');
+  assert.deepEqual(await scene(), beforeFailure);
   assert.equal(await input.inputValue(), 'paint the walls blue', 'a failed prompt stays editable');
   await page.waitForFunction(() => !window.__spawnBusy);
   const before = await page.evaluate(() => window.__pixelRoom().orientation);
@@ -156,5 +158,5 @@ try {
   assert.match(await page.getByRole('status').innerText(), /Demo mode/);
   assert.equal(requests.length, sent, '?demo sends no AI requests');
   assert.deepEqual(errors, []);
-  console.log('PASS: one BorderBeam pill, specified dimensions/colors, blank input guard, live create/edit and offline-fallback prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
+  console.log('PASS: one BorderBeam pill, specified dimensions/colors, blank input guard, live create/edit and safe live-failure prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
 } finally { await browser.close(); }

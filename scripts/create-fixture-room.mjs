@@ -1,7 +1,7 @@
 // Geometry/gesture suites deliberately create the existing fixture through the prompt. A fresh
 // page stays empty; this helper stubs generation so these suites never spend provider credits.
 export async function createFixtureRoom(page) {
-  const scene = await page.evaluate(() => window.sceneStore.getState().scene);
+  const scene = await page.evaluate(async () => (await import('/src/scene/fixtures.ts')).starter);
   const reply = route => route.fulfill({ json: { kind: 'create', scene } });
   const noArt = route => route.fulfill({ json: { error: 'Use stock geometry for this test' } });
   await page.route('**/api/scene', reply);

@@ -5,6 +5,15 @@ import { presets } from './presets.js';
 import { Scene } from './scene.js';
 import { getRoomConfig } from '../room/roomConfig.js';
 
+const initialScene = useSceneStore.getState().scene;
+it('starts with only the fixed empty structure, without starter content', () => {
+  expect(initialScene.objects).toEqual([]);
+  expect(initialScene.room.grid).toEqual({ mode: 'Square', columns: 10, rows: 10, wallHeight: 7 });
+  expect(initialScene.room.art).toBeUndefined();
+  expect(initialScene.room.terrain).toBeUndefined();
+  expect(initialScene.session).toBeUndefined();
+});
+
 describe('frontend scene contract and edit operations', () => {
   beforeEach(() => { useSceneStore.getState().setScene(starter); });
   it('keeps terrain in canonical source placement and preserves it across sound edits', () => {

@@ -39,6 +39,9 @@ describe('managed world integration', () => {
     expect(result.kind).toBe('managed');
     expect(JSON.stringify(sent)).toContain('Quiet rain');
     expect(JSON.stringify(sent)).toContain('The current prompt wins');
+    expect(JSON.stringify(sent)).toContain('Start from an EMPTY fixed shell');
+    expect(JSON.stringify(sent)).toContain('exactly 0.42 blocks');
+    expect(JSON.stringify(sent)).toContain('never replace them with flat cutouts');
     expect(JSON.stringify(result)).not.toContain(settings.apiKey);
     expect(sent).toMatchObject({ agent: { type: 'agent_with_overrides', id: settings.agentId, system: expect.stringContaining('AI Pixel World Director') }, environment_id: settings.environmentId });
   });

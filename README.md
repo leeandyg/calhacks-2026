@@ -39,7 +39,7 @@ clamps positions to room bounds, and retries invalid output once. Transient prov
 and connection errors get up to two retries with increasing delays (about 1s, then
 2s, with jitter), with a 20-second timeout per attempt. Timeouts return HTTP 504;
 provider overload returns HTTP 503, and quota errors return HTTP 429. A new environment
-request can replace the starter scene; follow-up changes return edit ops so manual
+request creates a world from the empty fixed structure; follow-up changes return edit ops so manual
 placements survive. Try "rainy cafe, I'm writing an essay", then "make the rain quieter".
 
 New scenes place masking beds close and in different directions, with event sounds
@@ -52,13 +52,11 @@ speech restrictions, and preservation of existing positions and unrelated object
 The agent only supplies `sound.query`. Valid live scenes and additions go into the
 scene store without an `assetId`; the active resolver fills it with a pack sound or
 a `gen:` ID for ElevenLabs. Existing resolved objects keep their assets during edits.
-Six local presets (Rainy café, Bedroom, Forest, Library, Cabin, Coast) use bundled
-sounds and do not need an API key. If an AI request fails, returns bad
-output, or takes longer than 15 seconds, supported prompts use a local preset or a
-saved edit and show an **AI unavailable** notice. Unsupported edits keep the current
-room intact and ask you to choose a preset or a supported demo prompt.
-Missing asset IDs in a valid AI response are part of normal live resolution and do
-not trigger offline replay. Open the app with `?demo` when you want saved responses.
+Six local presets (Rainy café, Bedroom, Forest, Library, Cabin, Coast) are available only in
+explicit `?demo` mode. Live requests never load a preset or recorded edit on failure. The app
+starts with an empty canonical scene and a centered prompt; errors keep it empty, or preserve
+the current generated world and prompt for retry. Missing asset IDs in valid AI output are
+resolved normally and do not trigger offline replay.
 
 ## Offline demo
 
@@ -279,8 +277,8 @@ Claude Opus 5.5, low effort, with the built-in agent toolset). The agent reads t
 chirp skills, writes and builds code inside Anthropic's sandbox, and publishes PNG strips, audio
 and a validated scene manifest. Generated JavaScript is never executed by this app's backend or
 browser. The existing room/terrain, manual rotation, drag/mute behavior, portals and HRTF audio
-engine consume the compiled results. Open-air scenes omit the structural wall panels, with
-optional transparent landscape backdrops. Sprite/environment strips animate in the room's pixel
+engine consume the compiled results. Every theme retains the fixed 10×10×7 shell, 0.42-block slabs and complete flush corners.
+Generated artwork paints its real surfaces; legacy `openAir` metadata cannot hide the walls. Sprite/environment strips animate in the room's pixel
 pass; event-source animation plays with its audio and mute freezes source motion.
 
 `POST /api/scene` starts a session or sends a follow-up event and returns a signed session token.
@@ -317,7 +315,7 @@ distinct pxl paintings for the floor and each wall. An NDJSON stream delivers th
 as it finishes. The interactive room displays the terrain and paintings before a second scene pass
 places the physical sound sources in that environment. `/api/sprite` paints each source, while a
 portal and a “generating…” label hold its position; the finished prop emerges through that portal.
-Follow-up edits preserve the environment. `?demo` and offline fallbacks use the stock room and props.
+Follow-up edits preserve the environment. Only explicit `?demo` mode uses preset rooms and props; live failures preserve the current scene.
 
 The art agents receive the pinned [pxl skill and reference](https://github.com/uilianks/pxl)
 (MIT), render their code, and get errors, lint coordinates and a PNG preview for up to two further

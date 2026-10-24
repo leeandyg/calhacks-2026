@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { ZodError } from "zod";
-import { starter } from "./fixtures.js";
 import { placeInRoom, wallLength } from "./layout.js";
-import { EditOp, MAX_OBJECTS, Scene, roomSize, type EditOpInput, type Room, type SceneInput, type SoundObject, type Vec3 } from "./scene.js";
+import { DEFAULT_GRID, EditOp, MAX_OBJECTS, Scene, roomSize, type EditOpInput, type Room, type SceneInput, type SoundObject, type Vec3 } from "./scene.js";
 
 // The one place scene state lives. The room view and the audio engine render whatever is here;
 // drags, the agent and presets change it only through setScene / applyOps. Both are all or
@@ -17,7 +16,12 @@ type SceneState = {
 };
 
 export const useSceneStore = create<SceneState>()((set, get) => ({
-  scene: prepare(starter),
+  // Only fixed geometry exists before the user's first successful generation.
+  scene: prepare({
+    room: { preset: "bedroom", grid: DEFAULT_GRID, openings: [], reverb: "none" },
+    listener: { position: [0, 1.6, 0], yaw: 0 },
+    objects: [],
+  }),
   setScene: (scene) => mutate(() => set({ scene: prepare(scene) })),
   applyOps: (ops) =>
     mutate(() => {
