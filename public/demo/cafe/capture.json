@@ -8,17 +8,17 @@
     {
       "objectId": "demo-cafe-source-1",
       "libraryId": "rain_window",
-      "license": "Generated (ElevenLabs)"
+      "license": "CC0"
     },
     {
       "objectId": "demo-cafe-source-2",
-      "provider": "ElevenLabs",
-      "note": "Reviewed physical-source description; natural recording."
+      "libraryId": "espresso",
+      "license": "CC0"
     },
     {
       "objectId": "demo-cafe-source-3",
       "libraryId": "cup_clink",
-      "license": "Generated (ElevenLabs)"
+      "license": "CC0"
     }
   ],
   "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo."

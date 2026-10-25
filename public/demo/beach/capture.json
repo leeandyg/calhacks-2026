@@ -17,8 +17,8 @@
     },
     {
       "objectId": "demo-beach-source-3",
-      "provider": "ElevenLabs",
-      "note": "Reviewed physical-source description; natural recording."
+      "libraryId": "seagull_call",
+      "license": "CC0"
     }
   ],
   "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo."
