@@ -46,9 +46,9 @@ try {
   assert.ok(Math.abs(offset[0] - offset[2]) < 1e-9);
   assert.ok(Math.abs(Math.atan2(offset[1], Math.hypot(offset[0], offset[2])) - Math.PI / 6) < 1e-9);
   assert.equal(await page.getByRole('button', { name: 'Rotate Right', exact: true }).evaluate(el => getComputedStyle(el).boxShadow), 'none');
-  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), `${(await page.locator('.assets-panel').innerText()).replace(/\s+/g, ' ').trim()} Head tracking Rainy café Beach Cyberpunk city Zen garden`, 'the Assets panel, head tracking and the four captured choices');
+  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), `${(await page.locator('.assets-panel').innerText()).replace(/\s+/g, ' ').trim()} SETTINGS Head tracking Rainy café Beach Cyberpunk city Zen garden`, 'the Assets panel, Settings head tracking and the four captured choices');
   assert.equal(await page.locator('header,nav,footer,textarea,select,h1').count(), 0);
-  assert.equal(await page.locator('h2').count(), 1, 'only the Assets panel heading');
+  assert.equal(await page.locator('h2').count(), 2, 'the Assets and Settings panel headings');
   assert.deepEqual(initial.objects.map(object => object.model).sort(), ['birds', 'fan', 'rain']);
   const canvas = await page.locator('canvas').boundingBox();
   assert.deepEqual([canvas.x, canvas.y, canvas.width, canvas.height], [0, 0, 1440, 900], 'full-viewport canvas');

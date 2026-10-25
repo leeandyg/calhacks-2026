@@ -77,8 +77,7 @@ export function AssetsPanel() {
   const objects = useSceneStore(state => state.scene.objects);
   const envId = useSceneStore(state => state.scene.room.art);
   const direction = useRoomStore(state => bearDirection(state.viewAngle));
-  return <div className="assets-dock">
-    <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={24} className="assets-beam">
+  return <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={24} className="assets-beam">
       <section className="assets-panel" aria-label="Assets">
         <h2 className="assets-title">Assets</h2>
         <ul className="assets-list">
@@ -89,6 +88,5 @@ export function AssetsPanel() {
           {objects.map(object => <AssetRow key={object.id} object={object} envId={envId}/>)}
         </ul>
       </section>
-    </BorderBeam>
-  </div>;
+    </BorderBeam>;
 }

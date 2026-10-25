@@ -16,13 +16,16 @@ export function HeadTrackingControl() {
     : status === "tracking" ? (degrees === 0 ? "Facing forward" : `${Math.abs(degrees)}° ${degrees > 0 ? "left" : "right"}`)
     : status === "error" ? error : undefined;
   return (
-    <span className="head-tracking">
-      <label>
-        <input type="checkbox" checked={on} onChange={(event) => (event.target.checked ? startHeadTracking() : stopHeadTracking())} />
-        Head tracking
+    <div className="head-tracking">
+      <label className="switch-row">
+        <span className="switch">
+          <input type="checkbox" checked={on} onChange={(event) => (event.target.checked ? startHeadTracking() : stopHeadTracking())} />
+          <span className="switch-track"><span className="switch-knob" /></span>
+        </span>
+        <span className="switch-label">Head tracking</span>
       </label>
       {on && <button type="button" className="head-recenter" onClick={recenterHeadTracking} disabled={status !== "tracking" && status !== "lost"}>Recenter</button>}
       {text && <span className="head-status" role={status === "error" ? "alert" : "status"}>{text}</span>}
-    </span>
+    </div>
   );
 }

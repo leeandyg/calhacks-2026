@@ -104,7 +104,8 @@ function PixelRoomRenderer({ loading }: { loading: boolean }) {
           vec4 bear = texture2D(avatar, uvScreen);
           float bearDepth = texture2D(avatarDepth, uvScreen).r;
           bear.a *= step(bearDepth, texture2D(shellDepth, uvScreen).r + 0.00001);
-          if (object.a > 0.5 && texture2D(propDepth, uvScreen).r < bearDepth) bear.a = 0.0;
+          // The central listener avatar always stacks on top of sound sources, so dragging a
+          // source onto the bear leaves the bear visible instead of being hidden behind it.
           color = bear.rgb * bear.a + color * (1.0 - bear.a);
           alpha = bear.a + alpha * (1.0 - bear.a);
           gl_FragColor = vec4(color, alpha);

@@ -133,7 +133,7 @@ try {
   assert.equal((await inspect()).dragging, null);
   assert.equal(await page.getByRole('button').count(), 7 + 2 * (await inspect()).scene.objects.length, '2 arrows, send, four captured choices, plus disable & delete per asset');
   await page.getByRole('status').waitFor({ state: 'detached' });
-  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), `${(await page.locator('.assets-panel').innerText()).replace(/\s+/g, ' ').trim()} Head tracking Rainy café Beach Cyberpunk city Zen garden`);
+  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), `${(await page.locator('.assets-panel').innerText()).replace(/\s+/g, ' ').trim()} SETTINGS Head tracking Rainy café Beach Cyberpunk city Zen garden`);
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');
   console.log('PASS: touch tap mute/unmute, muted dragging, minimal mobile UI, no shadows and no browser errors');

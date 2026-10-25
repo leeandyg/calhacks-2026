@@ -32,7 +32,7 @@ try {
     assert.deepEqual(await page.evaluate(() => window.__pixelRoom().avatar), [0, 1.275, 0]);
     assert.deepEqual(await page.evaluate(() => window.sceneStore.getState().scene.objects), [], 'bear is never an audible/generated source');
   }
-  const views = ['back-left', 'back-right', 'front-right', 'front-left'];
+  const views = ['front-right', 'front-left', 'back-left', 'back-right'];
   for (let turn = 0; turn < 4; turn++) {
     await page.getByRole('button', { name: 'Rotate Right', exact: true }).click();
     await page.waitForFunction(() => !window.__pixelRoom().rotating);

@@ -11,11 +11,11 @@ import { BEAR_VIEWS, bearDirection } from './bearDirections.js';
 export function BearAvatar() {
   const room = useSceneStore(state => state.scene.room);
   const direction = useRoomStore(state => bearDirection(state.viewAngle));
-  const frontLeft = usePaintTexture(BEAR_VIEWS[0].image);
-  const frontRight = usePaintTexture(BEAR_VIEWS[1].image);
-  const backRight = usePaintTexture(BEAR_VIEWS[2].image);
-  const backLeft = usePaintTexture(BEAR_VIEWS[3].image);
-  const texture = [frontLeft, frontRight, backRight, backLeft][direction];
+  const backRight = usePaintTexture(BEAR_VIEWS[0].image);
+  const backLeft = usePaintTexture(BEAR_VIEWS[1].image);
+  const frontLeft = usePaintTexture(BEAR_VIEWS[2].image);
+  const frontRight = usePaintTexture(BEAR_VIEWS[3].image);
+  const texture = [backRight, backLeft, frontLeft, frontRight][direction];
   const ref = useRef<Sprite>(null);
   // Sit on the highest central cell covered by the bear's feet, including on
   // an even-sized grid where the exact room center meets four terrain cells.

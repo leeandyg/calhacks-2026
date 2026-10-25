@@ -174,9 +174,17 @@ canvas { display: block; touch-action: none; }
 }
 .enter-room:hover { transform: translateY(-1px); }
 .enter-room:focus-visible { outline: 2px solid #e8e8f0; outline-offset: 3px; }
-.head-tracking { pointer-events: auto; font-size: 12px; color: #9a9fac; margin-bottom: 8px; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.head-tracking label { display: flex; align-items: center; gap: 6px; }
-.head-tracking input[type="checkbox"] { width: 14px; height: 14px; margin: 0; accent-color: #5b6ce0; }
+.head-tracking { pointer-events: auto; font-size: 13px; color: #e8e8f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.switch-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.switch-label { font-size: 14px; color: #e8e8f0; font-weight: 500; }
+/* iOS-style toggle: a visually hidden checkbox drives a purple track + sliding knob. */
+.switch { position: relative; display: inline-flex; flex: 0 0 auto; width: 40px; height: 24px; }
+.switch input { position: absolute; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.switch-track { pointer-events: none; width: 100%; height: 100%; border-radius: 999px; background: #3a3d47; transition: background 160ms; }
+.switch-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 160ms; }
+.switch input:checked ~ .switch-track { background: #5b6ce0; }
+.switch input:checked ~ .switch-track .switch-knob, .switch input:checked + .switch-track .switch-knob { transform: translateX(16px); }
+.switch input:focus-visible ~ .switch-track { outline: 2px solid #e8e8f0; outline-offset: 2px; }
 .head-recenter {
   padding: 4px 10px;
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -259,18 +267,25 @@ canvas { display: block; touch-action: none; }
   right: max(18px, env(safe-area-inset-right));
   z-index: 1;
   width: min(320px, 88vw);
-  pointer-events: none;
-}
-.assets-beam { width: 100%; border-radius: 24px; pointer-events: auto; }
-.assets-panel {
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 24px);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: min(72vh, 620px);
+  pointer-events: none;
+}
+.assets-beam { width: 100%; border-radius: 24px; pointer-events: auto; }
+.assets-panel, .settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 18px;
   border-radius: 24px;
   background: #2a2c33;
   border: 1px solid rgba(255, 255, 255, 0.07);
+}
+/* Assets takes about half the dock and scrolls so a long source list never crowds out Settings. */
+.assets-panel {
+  max-height: min(46dvh, 460px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -362,7 +377,8 @@ canvas { display: block; touch-action: none; }
 .asset-delete:hover { background: rgba(255, 92, 92, 0.16); color: #ff9b9b; }
 @media (max-width: 720px) {
   .assets-dock { width: min(260px, 70vw); }
-  .assets-panel { max-height: 42vh; padding: 14px; }
+  .assets-panel { max-height: 26vh; padding: 14px; }
+  .settings-panel { padding: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .assets-beam::before, .assets-beam::after, .assets-beam [data-beam-bloom] { animation: none !important; }

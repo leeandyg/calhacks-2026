@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { HeadTrackingControl } from '../sensors/HeadTrackingControl.js';
 import { BorderBeam } from 'border-beam';
 import { requestScene } from '../ai/client.js';
 import { requestAgent, type AgentContext, type AgentReply, type CommandOptions } from '../ai/agent.js';
@@ -196,7 +195,6 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: 
     {status?.text && <p className={`prompt-status prompt-status-${status.tone}`} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
     {/* Hidden until Convex is deployed (#54). */}
     {hasScene && convex && <SavedRooms disabled={busy} onLoad={name => setStatus({ tone: 'notice', text: `Loaded “${name}” from saved rooms.` })}/>}
-    {hasScene && <HeadTrackingControl/>}
     {hasScene && <AgentControls disabled={busy} demoMode={demoMode} refresh={refresh} onContext={setAgentContext} onCommand={submitPrompt}/>}
     </div>
     <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={38} className="prompt-beam">
