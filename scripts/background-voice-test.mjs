@@ -92,8 +92,10 @@ try {
   await expect(fixture().getByRole('button', { name: 'Talk to agent', exact: true })).toBeEnabled();
   await fixture().getByLabel('Hey agent', { exact: true }).check();
   let socket = await listening();
-  await fixture().getByText('Environment memory', { exact: true }).click();
-  await fixture().getByLabel('Preference task', { exact: true }).fill('homework');
+  await page.evaluate(() => {
+    const state = window.sceneStore.getState();
+    state.setScene({ ...state.scene, session: { ...state.scene.session, task: 'homework' } });
+  });
   assert.equal(await page.evaluate(() => window.voiceGain()), 1, 'standby never ducks room audio');
   const homework = await context.newPage(); await homework.goto('data:text/html,<title>Homework</title><textarea>Homework notes</textarea>');
   // Restore native focus behavior; Playwright normally forces every tab focused.

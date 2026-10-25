@@ -327,6 +327,16 @@ For the Convex track. Convex sits **next to** the current app, not under it: the
 - Scenes are stored as `v.any()` and validated with the zod `Scene`, so `scene.ts` stays the only contract.
 - The PR also sets Convex up: the package, `convex/schema.ts`, the browser client (`src/scene/convex.ts`) and `npm run convex:dev`.
 
+### AI-authored saved-place names (#151)
+
+New managed worlds include `environment.title`, a short, literal 1–4 word environment label authored by the
+world agent alongside its artwork (for example, "Rainy Cafe", "Beach", or "Zen Garden").
+Names use the place type and defining atmosphere; avoid poetic names or invented venue names. The Gemini environment planner returns the same `title`
+metadata. The browser keeps it in art state and auto-saves it as the Visited places name,
+without another model call or changes to the canonical scene JSON. Legacy worlds without a
+title retain the description/source-label fallback. Distinct visits with the same title receive
+a numbered suffix; later edits preserve the saved name.
+
 **Saved sounds (A, @leeandyg, #53, after #52)**
 
 - **Why:** today a generated sound is cached only by the browser that asked for it and by Vercel's CDN, which is per region and cleared on each deployment. A judge's laptop starts cold, and after a redeploy the same sound can be paid for again (about 600 credits per 15 s loop).

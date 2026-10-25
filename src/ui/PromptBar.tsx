@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { HeadTrackingControl } from '../sensors/HeadTrackingControl.js';
+import { createPortal } from 'react-dom';
+import { TemplatesPanel } from './TemplatesPanel.js';
 import { BorderBeam } from 'border-beam';
 import { requestScene } from '../ai/client.js';
 import { requestAgent, type AgentContext, type AgentReply, type CommandOptions } from '../ai/agent.js';
 import { commandChange, quickCommand, sceneFingerprint, undoScene, type CommandChange } from '../ai/quickCommands.js';
 import { SceneResponse } from '../scene/scene.js';
 import { AgentControls } from '../ai/AgentControls.js';
-import { convex } from '../scene/convex.js';
-import { SavedRooms } from '../scene/SavedRooms.js';
 import { applyOp, useSceneStore } from '../scene/store.js';
 import { paintEnvironment, paintSprites } from '../art/client.js';
 import { applyManagedPartial, installManagedAssets } from '../ai/managedClient.js';
 import { resumeAudio } from '../audio/context.js';
 import { capturedDemos, loadCapturedDemo, type CapturedDemoId } from '../scene/capturedDemos.js';
-import { findSavedPlace } from '../scene/savedPlaces.js';
-import { learnPreference, type LearnedPreference } from '../ai/learnPreference.js';
+import { findSavedPlace, savedRooms } from '../scene/savedPlaces.js';
+import { learnPreference } from '../ai/learnPreference.js';
+import { convex } from '../scene/convex.js';
 import { taskPlacePreference } from '../ai/preferences.js';
 
 type Status = { tone: 'busy' | 'notice' | 'error'; text: string };
@@ -30,20 +30,20 @@ const pause = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, 
 
 // Sends the prompt and current scene to the server agent and applies the validated reply. Without AI,
 // the client falls back to the local presets and recorded demo, and says so in the status line.
-export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }: { hasScene: boolean; onSceneReady: () => void; onBusyChange?: (busy: boolean) => void; onSwitching?: (switching: boolean) => void }) {
+export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, voiceSettingsTarget, templatesTarget }: { templatesTarget?: HTMLElement | null; voiceSettingsTarget?: HTMLElement | null; hasScene: boolean; onSceneReady: () => void; onBusyChange?: (busy: boolean) => void; onSwitching?: (switching: boolean) => void }) {
+  const [microphoneTarget, setMicrophoneTarget] = useState<HTMLSpanElement | null>(null);
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<Status>();
   const demoMode = DEMO_MODE;
   const [agentContext, setAgentContext] = useState<AgentContext>();
   const latestContext = useRef<AgentContext | undefined>(agentContext);
   latestContext.current = agentContext;
-  const [learnedPreference, setLearnedPreference] = useState<LearnedPreference>();
   const [refresh, setRefresh] = useState(0);
   const working = useRef(false);
   const lastCommand = useRef<{ prompt: string; change?: CommandChange } | undefined>(undefined);
   const lastAttempt = useRef('');
   const busy = status?.tone === 'busy';
-  useEffect(() => { void Promise.allSettled(capturedDemos.map(demo => loadCapturedDemo(demo.id))); }, []);
+  useEffect(() => { void Promise.allSettled(capturedDemos.map(demo => loadCapturedDemo(demo.id))); savedRooms(); }, []);
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => {
     if (status?.tone !== 'notice') return;
@@ -72,7 +72,7 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
         }
         const learned = await learnPreference(prompt, override ?? latestContext.current, useSceneStore.getState().scene, options.signal);
         if (!learned) return '';
-        setLearnedPreference(learned); setRefresh(value => value + 1);
+        setRefresh(value => value + 1);
         return learned.notice;
       } catch (error) {
         options.signal?.throwIfAborted();
@@ -251,24 +251,23 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
   return <>
     <div className="prompt-tools">
     {status?.text && <p className={`prompt-status prompt-status-${status.tone}`} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
-    {/* Start authentication before the first prompt; reveal manual controls with the room. */}
-    <div hidden={!hasScene}>
-    {convex && <SavedRooms disabled={busy || !hasScene} onLoad={name => setStatus({ tone: 'notice', text: `Loaded “${name}” from saved rooms.` })}/>}
-    {hasScene && <HeadTrackingControl/>}
-    <AgentControls disabled={busy || !hasScene} demoMode={demoMode} refresh={refresh} learnedPreference={learnedPreference} onContext={setAgentContext} onCommand={submitPrompt}/>
-    </div>
+    <AgentControls disabled={busy} demoMode={demoMode} refresh={refresh} onContext={setAgentContext} onCommand={submitPrompt} portals={{ microphone: microphoneTarget, settings: voiceSettingsTarget ?? null }}/>
     </div>
     <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={38} className="prompt-beam">
       <form className="prompt-bar" onSubmit={submit} aria-busy={busy}>
+        <span className="prompt-microphone" ref={setMicrophoneTarget}/>
         <input type="text" aria-label="Prompt" placeholder="Generate anything..." value={value} onChange={event => setValue(event.target.value)} autoComplete="off"/>
         <button type="submit" className="prompt-send" aria-label="Send" disabled={busy || !value.trim()}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5"/><polyline points="5 12 12 5 19 12"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5"/><polyline points="5 12 12 5 19 12"/></svg>
         </button>
       </form>
     </BorderBeam>
-    <div className="demo-rooms" role="group" aria-label="Preloaded demo rooms">
+    {hasScene ? templatesTarget && createPortal(<TemplatesPanel disabled={busy} onSelect={id => { void selectDemo(id); }}/>, templatesTarget) : <div className="prompt-intro">
+      <h1 className="initial-title">Where's your flow state, Coin?</h1>
+      <div className="demo-rooms" role="group" aria-label="Preloaded demo rooms">
       {capturedDemos.map(demo => <button key={demo.id} type="button" disabled={busy}
         onClick={() => { void selectDemo(demo.id); }}>{demo.label}</button>)}
-    </div>
+      </div>
+    </div>}
   </>;
 }

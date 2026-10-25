@@ -104,7 +104,8 @@ function PixelRoomRenderer({ loading }: { loading: boolean }) {
           vec4 bear = texture2D(avatar, uvScreen);
           float bearDepth = texture2D(avatarDepth, uvScreen).r;
           bear.a *= step(bearDepth, texture2D(shellDepth, uvScreen).r + 0.00001);
-          if (object.a > 0.5 && texture2D(propDepth, uvScreen).r < bearDepth) bear.a = 0.0;
+          // The central listener avatar always stacks on top of sound sources, so dragging a
+          // source onto the bear leaves the bear visible instead of being hidden behind it.
           color = bear.rgb * bear.a + color * (1.0 - bear.a);
           alpha = bear.a + alpha * (1.0 - bear.a);
           gl_FragColor = vec4(color, alpha);
@@ -340,7 +341,7 @@ function DevInspection() {
           });
           const rainPoses = Array.from({ length: 8 }, (_, i) => model?.getObjectByName(`rain-streak-${i}`)).filter(mesh => mesh !== undefined).map(mesh => ({ y: mesh.position.y, height: mesh.scale.y, visible: mesh.visible }));
           const artCorners = painted && room ? Array.from({ length: painted.geometry.attributes.position.count }, (_, i) => room.worldToLocal(painted.localToWorld(new Vector3().fromBufferAttribute(painted.geometry.attributes.position, i))).toArray()) : undefined;
-          return { id: object.id, artCorners, renderPosition: model?.position.toArray(), artFrame: painted?.material.map?.offset.x, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
+          return { id: object.id, portalPosition: state.scene.getObjectByName(`portal-${object.id}`)?.position.toArray(), portalRotation: state.scene.getObjectByName(`portal-${object.id}`)?.rotation.toArray().slice(0, 3), artCorners, renderPosition: model?.position.toArray(), artFrame: painted?.material.map?.offset.x, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
         }),
         windowOpacities,
         shadows,

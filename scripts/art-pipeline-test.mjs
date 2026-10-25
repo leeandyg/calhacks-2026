@@ -25,7 +25,7 @@ const scene={room:{preset:'forest',grid,openings:[],reverb:'outdoor'},listener:{
 await page.route('**/api/scene',route=>route.fulfill({json:{kind:'create',scene}}));
 await page.route('**/api/environment',async route=>{
   await environmentHeld;
-  const events=[{type:'plan',id:'test-forest',concept:'An old forest with roots and uneven mossy ground.',shell:'#4b372d',colors:['#324d35','#4c6844','#72503b','#4b372d','#91a56c'],terrain},
+  const events=[{type:'plan',id:'test-forest',title:'Whispers Beneath the Willow',concept:'An old forest with roots and uneven mossy ground.',shell:'#4b372d',colors:['#324d35','#4c6844','#72503b','#4b372d','#91a56c'],terrain},
     ...['floor','north','east','south','west'].map(surface=>({type:'texture',surface,png:png(surface==='floor'?'floor':'wall'),colors:[]})),{type:'done'}];
   await route.fulfill({contentType:'application/x-ndjson',body:events.map(e=>JSON.stringify(e)).join('\n')+'\n'});
 });
@@ -48,6 +48,7 @@ try {
   await page.waitForTimeout(1100);
   assert.equal(await page.evaluate(()=>window.__spawnBusy),true,'portals stay open while sprites are pending');
   assert.equal(spriteRequests,2);
+  await page.getByRole('button',{name:'Whispers Beneath the Willow',exact:true}).waitFor();
   await mkdir('test-results',{recursive:true});
   await page.screenshot({path:'test-results/art-portals.png'});
   releaseSprites();

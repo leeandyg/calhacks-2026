@@ -8,6 +8,8 @@ export type Surface = "floor" | "north" | "east" | "south" | "west";
 export type EnvArt = {
   id: string;
   concept: string;
+  /** A display name authored by the environment agent, separate from its painting brief. */
+  title?: string;
   managed?: boolean;
   /** Legacy environment hint; never hides the fixed structural shell. */
   openAir?: boolean;

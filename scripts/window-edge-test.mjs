@@ -58,7 +58,7 @@ try {
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
   await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().rendering && window.__pixelRoomWallSolid && window.__spawnBusy === false);
-  assert.equal(await page.getByRole('button').count(), 7 + 2 * (await inspect()).scene.objects.length, '2 arrows, send, four captured choices, plus disable & delete per asset');
+  assert.equal(await page.locator('.rotate-room, .prompt-send, .demo-rooms button, .templates-list button, .asset-action').count(), 7 + 2 * (await page.evaluate(() => window.__pixelRoom().scene.objects.length)), 'room arrows, send, demo choices, and source actions');
   assert.equal(await page.getByRole('textbox', { name: 'Prompt' }).count(), 1);
   assert.equal(await page.locator('#root canvas').count(), 1, 'original React app hosts the live scene');
   for (let orientation = 0; orientation < 4; orientation++) {

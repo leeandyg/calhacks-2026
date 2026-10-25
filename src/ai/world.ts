@@ -12,6 +12,7 @@ export const WorldOutput = z.object({
   turn: z.string().regex(/^r_[a-f0-9]{16}$/),
   response: SceneResponse,
   environment: z.object({
+    title: z.string().trim().min(1).max(60).optional().describe("AI-authored literal 1–4 word environment label for Visited places, e.g. Rainy Cafe, Beach, Cyberpunk City, Zen Garden. No poetic names, slogans, metaphors, invented venue names, quotes, or rendering terminology."),
     concept: z.string().min(1).max(1500), shell: hex, colors: z.array(hex).min(2).max(48),
     openAir: z.boolean().default(false), terrain: Terrain.optional(), textures: surfaces,
   }).optional(),

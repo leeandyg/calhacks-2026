@@ -1,8 +1,8 @@
 import { useHeadPose } from "./headPose.js";
 import { useEffect } from "react";
-import { prefetchHeadTracking, recenterHeadTracking, startHeadTracking, stopHeadTracking } from "./webcamHeadTracking.js";
+import { prefetchHeadTracking, startHeadTracking, stopHeadTracking } from "./webcamHeadTracking.js";
 
-// Head tracking toggle, recenter and status. Self-contained, so it can sit in any controls row.
+// Head tracking toggle, angle and status. Self-contained, so it can sit in any controls row.
 export function HeadTrackingControl() {
   useEffect(prefetchHeadTracking, []);
   const status = useHeadPose((s) => s.status);
@@ -13,16 +13,19 @@ export function HeadTrackingControl() {
   const text = status === "starting" ? "Starting head tracking…"
     : status === "searching" ? "Looking for your face…"
     : status === "lost" ? "Face lost, holding"
-    : status === "tracking" ? (degrees === 0 ? "Facing forward" : `${Math.abs(degrees)}° ${degrees > 0 ? "left" : "right"}`)
+    : status === "tracking" ? undefined
     : status === "error" ? error : undefined;
   return (
-    <span className="head-tracking">
-      <label>
-        <input type="checkbox" checked={on} onChange={(event) => (event.target.checked ? startHeadTracking() : stopHeadTracking())} />
-        Head tracking
+    <div className="head-tracking">
+      <label className="switch-row">
+        <span className="switch-label">Head tracking</span>
+        <span className="head-angle">{!on || degrees === 0 ? '0°' : `${Math.abs(degrees)}° ${degrees > 0 ? 'left' : 'right'}`}</span>
+        <span className="switch">
+          <input type="checkbox" aria-label="Head tracking" role="switch" checked={on} onChange={(event) => (event.target.checked ? startHeadTracking() : stopHeadTracking())} />
+          <span className="switch-track"><span className="switch-knob" /></span>
+        </span>
       </label>
-      {on && <button type="button" className="head-recenter" onClick={recenterHeadTracking} disabled={status !== "tracking" && status !== "lost"}>Recenter</button>}
       {text && <span className="head-status" role={status === "error" ? "alert" : "status"}>{text}</span>}
-    </span>
+    </div>
   );
 }

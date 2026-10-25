@@ -1,3 +1,4 @@
+import { settleBearSpeakers } from "./speakerStack.js";
 import { create } from "zustand";
 import { ZodError } from "zod";
 import { placeInRoom, wallLength } from "./layout.js";
@@ -26,8 +27,9 @@ export const useSceneStore = create<SceneState>()((set, get) => ({
   applyOps: (ops) =>
     mutate(() => {
       const next = EditOp.array().parse(ops).reduce(applyOp, get().scene);
-      validateScene(next);
-      set({ scene: next });
+      const settled = settleBearSpeakers(next);
+      validateScene(settled);
+      set({ scene: settled });
     }),
 }));
 
@@ -98,7 +100,7 @@ export function clampScene(scene: Scene): Scene {
 }
 
 function prepare(input: SceneInput): Scene {
-  const scene = clampScene(Scene.parse(input));
+  const scene = settleBearSpeakers(clampScene(Scene.parse(input)));
   validateScene(scene);
   return scene;
 }

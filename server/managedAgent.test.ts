@@ -11,7 +11,7 @@ const run = (agent: ManagedAgent, context = 'null') => {
   return import('node:crypto').then(({ createHash }) => agent.sign({ session, turn, context: createHash('sha256').update(context).digest('hex'), expires: Date.now() + 60_000 }));
 };
 const world = () => ({ version: 1, turn, response: { kind: 'create', scene: { ...starter, objects: [starter.objects[1]] } },
-  environment: { concept: 'An open forest', shell: '#324d35', colors: ['#324d35', '#91a56c'], openAir: true, textures: { floor: { file: `${turn}_floor.png`, w: 160, h: 160 } } },
+  environment: { title: 'Whispers Beneath the Willow', concept: 'An open forest', shell: '#324d35', colors: ['#324d35', '#91a56c'], openAir: true, textures: { floor: { file: `${turn}_floor.png`, w: 160, h: 160 } } },
   sprites: [{ objectId: 'fan-1', file: `${turn}_tree.png`, w: 24, h: 40, frames: 4, fps: 10 }],
   sounds: [{ objectId: 'fan-1', file: `${turn}_wind.wav` }],
 });
@@ -54,6 +54,7 @@ describe('managed world integration', () => {
     expect(result.response.scene.objects[0].sound.assetId).toBeUndefined();
     expect(result.response.scene.room.art).toContain('agent-sesn_test');
     expect(result.assets.environment?.openAir).toBe(true);
+    expect(result.assets.environment?.title).toBe('Whispers Beneath the Willow');
     expect(result.assets.sprites[0]).toMatchObject({ frames: 4, fps: 10, url: expect.stringContaining('/api/world?') });
     expect(result.assets.sounds[0].fileId).toBe('file_3');
     expect(JSON.stringify(result)).not.toContain(settings.apiKey);
