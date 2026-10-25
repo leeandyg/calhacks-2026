@@ -73,6 +73,7 @@ try {
   const { bedroom } = await server.ssrLoadModule("/src/scene/fixtures.ts");
   const { useRoomStore } = await server.ssrLoadModule("/src/room/useRoomStore.ts");
   const { useHeadPose } = await server.ssrLoadModule("/src/sensors/headPose.ts");
+  const { duckSoundscape } = await server.ssrLoadModule("/src/audio/ducking.ts");
   const manifest = JSON.parse(readFileSync("public/sounds/manifest.json", "utf8"));
   const assets = new Map(manifest.map((entry) => [`/sounds/${entry.file}`, entry.id]));
   let manifestFailure = true;
@@ -287,6 +288,22 @@ try {
   await check("an agent sound this page can't load (e.g. after a reload) plays the closest pack sound", async () => {
     setSound("managed:file_gone:event:sparrow chirps", "event", "reloaded-birds"); await flush(); await advance(3);
     assert.deepEqual(active().map((source) => source.buffer.asset), ["sparrow"]);
+  });
+  await check("voice ducking covers direct sound and reverb, overlaps safely and preserves the scene", async () => {
+    setSound("ocean"); await flush(); await advance(0.7);
+    const scene = structuredClone(useSceneStore.getState().scene);
+    const source = active().find((source) => source.buffer.asset === "ocean");
+    const voiceGain = source.outputs[0].outputs[0];
+    const master = voiceGain.outputs[0].outputs[0];
+    const output = master.outputs[0];
+    const send = voiceGain.outputs[1];
+    assert.equal(send.outputs[0].outputs[0].outputs[0].outputs[0], output, "wet and dry use the same ducking bus");
+    const releaseMic = duckSoundscape(), releaseSpeech = duckSoundscape();
+    assert.equal(output.gain.value, 0.25);
+    releaseMic(); assert.equal(output.gain.value, 0.25);
+    releaseSpeech(); assert.equal(output.gain.value, 1); assert.ok(output.gain.timeConstant >= 0.1);
+    releaseSpeech(); assert.equal(output.gain.value, 1);
+    assert.deepEqual(useSceneStore.getState().scene, scene);
   });
   await check("engine stop cancels loops and future event callbacks", async () => {
     setSound("ocean"); await flush(); engine.stop(); await advance(3);

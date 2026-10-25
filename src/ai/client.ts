@@ -22,40 +22,46 @@ class Unavailable extends Error {}
 
 const OFFLINE = 'Offline: the scene AI is unavailable.';
 
-export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, engine: Engine = 'agent'): Promise<SceneReply> {
-  if (demoMode) return localResponse(prompt, scene, 'Demo mode.');
+export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, signal?: AbortSignal, engine: Engine = 'agent'): Promise<SceneReply> {
+  signal?.throwIfAborted();
+  if (demoMode) return localResponse(prompt, scene, 'Demo mode.', signal);
   try {
-    return await ask(prompt, scene, engine, progress);
+    return await ask(prompt, scene, engine, progress, signal);
   } catch (error) {
+    signal?.throwIfAborted();
     if (!(error instanceof Unavailable)) throw error;
     console.warn('scene: falling back', error);
-    return engine === 'agent' ? fallbackScene(prompt, scene, progress) : localResponse(prompt, scene, OFFLINE);
+    return engine === 'agent' ? fallbackScene(prompt, scene, progress, signal) : localResponse(prompt, scene, OFFLINE, signal);
   }
 }
 
 /** Steps 2 and 3, also used by voice and memory turns (agent.ts) when their agent fails. */
-export async function fallbackScene(prompt: string, scene: Scene | null, progress?: (message: string) => void): Promise<SceneReply> {
+export async function fallbackScene(prompt: string, scene: Scene | null, progress?: (message: string) => void, signal?: AbortSignal): Promise<SceneReply> {
+  signal?.throwIfAborted();
   progress?.('The world builder is unavailable. Building a simpler room with Gemini…');
   try {
-    const reply = await ask(prompt, scene, 'gemini', progress);
+    const reply = await ask(prompt, scene, 'gemini', progress, signal);
     return { ...reply, notice: 'The world builder was unavailable, so Gemini built a simpler room.' };
   } catch (error) {
+    signal?.throwIfAborted();
     if (!(error instanceof Unavailable)) throw error;
     console.warn('scene: Gemini is unavailable too', error);
-    return localResponse(prompt, scene, OFFLINE);
+    return localResponse(prompt, scene, OFFLINE, signal);
   }
 }
 
-async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void): Promise<SceneReply> {
+async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void, signal?: AbortSignal): Promise<SceneReply> {
+  signal?.throwIfAborted();
   let res: Response;
   try {
     res = await fetch("/api/scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(engine === 'gemini' ? { prompt, scene, engine } : { prompt, scene, sessionToken: scene ? currentAgentSession() : undefined }),
-      signal: AbortSignal.timeout(15_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
     });
   } catch {
+    signal?.throwIfAborted();
     throw new Unavailable('Could not reach the scene AI.');
   }
   if (!res.ok) {
@@ -65,11 +71,13 @@ async function ask(prompt: string, scene: Scene | null, engine: Engine, progress
     throw new Error(`${message} Your room was kept unchanged.`);
   }
   const json = await res.json().catch(() => null);
+  signal?.throwIfAborted();
   if (json?.kind === 'managed' && typeof json.token === 'string' && engine === 'agent') {
     try {
-      const result = await followManagedRun(json.token, scene, progress, CLAUDE_BUDGET_MS);
+      const result = await followManagedRun(json.token, scene, progress, signal, CLAUDE_BUDGET_MS);
       return { ...result.response, managed: result.assets };
     } catch (error) {
+      signal?.throwIfAborted();
       throw new Unavailable(error instanceof Error ? error.message : 'Claude could not finish this world.');
     }
   }
@@ -79,8 +87,9 @@ async function ask(prompt: string, scene: Scene | null, engine: Engine, progress
   return parsed.data;
 }
 
-async function localResponse(prompt: string, scene: Scene | null, prefix: string): Promise<SceneReply> {
+async function localResponse(prompt: string, scene: Scene | null, prefix: string, signal?: AbortSignal): Promise<SceneReply> {
   const { offlineResponse } = await import("./offline.js");
+  signal?.throwIfAborted();
   try {
     const saved = offlineResponse(prompt, scene);
     return { ...saved.response, notice: `${prefix} ${saved.notice}` };

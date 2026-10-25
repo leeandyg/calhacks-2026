@@ -229,3 +229,7 @@ canvas { display: block; touch-action: none; }
 .agent-controls li { margin: 8px 0; }
 .agent-controls li button { margin-left: 8px; }
 .agent-controls .error { color: #ff9b9b; }
+.voice-transcript { max-height: 72px; overflow-y: auto; overflow-wrap: anywhere; }
+.voice-transcript form, .voice-transcript p { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.voice-transcript input { flex: 1 1 180px; min-width: 0; }
+.room-controls:has(.agent-controls) .prompt-tools { max-height: calc(60dvh - 88px); overflow-y: auto; pointer-events: auto; }

@@ -13,13 +13,14 @@ let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
 
 /** One durable managed run can span many short API/SSE connections. */
-export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, budgetMs = 12 * 60 * 1000): Promise<ManagedResult> {
+export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, signal?: AbortSignal, budgetMs = 12 * 60 * 1000): Promise<ManagedResult> {
   const deadline = Date.now() + budgetMs;
   const seen = new Set<string>();
   let complete = false, failures = 0;
   while (!complete && Date.now() < deadline) {
+    signal?.throwIfAborted();
     try {
-      const res = await fetch(`/api/world?${new URLSearchParams({ action: 'stream', token })}`, { signal: AbortSignal.timeout(55_000) });
+      const res = await fetch(`/api/world?${new URLSearchParams({ action: 'stream', token })}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(55_000)]) : AbortSignal.timeout(55_000) });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => null))?.error ?? 'Claude could not connect.');
       for await (const value of sse(res.body)) {
         const event = JSON.parse(value);
@@ -31,8 +32,9 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
         }
       }
       failures = 0;
-      if (!complete) await new Promise(resolve => setTimeout(resolve, 500));
+      if (!complete) await abortable(new Promise(resolve => setTimeout(resolve, 500)), signal);
     } catch (error) {
+      signal?.throwIfAborted();
       if (error instanceof AgentRunError || ++failures >= 3) throw error;
       progress?.('Reconnecting to your environment…');
     }
@@ -41,16 +43,18 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   progress?.('Loading your environment, artwork and sounds…');
   // Published output files may arrive just after the end-turn event.
   for (let attempt = 0; attempt < 16; attempt++) {
-    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene }), signal: AbortSignal.timeout(25_000) });
-    if (res.status === 202) { await new Promise(resolve => setTimeout(resolve, 2000)); continue; }
+    signal?.throwIfAborted();
+    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25_000)]) : AbortSignal.timeout(25_000) });
+    if (res.status === 202) { await abortable(new Promise(resolve => setTimeout(resolve, 2000)), signal); continue; }
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? 'The generated environment could not be loaded.');
     const result = ManagedResult.parse(body);
     // Preload images before revealing the first room; no empty shell flashes on slow connections.
-    await Promise.all([
+    await abortable(Promise.all([
       ...Object.values(result.assets.environment?.textures ?? {}).map(image => loadPaintImage(image.url)),
       ...result.assets.sprites.map(image => loadPaintImage(image.url)),
-    ]);
+    ]), signal);
+    signal?.throwIfAborted();
     sessionToken = token;
     keepWorld(result.assets);
     return result;
@@ -58,6 +62,16 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   throw new Error('Claude finished, but its generated files are not available yet. Please try again.');
 }
 class AgentRunError extends Error {}
+function abortable<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return operation;
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    operation.then(value => { signal.removeEventListener('abort', abort); resolve(value); },
+      error => { signal.removeEventListener('abort', abort); reject(error); });
+  });
+}
 
 /** Copies a fresh world into Convex (convex/agentWorlds.ts), so a reload or a saved room can reopen it (#112). */
 function keepWorld(assets: ManagedAssets) {

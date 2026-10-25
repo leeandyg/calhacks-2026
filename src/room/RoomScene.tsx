@@ -1,4 +1,4 @@
-import { Component, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { Component, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
 import { BoxGeometry, Color, DepthTexture, HalfFloatType, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, NearestFilter, NoBlending, OrthographicCamera as ThreeOrthographicCamera, PlaneGeometry, Raycaster, Scene, ShaderMaterial, UnsignedIntType, Vector3, WebGLRenderTarget } from 'three';
@@ -149,10 +149,29 @@ function PixelRoomRenderer() {
 
 function FixedCamera() {
   const ref = useRef<ThreeOrthographicCamera>(null);
+  const [controlsClearance, setControlsClearance] = useState(160);
   const size = useThree(state => state.size);
   const cameraConfig = useRoomStore(state => state.camera);
   const grid = useSceneStore(state => state.scene.room.grid);
   const roomSize = useMemo(() => getRoomDimensions(grid), [grid]);
+  useLayoutEffect(() => {
+    const root = document.getElementById('root');
+    if (!root) return;
+    let observed: Element | null = null;
+    const measure = () => {
+      const controls = root.querySelector('.room-controls');
+      if (observed !== controls) {
+        if (observed) resize.unobserve(observed);
+        if (controls) resize.observe(controls);
+        observed = controls;
+      }
+      setControlsClearance(controls ? Math.max(160, root.getBoundingClientRect().bottom - controls.getBoundingClientRect().top + 12) : 160);
+    };
+    const resize = new ResizeObserver(measure);
+    const mutation = new MutationObserver(measure);
+    mutation.observe(root, { childList: true, subtree: true }); measure();
+    return () => { resize.disconnect(); mutation.disconnect(); };
+  }, []);
   useLayoutEffect(() => { useRoomStore.getState().frameRoom(roomSize); }, [roomSize[0], roomSize[1], roomSize[2]]);
   useLayoutEffect(() => {
     const camera = ref.current;
@@ -161,7 +180,6 @@ function FixedCamera() {
     // The diagonal envelope fits rectangles throughout the complete animation.
     const { horizontal, vertical } = roomProjectionEnvelope(roomSize);
     const topInset = Math.max(20, size.height * 0.055);
-    const controlsClearance = 160; // prompt and status line
     const availableHeight = Math.max(100, Math.min(size.height * 0.8, size.height - topInset - controlsClearance));
     camera.zoom = Math.min(Math.max(40, size.width - 112) / horizontal, availableHeight / vertical);
     camera.lookAt(...cameraConfig.target);
@@ -174,7 +192,7 @@ function FixedCamera() {
       root?.style.removeProperty('--room-half-width');
       root?.style.removeProperty('--room-center-y');
     };
-  }, [size, cameraConfig, roomSize]);
+  }, [size, cameraConfig, roomSize, controlsClearance]);
   return <OrthographicCamera ref={ref} makeDefault position={cameraConfig.position} near={0.1} far={100}/>;
 }
 function Lighting() {

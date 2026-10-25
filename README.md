@@ -167,7 +167,7 @@ sceneStore.getState().applyOps([{ op: "move", id: "rain-1", position: [3, 1.5, 0
 
 ## Voice agent and environment memory
 
-Enter the room, then click **Talk to agent** to start listening and **Stop & send**
+Create a room with the prompt, then click **Talk to agent** to start listening and **Stop & send**
 to submit the final transcript. Alternatively, hold **Ctrl+Shift+Space** while the
 page is focused and the cursor is outside text fields; releasing any key in the
 shortcut ends the turn. **Esc** or leaving the page cancels it. The microphone is
@@ -175,6 +175,24 @@ off between turns, and a turn is limited to 30 seconds. This shortcut works with
 the active tab; a system-wide shortcut and an always-listening wake word are later work.
 Allow the site's microphone permission when you first use it. No raw recordings
 are saved. Ink-2 streaming transcription feeds the same command path as typed input.
+
+Voice startup preloads the worklet file and a short-lived transcription token without
+opening the mic. Permission, audio setup and connection run in parallel; initial
+audio is buffered and sent at real-time speed. A quiet ready cue and explicit
+Listening/Understanding/Updating/Done states show progress. Enable **Finish automatically**
+for a click-activated turn that ends when Ink-2 confirms your sentence is complete;
+the hold shortcut always uses release-to-send. Automatic mode displays live captions.
+It does not listen between turns. **Edit transcript** lets you correct and reapply a
+room command; it refuses to overwrite a room you have manually changed meanwhile.
+
+**Mute rain**, **unmute rain**, **turn rain up/down**, **stop**, **unmute all** and
+**undo** run locally through validated scene operations when the target is clear.
+Unknown or ambiguous requests retain the scene agent and Moss path. Undo restores only the
+last command's room change and refuses after later manual edits. While listening or
+speaking, the soundscape and its reverb fade down by 12 dB, then return to their
+previous level; saved object volumes and mutes are never changed by this ducking.
+Optional spoken confirmations play as 24 kHz mono PCM arrives rather than waiting
+for an entire file. Esc or a new voice turn interrupts the reply.
 
 Add `CARTESIA_API_KEY`, `MOSS_PROJECT_ID`, and `MOSS_PROJECT_KEY` to ignored `.env`,
 then restart the dev server and reload the page. Obtain Moss project credentials
