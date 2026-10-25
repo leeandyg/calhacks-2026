@@ -41,6 +41,11 @@ loading, typing and demo selection stay responsive without provider calls. It us
 Edge on Windows (`PLAYWRIGHT_CHANNEL` overrides it). The loading mosaic uses a small Canvas 2D
 texture through the existing room renderer, avoiding a second WebGL context and GPU readback.
 
+After pulling scene-contract changes, run `npm run convex:dev -- --once` to sync your configured
+cloud dev backend too. A stale Convex validator can reject painted rooms even when plain rooms
+save. `npm run check:convex -- --cloud-dev` checks artwork/terrain persistence and access isolation
+using separate test identities on the matching dev deployment; it never targets production.
+
 The default `?mode=cloud` needs only `ANTHROPIC_API_KEY` in `.env` (the managed agent and its
 environment default to the team's; `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` override them).
 Create a key in [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` for
