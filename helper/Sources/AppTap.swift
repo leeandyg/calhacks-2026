@@ -36,7 +36,12 @@ final class AppTap {
       kAudioAggregateDeviceTapListKey: [[kAudioSubTapUIDKey: description.uuid.uuidString, kAudioSubTapDriftCompensationKey: true]],
     ]
     guard AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &deviceID) == noErr,
-          AudioDeviceCreateIOProcIDWithBlock(&procID, deviceID, queue, { [weak self] _, input, _, _, _ in self?.receive(input) }) == noErr,
+          // The block runs on Core Audio's IO thread and hands a copy to the queue without waiting:
+          // a synchronous hop deadlocks with stop(), which waits on this thread from the queue.
+          AudioDeviceCreateIOProcIDWithBlock(&procID, deviceID, nil, { [weak self] _, input, _, _, _ in
+            let samples = Self.copySamples(input)
+            if !samples.isEmpty { queue.async { self?.receive(samples) } }
+          }) == noErr,
           AudioDeviceStart(deviceID, procID) == noErr // the first run waits here for the permission prompt
     else {
       stop()
@@ -75,13 +80,16 @@ final class AppTap {
     tapID = AudioObjectID(kAudioObjectUnknown)
   }
 
-  private func receive(_ input: UnsafePointer<AudioBufferList>) {
+  private static func copySamples(_ input: UnsafePointer<AudioBufferList>) -> [Float] {
     let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
-    guard let buffer = buffers.first, let data = buffer.mData else { return }
-    let samples = UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self),
-                                      count: Int(buffer.mDataByteSize) / MemoryLayout<Float>.size)
+    guard let buffer = buffers.first, let data = buffer.mData else { return [] }
+    return Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self),
+                                     count: Int(buffer.mDataByteSize) / MemoryLayout<Float>.size))
+  }
+
+  private func receive(_ samples: [Float]) {
     for sample in samples { sumOfSquares += Double(sample * sample) }
     sampleCount += samples.count
-    onSamples(samples)
+    samples.withUnsafeBufferPointer { onSamples($0) }
   }
 }
