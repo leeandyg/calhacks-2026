@@ -25,7 +25,9 @@ export async function prepareVoice(token: string) {
 }
 
 export type VoiceSession = { stop: () => void; cancel: () => void };
-export type VoiceOptions = { automatic?: boolean; onPartial?: (text: string) => void; duck?: boolean };
+export type VoiceOptions = { automatic?: boolean; onPartial?: (text: string) => void; duck?: boolean;
+  /** Keep the same automatic capture open until a confirmed turn is accepted. */
+  acceptTurn?: (text: string) => boolean };
 export async function startVoice(token: string, signal: AbortSignal,
   onTranscript: (text: string) => void, onError: (error: string) => void,
   onStopped?: () => void, options: VoiceOptions = {}): Promise<VoiceSession> {
@@ -102,10 +104,12 @@ export async function startVoice(token: string, signal: AbortSignal,
         try { message = JSON.parse(event.data); } catch { return fail("Invalid voice response. Please try again."); }
         if (message.type === "error") return fail("Cartesia could not transcribe this turn. Please try again or type.");
         if (options.automatic) {
+          if (message.type === "turn.start") partial = "";
           // Turn updates are cumulative, not deltas. Never execute an eager end.
           if (typeof message.transcript === "string") { partial = message.transcript; options.onPartial?.(partial); }
           if (message.type === "turn.end") {
             const text = typeof message.transcript === "string" && message.transcript ? message.transcript : partial;
+            if (!stopping && options.acceptTurn && !options.acceptTurn(text)) { partial = ""; return; }
             if (stopping) transcript += (transcript ? " " : "") + text;
             else complete(text); // one explicitly activated turn; mic off afterwards
           }
@@ -138,7 +142,7 @@ export async function startVoice(token: string, signal: AbortSignal,
     };
     if (options.duck !== false) releaseDuck = duckSoundscape();
     source.connect(processor); processor.connect(context.destination); // Worklet outputs silence.
-    captureTimer = setTimeout(stop, 30_000);
+    if (!options.automatic || !options.acceptTurn) captureTimer = setTimeout(stop, 30_000);
     return { stop, cancel };
   } catch (error) { cleanup(); throw error; }
 }

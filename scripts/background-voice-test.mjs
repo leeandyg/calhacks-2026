@@ -103,7 +103,7 @@ try {
   if (channel) await page.waitForFunction(() => !document.hasFocus());
   else await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   turn(socket, 'I need to finish question three.');
-  socket = await nextSocket(socket);
+  await expect.poll(() => sockets.at(-1).socket).toBe(socket);
   assert.deepEqual(await commands(), []);
   assert.equal(await fixture().getByText(/question three/).count(), 0, 'unaddressed transcripts stay out of the UI');
   turn(socket, 'Hey agent, mute rain', 'turn.update');
@@ -115,9 +115,13 @@ try {
   await expect.poll(() => page.evaluate(() => window.sceneStore.getState().scene.objects.find(object => object.id === 'rain-1').muted)).toBe(true);
   socket = await nextSocket(socket);
   await listening();
+  const wakeSocketCount = sockets.length;
+  const wakeTrackCount = await page.evaluate(() => window.voiceTracks.length);
   turn(socket, 'Hey agent!');
-  socket = await nextSocket(socket);
   await expect(fixture().getByText('Listening for your command…', { exact: true })).toBeVisible();
+  assert.equal(sockets.length, wakeSocketCount, 'a wake-only turn keeps the same connection for the command');
+  assert.equal(await page.evaluate(() => window.voiceTracks.length), wakeTrackCount, 'the command cannot fall into a microphone restart gap');
+  assert.equal(await activeTracks(), 1);
   assert.deepEqual(await commands(), ['mute rain']);
   turn(socket, 'Unmute rain');
   await expect.poll(commands).toEqual(['mute rain', 'Unmute rain']);
