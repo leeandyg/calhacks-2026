@@ -59,9 +59,11 @@ try{
  assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[]);
  await page.getByLabel('Prompt',{exact:true}).fill('An open forest');await page.getByRole('button',{name:'Send',exact:true}).click();
  await page.getByRole('status').filter({hasText:'Claude'}).waitFor();
- assert.equal(await page.locator('canvas').count(),0,'room stays hidden while Claude is working');
+ assert.equal(await page.locator('.room-rotation, .assets-panel').count(),0,'only the loading shell shows while Claude is working');
+ assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[],'the loading shell leaves the canonical scene empty');
  // Library first: the oak's wind has a good pack match; the woodpecker uses the agent's chirp file.
- await page.waitForFunction(()=>window.__pixelRoom?.().scene.objects.every(o=>o.sound.assetId));
+ // The loading shell mounts the room view with an empty scene, so wait for the world's objects too.
+ await page.waitForFunction(()=>{const objects=window.__pixelRoom?.().scene.objects??[];return objects.length>0&&objects.every(o=>o.sound.assetId);});
  const assetIds=Object.fromEntries((await page.evaluate(()=>window.__pixelRoom().scene.objects)).map(o=>[o.id,o.sound.assetId]));
  assert.equal(assetIds.oak,'wind_trees');assert.ok(assetIds.birds.startsWith('managed:file_birds:event:'),assetIds.birds);
  await page.waitForFunction(()=>!window.__spawnBusy);

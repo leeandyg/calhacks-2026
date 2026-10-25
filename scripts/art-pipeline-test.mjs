@@ -38,7 +38,8 @@ try {
   await page.getByRole('button',{name:'Send',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Imagining'}).waitFor();
   assert.equal(spriteRequests,0,'no sprite generation before the environment');
-  assert.equal(await page.locator('canvas').count(),0,'creation keeps the page centered and empty');
+  assert.equal(await page.locator('.room-rotation, .assets-panel').count(),0,'the loading shell has no room controls');
+  assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[],'the loading shell leaves the canonical scene empty');
   releaseEnvironment();
   await page.waitForFunction(()=>window.__pixelRoom?.().scene.room.art==='test-forest' && window.__pixelRoom().objects.length===2);
   await page.waitForFunction(()=>document.querySelectorAll('.sound-status').length===2 && window.__spawnBusy);

@@ -43,10 +43,16 @@ try {
   assert.equal(await panel.locator('[data-avatar="user"]').getByText('You', { exact: true }).count(), 1);
   assert.equal(await panel.locator('[data-avatar="user"]').getByRole('button').count(), 0, 'the user cannot be deleted or hidden');
   assert.ok(await panel.getByText('Desk lamp hum').count(), 'shows label');
-  const thumb = await panel.locator('.asset-row:not([data-avatar]) .asset-thumb').first().evaluate(el => { const s = getComputedStyle(el); return { image: s.backgroundImage, size: s.backgroundSize }; });
-  assert.ok(thumb.image.startsWith('url('), 'thumbnail shows the sprite image');
-  // 44px box, square 24x24 frames, 4 frames -> the strip is sized to 4× the box width, so the box frames exactly one.
-  assert.equal(thumb.size, '176px 44px', 'thumbnail frames a single sprite frame, not the whole strip');
+  const thumbBox = panel.locator('.asset-row:not([data-avatar]) .asset-thumb').first();
+  await page.waitForFunction(el => getComputedStyle(el).backgroundImage.startsWith('url("data:image/png'), await thumbBox.elementHandle());
+  const thumb = await thumbBox.evaluate(async el => {
+    const s = getComputedStyle(el), image = new Image();
+    image.src = s.backgroundImage.slice(5, -2); await image.decode();
+    return { size: s.backgroundSize, w: image.naturalWidth, h: image.naturalHeight };
+  });
+  // Square 24x24 frames, 4 frames: the thumbnail is a copy of the already-decoded sprite (no second
+  // download) holding only the first frame, drawn into a square at twice the 44px box.
+  assert.deepEqual([thumb.size, thumb.w, thumb.h], ['100% 100%', 88, 88], 'thumbnail frames a single sprite frame, not the whole strip');
   await page.screenshot({ path: 'test-results/assets-panel.png' });
 
   // Volume: drag the lamp slider to the minimum.

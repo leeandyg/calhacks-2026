@@ -1,23 +1,38 @@
+import { useEffect, useState } from 'react';
 import { BorderBeam } from 'border-beam';
 import { useSceneStore } from '../scene/store.js';
 import { useRoomStore } from '../room/useRoomStore.js';
 import { useArtStore, spriteKey } from '../art/store.js';
+import { loadPaintImage } from '../art/images.js';
 import type { SoundObject } from '../scene/scene.js';
 import { BEAR_VIEWS, bearDirection } from '../room/bearDirections.js';
 
 // The thumbnail box side in px; matches .asset-thumb in styles.css.
 const THUMB = 44;
-// The sprite PNG is a horizontal strip of `frames` frames (each art.w wide). Show only the first
-// frame, scaled to fit the thumbnail box and centered, instead of the whole stretched strip.
-function thumbStyle(art: { png: string; w: number; h: number; frames?: number }) {
-  const scale = Math.min(THUMB / art.w, THUMB / art.h);
-  const frameWidth = art.w * scale;
-  return {
-    backgroundImage: `url(${art.png})`,
-    backgroundRepeat: 'no-repeat',
-    backgroundSize: `${frameWidth * (art.frames ?? 1)}px ${art.h * scale}px`,
-    backgroundPosition: `${(THUMB - frameWidth) / 2}px center`,
-  } as const;
+// The sprite PNG is a horizontal strip of frames (each art.w wide). Show only the first frame,
+// scaled to fit the thumbnail box and centered. It is copied off-screen from the room's shared
+// decoded image (src/art/images.ts), so a thumbnail never downloads the PNG a second time.
+function useFirstFrame(art?: { png: string; w: number; h: number }) {
+  const [thumb, setThumb] = useState<string>();
+  useEffect(() => {
+    setThumb(undefined);
+    if (!art) return;
+    let live = true;
+    loadPaintImage(art.png).then(image => {
+      const size = THUMB * 2, scale = Math.min(size / art.w, size / art.h);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.imageSmoothingEnabled = false;
+      context.drawImage(image, 0, 0, art.w, art.h, (size - art.w * scale) / 2, (size - art.h * scale) / 2, art.w * scale, art.h * scale);
+      let url = art.png; // a non-CORS image can't be copied; show the original strip instead
+      try { url = canvas.toDataURL(); } catch { /* keep the original URL */ }
+      if (live) setThumb(url);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [art?.png, art?.w, art?.h]);
+  return thumb;
 }
 
 // A right-hand list of the scene's sound sources. Each row shows the source's generated sprite and
@@ -25,6 +40,7 @@ function thumbStyle(art: { png: string; w: number; h: number; frames?: number })
 function AssetRow({ object, envId }: { object: SoundObject; envId?: string }) {
   const sprite = useArtStore(state => (envId ? state.sprites[spriteKey(envId, object)] : undefined));
   const art = sprite?.status === 'ready' ? sprite : undefined;
+  const thumb = useFirstFrame(art);
   const hidden = useRoomStore(state => state.hiddenObjectIds.includes(object.id));
   const setVolume = (volume: number) => useSceneStore.getState().applyOps([{ op: 'set_volume', id: object.id, volume }]);
   // Hiding removes the source from the environment: its prop/portal stop rendering (view-only state)
@@ -36,7 +52,7 @@ function AssetRow({ object, envId }: { object: SoundObject; envId?: string }) {
   };
   const remove = () => { useRoomStore.getState().setHidden(object.id, false); useSceneStore.getState().applyOps([{ op: 'remove', id: object.id }]); };
   return <li className="asset-row" data-hidden={hidden || undefined}>
-    <div className="asset-thumb" style={art ? thumbStyle(art) : undefined}>
+    <div className="asset-thumb" style={thumb ? { backgroundImage: `url(${thumb})`, backgroundSize: '100% 100%' } : undefined}>
       {art ? null : <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>}
     </div>
     <div className="asset-body">
