@@ -192,7 +192,7 @@ the browser art store, without adding fields to the shared scene JSON. `room.art
 world; terrain and positions remain canonical. All generated themes retain the fixed volumetric shell, with 0.42-block wall/floor slabs
 and complete flush corners. Legacy `openAir` metadata cannot remove structural panels; paintings
 cover existing surfaces, including outdoors/cities. Bed sprite motion loops; event motion follows playback,
-and muting freezes it. Generated content remains hidden until the manifest and images are ready; the first pending prompt shows the fixed base shell with an img-fx loading mosaic on its floor and two visible walls.
+and muting freezes it. Generated content remains hidden until the manifest and images are ready; the first pending prompt shows the fixed base shell with an Canvas 2D loading mosaic on its floor and two visible walls.
 Follow-up edits receive the latest scene and reuse the session, preserving manual placement.
 `AGENT_CONFIG.yaml` holds the supplied system prompt; the configured agent resource supplies
 its model/tools. Gemini and offline/demo paths remain available. See README for setup and checks.
@@ -200,7 +200,7 @@ its model/tools. Gemini and offline/demo paths remain available. See README for 
 **First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
 The canonical store initially contains only the fixed structure and listener, with no fixture
 objects, artwork, terrain or session. The first request sends `scene: null`. Live failures fall back
-in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Before any valid result, the existing fallback chain applies. After a first valid branch appears, preserve it on later failure. After first submission, show the fixed empty shell with the img-fx pixels-organic loading effect on its floor and two visible walls, and move the prompt below it. The effect is view-only and stops when the first validated branch is ready. Errors before any result hide the shell and recenter the prompt. Reveal each validated branch immediately; then show
+in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Before any valid result, the existing fallback chain applies. After a first valid branch appears, preserve it on later failure. After first submission, show the fixed empty shell with the Canvas 2D loading mosaic on its floor and two visible walls, and move the prompt below it. The effect is view-only and stops when the first validated branch is ready. Errors before any result hide the shell and recenter the prompt. Reveal each validated branch immediately; then show
 it with its rotation arrows and the Assets panel, and move the prompt below it after successful creation. Prompt
 submission supplies the audio gesture; the engine starts when the created room is revealed.
 

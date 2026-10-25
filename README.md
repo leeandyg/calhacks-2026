@@ -36,6 +36,11 @@ npm test               # scene store, layout and room unit tests (vitest)
 Browser tests need the dev server running (set `TEST_URL` if it isn't on :5173; `PLAYWRIGHT_CHANNEL=chrome`
 uses installed Chrome): `npm run test:browser`, `test:frontend`, `test:window` and `test:prompt`.
 
+`npm run test:loading` starts its own isolated server and checks that prompt submission,
+loading, typing and demo selection stay responsive without provider calls. It uses installed
+Edge on Windows (`PLAYWRIGHT_CHANNEL` overrides it). The loading mosaic uses a small Canvas 2D
+texture through the existing room renderer, avoiding a second WebGL context and GPU readback.
+
 The default `?mode=cloud` needs only `ANTHROPIC_API_KEY` in `.env` (the managed agent and its
 environment default to the team's; `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` override them).
 Create a key in [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` for
