@@ -241,27 +241,5 @@
       "wall": null
     }
   ],
-  "sounds": [
-    {
-      "objectId": "demo-beach-source-1",
-      "query": "ocean, waves, sea, beach, surf",
-      "kind": "bed",
-      "fileId": "demo-beach-1",
-      "url": "/demo/beach/assets/sound-1.mp3"
-    },
-    {
-      "objectId": "demo-beach-source-2",
-      "query": "wind, trees, leaves, rustling, forest, breeze, outdoor",
-      "kind": "bed",
-      "fileId": "demo-beach-2",
-      "url": "/demo/beach/assets/sound-2.mp3"
-    },
-    {
-      "objectId": "demo-beach-source-3",
-      "query": "One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording",
-      "kind": "event",
-      "fileId": "demo-beach-3",
-      "url": "/demo/beach/assets/sound-3.mp3"
-    }
-  ]
+  "sounds": []
 }

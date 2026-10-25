@@ -12,6 +12,7 @@ function pixels(bytes) {
 
 // Real bundled media and real Web Audio; no AI or cloud requests.
 process.env.VITE_CONVEX_URL = '';
+const library = new Map(JSON.parse(await readFile('public/sounds/manifest.json', 'utf8')).map(entry => [entry.id, entry]));
 const server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
 await server.listen();
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
@@ -74,7 +75,16 @@ try {
     assert.equal(scene.objects.length, 3);
     assert.equal(scene.objects.filter(object => object.kind === 'bed').length, 2);
     assert.equal(scene.objects.filter(object => object.kind === 'event').length, 1);
-    assert.equal(assets.sprites.length, 3); assert.equal(assets.sounds.length, 3);
+    assert.equal(assets.sprites.length, 3);
+    // Each source plays a library sound straight from /sounds/ or its own bundled recording (#141).
+    const fromLibrary = scene.objects.filter(object => library.get(object.sound.assetId)?.kind === object.kind);
+    assert.equal(fromLibrary.length + assets.sounds.length, 3, 'every source has exactly one sound');
+    for (const object of fromLibrary) {
+      assert.ok(!assets.sounds.some(sound => sound.objectId === object.id), `${object.id} plays the library, not a copy`);
+      assert.ok(capture.sounds.some(sound => sound.objectId === object.id && sound.libraryId === object.sound.assetId), `${object.id} credits its library sound`);
+    }
+    for (const object of scene.objects.filter(object => !fromLibrary.includes(object)))
+      assert.ok(assets.sounds.some(sound => sound.objectId === object.id && object.sound.assetId === `managed:${sound.fileId}:${sound.kind}:${sound.query.replace(/\s+/g, ' ').trim()}`), `${object.id} has its bundled recording`);
     assert.equal(Object.keys(assets.environment.textures).length, 5);
     assert.ok(!JSON.stringify({ scene, assets }).includes('/api/'));
     for (const image of [...Object.values(assets.environment.textures), ...assets.sprites]) {
@@ -102,19 +112,23 @@ try {
       await page.getByRole('button', { name: 'Rotate Right', exact: true }).click();
       await page.waitForFunction(() => !window.__pixelRoom().rotating);
     }
-    const levels = await page.evaluate(async id => {
-      const assets = await fetch(`/demo/${id}/assets.json`).then(response => response.json());
+    const scene = JSON.parse(await readFile(`public/demo/${id}/scene.json`, 'utf8'));
+    const assets = JSON.parse(await readFile(`public/demo/${id}/assets.json`, 'utf8'));
+    const urls = [...assets.sounds.map(sound => sound.url),
+      ...scene.objects.filter(object => library.has(object.sound.assetId)).map(object => `/sounds/${library.get(object.sound.assetId).file}`)];
+    assert.equal(urls.length, 3);
+    const levels = await page.evaluate(async urls => {
       const context = new OfflineAudioContext(1, 1, 44100);
-      return Promise.all(assets.sounds.map(async sound => {
-        const decoded = await context.decodeAudioData(await fetch(sound.url).then(response => response.arrayBuffer()));
+      return Promise.all(urls.map(async url => {
+        const decoded = await context.decodeAudioData(await fetch(url).then(response => response.arrayBuffer()));
         const data = decoded.getChannelData(0);
         let peak = 0, energy = 0;
         for (const sample of data) { peak = Math.max(peak, Math.abs(sample)); energy += sample * sample; }
         return { duration: decoded.duration, peak, rms: Math.sqrt(energy / data.length) };
       }));
-    }, id);
+    }, urls);
     assert.ok(levels.every(sound => sound.duration > 0.2 && sound.peak > 0.001 && Number.isFinite(sound.rms)));
-    console.log(`PASS ${label}: 3 local sounds, all artwork, previous audio stopped (${elapsed} ms including reveal); ${JSON.stringify(levels)}`);
+    console.log(`PASS ${label}: 3 sounds (${urls.length - assets.sounds.length} from the library), all artwork, previous audio stopped (${elapsed} ms including reveal); ${JSON.stringify(levels)}`);
   }
   // Movement and mute remain canonical, and another selection restores that bundle's snapshot.
   const changed = await page.evaluate(() => {

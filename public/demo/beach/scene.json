@@ -147,7 +147,7 @@
       "label": "Gentle ocean surf",
       "sound": {
         "query": "ocean, waves, sea, beach, surf",
-        "assetId": "managed:demo-beach-1:bed:ocean, waves, sea, beach, surf"
+        "assetId": "ocean"
       },
       "position": [
         -1,
@@ -166,7 +166,7 @@
       "label": "Sea breeze in palm",
       "sound": {
         "query": "wind, trees, leaves, rustling, forest, breeze, outdoor",
-        "assetId": "managed:demo-beach-2:bed:wind, trees, leaves, rustling, forest, breeze, outdoor"
+        "assetId": "wind_trees"
       },
       "position": [
         2.5,
@@ -185,7 +185,7 @@
       "label": "Seagull on driftwood",
       "sound": {
         "query": "One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording",
-        "assetId": "managed:demo-beach-3:event:One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording"
+        "assetId": "seagull_call"
       },
       "position": [
         -3,

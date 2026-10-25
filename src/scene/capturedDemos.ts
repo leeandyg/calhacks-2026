@@ -3,6 +3,8 @@ import { ManagedAssets } from '../ai/world.js';
 import { installManagedAssets } from '../ai/managedClient.js';
 import { loadPaintImage } from '../art/images.js';
 import { preloadDemoSound } from '../audio/managed.js';
+import { preloadPackSound } from '../audio/AudioEngine.js';
+import { loadManifest } from '../audio/manifest.js';
 
 export const capturedDemos = [
   { id: 'cafe', label: 'Rainy café' },
@@ -23,12 +25,15 @@ export function loadCapturedDemo(id: CapturedDemoId): Promise<Scene> {
         if (!response.ok) throw new Error('This demo room could not be loaded. Please try again.');
         return response.json();
       };
-      const [scene, assets] = await Promise.all([read('scene').then(Scene.parse), read('assets').then(ManagedAssets.parse)]);
+      const [scene, assets, library] = await Promise.all([read('scene').then(Scene.parse), read('assets').then(ManagedAssets.parse), loadManifest()]);
       if (scene.room.art !== `demo-${id}` || assets.envId !== scene.room.art || scene.objects.length !== 3)
         throw new Error('This demo bundle does not match its room.');
+      // Each source plays a library sound straight from /sounds/, so the room hears every library
+      // update, or (when the library has nothing like it) its own recording bundled with the room.
+      const fromLibrary = scene.objects.filter(object => library.get(object.sound.assetId ?? '')?.kind === object.kind);
       const urls = [...Object.values(assets.environment?.textures ?? {}), ...assets.sprites, ...assets.sounds].map(asset => asset.url);
-      if (urls.some(url => !url.startsWith(`/demo/${id}/assets/`)) || assets.sounds.length !== 3 ||
-        scene.objects.some(object => !assets.sounds.some(sound => sound.objectId === object.id &&
+      if (urls.some(url => !url.startsWith(`/demo/${id}/assets/`)) ||
+        scene.objects.some(object => !fromLibrary.includes(object) && !assets.sounds.some(sound => sound.objectId === object.id &&
           sound.query === object.sound.query && sound.kind === object.kind &&
           object.sound.assetId === `managed:${sound.fileId}:${sound.kind}:${sound.query.replace(/\s+/g, ' ').trim()}`)))
         throw new Error('This demo is missing a local sound binding.');
@@ -36,6 +41,7 @@ export function loadCapturedDemo(id: CapturedDemoId): Promise<Scene> {
         ...Object.values(assets.environment?.textures ?? {}).map(image => loadPaintImage(image.url)),
         ...assets.sprites.map(image => loadPaintImage(image.url)),
         ...assets.sounds.map(sound => preloadDemoSound(sound.url)),
+        ...fromLibrary.map(object => preloadPackSound(object.sound.assetId!)),
       ]);
       installManagedAssets(assets, scene);
       return scene;

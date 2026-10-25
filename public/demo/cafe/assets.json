@@ -117,27 +117,5 @@
       "wall": null
     }
   ],
-  "sounds": [
-    {
-      "objectId": "demo-cafe-source-1",
-      "query": "Steady natural rainfall pattering against the glass of a large closed cafe window, delicate individual droplets and soft water texture, clean physical recording, no people",
-      "kind": "bed",
-      "fileId": "demo-cafe-1",
-      "url": "/demo/cafe/assets/sound-1.mp3"
-    },
-    {
-      "objectId": "demo-cafe-source-2",
-      "query": "A cafe espresso machine steam wand releasing a continuous airy steam hiss with subtle boiler texture, authentic coffee equipment recording, no voices",
-      "kind": "bed",
-      "fileId": "demo-cafe-2",
-      "url": "/demo/cafe/assets/sound-2.mp3"
-    },
-    {
-      "objectId": "demo-cafe-source-3",
-      "query": "One porcelain espresso cup gently set onto its ceramic saucer, a clear delicate clink with natural short decay, isolated single occurrence",
-      "kind": "event",
-      "fileId": "demo-cafe-3",
-      "url": "/demo/cafe/assets/sound-3.mp3"
-    }
-  ]
+  "sounds": []
 }

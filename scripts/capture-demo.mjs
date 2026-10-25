@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile, copyFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import path from 'node:path';
 import { createServer } from 'vite';
 
 // Run once using the app's server handlers, then commit only public/demo. Resume files contain
@@ -109,20 +108,20 @@ async function capture(id) {
     const generated = assets.sounds.find(sound => sound.objectId === object.id);
     const name = `sound-${index + 1}.mp3`, fileId = `demo-${id}-${index + 1}`;
     if (match?.good) {
+      // A library sound plays straight from /sounds/, so the room hears every later library update.
       const entry = manifest.find(entry => entry.id === match.assetId);
-      assert.equal(path.extname(entry.file), '.mp3');
-      await copyFile(`public/sounds/${entry.file}`, `${dir}/assets/${name}`);
       taken.add(entry.id);
       provenance.push({ objectId: object.id, libraryId: entry.id, license: entry.license });
-    } else {
-      const response = generated ? await api(generated.url)
-        : await api(`/api/sound?${new URLSearchParams({ kind: object.kind, q: object.sound.query })}`);
-      const raw = `${captureRoot}/${id}/sound-${index + 1}.input`;
-      await writeFile(raw, Buffer.from(await response.arrayBuffer()));
-      const converted = spawnSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, '-vn', '-ac', '1', '-ar', '44100', '-codec:a', 'libmp3lame', '-b:a', '128k', `${dir}/assets/${name}`], { encoding: 'utf8', windowsHide: true });
-      assert.equal(converted.status, 0, `Audio conversion failed; set FFMPEG_PATH. ${converted.error?.message ?? ''}`);
-      provenance.push({ objectId: object.id, provider: generated ? 'Claude/chirp' : 'ElevenLabs' });
+      object.sound.assetId = entry.id;
+      continue;
     }
+    const response = generated ? await api(generated.url)
+      : await api(`/api/sound?${new URLSearchParams({ kind: object.kind, q: object.sound.query })}`);
+    const raw = `${captureRoot}/${id}/sound-${index + 1}.input`;
+    await writeFile(raw, Buffer.from(await response.arrayBuffer()));
+    const converted = spawnSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, '-vn', '-ac', '1', '-ar', '44100', '-codec:a', 'libmp3lame', '-b:a', '128k', `${dir}/assets/${name}`], { encoding: 'utf8', windowsHide: true });
+    assert.equal(converted.status, 0, `Audio conversion failed; set FFMPEG_PATH. ${converted.error?.message ?? ''}`);
+    provenance.push({ objectId: object.id, provider: generated ? 'Claude/chirp' : 'ElevenLabs' });
     assert.ok((await stat(`${dir}/assets/${name}`)).size > 100);
     // Recorded demo bindings are fixed, reviewed exceptions to runtime resolver ownership.
     object.sound.assetId = `managed:${fileId}:${object.kind}:${object.sound.query.replace(/\s+/g, ' ').trim()}`;

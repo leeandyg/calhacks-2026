@@ -232,13 +232,6 @@
       "url": "/demo/zen/assets/sound-1.mp3"
     },
     {
-      "objectId": "demo-zen-source-2",
-      "query": "wind, trees, leaves, rustling, forest, breeze, bamboo",
-      "kind": "bed",
-      "fileId": "demo-zen-2",
-      "url": "/demo/zen/assets/sound-2.mp3"
-    },
-    {
       "objectId": "demo-zen-source-3",
       "query": "One hollow bamboo shishi odoshi deer scarer gently striking its stone stop, a natural woody bamboo clack with a short decay, isolated single occurrence",
       "kind": "event",

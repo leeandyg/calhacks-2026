@@ -70,7 +70,9 @@ resolved normally and do not trigger offline replay.
 Four fully captured rooms are available from the buttons below the prompt: **Rainy café**,
 **Beach**, **Cyberpunk city**, and **Zen garden**. Each has exactly three sounds (two beds and one random event),
 pixel artwork, and fixed starting placements. Complete bundles live in `public/demo/<id>/`:
-`scene.json`, `assets.json`, capture/provenance notes, PNGs and compressed MP3s. Assets warm on page
+`scene.json`, `assets.json`, capture/provenance notes, PNGs and compressed MP3s. A source the sound
+library covers plays that library sound straight from `public/sounds/` (no copy in the bundle), so
+library updates reach the demo rooms; only sounds the library lacks are bundled. Assets warm on page
 load; selecting a room loads local files without generation calls or a Convex dependency.
 The room remains interactive. Normal typed/voice AI follow-ups use the configured services;
 `?demo` keeps the existing recorded offline edits. Run locally before disconnecting for a demo
