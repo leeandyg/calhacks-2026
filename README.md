@@ -77,6 +77,16 @@ starts with an empty canonical scene and a centered prompt; errors keep it empty
 the current generated world and prompt for retry. Missing asset IDs in valid AI output are
 resolved normally and do not trigger offline replay.
 
+## Opening a saved environment by name
+
+A prompt that names an existing room and asks for nothing else opens that room instead of generating
+it again: "cyberpunk city", "take me to the rainy café", or the name of a room saved with **Save room**
+("study cave"). The room fades to the loading mosaic for at least 1.5 s, then the saved room appears
+with its art and sounds; **undo** returns to the previous room. Your own saved rooms win over a captured
+room of the same name. Anything more ("a cyberpunk city at dawn") still goes to the world agent.
+Matching is in `asksOnlyFor` (`src/ai/preferences.ts`) and `src/scene/savedPlaces.ts`; it makes no
+model calls. `?demo` keeps its own preset names.
+
 ## Offline demo
 
 Four fully captured rooms are available from the buttons below the prompt: **Rainy café**,

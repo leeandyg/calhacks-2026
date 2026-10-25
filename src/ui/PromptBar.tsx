@@ -13,15 +13,22 @@ import { paintEnvironment, paintSprites } from '../art/client.js';
 import { applyManagedPartial, installManagedAssets } from '../ai/managedClient.js';
 import { resumeAudio } from '../audio/context.js';
 import { capturedDemos, loadCapturedDemo, type CapturedDemoId } from '../scene/capturedDemos.js';
+import { findSavedPlace } from '../scene/savedPlaces.js';
 
 type Status = { tone: 'busy' | 'notice' | 'error'; text: string };
 const NOTICE_MS = 8000;
 // /?demo replays saved responses and local presets only, with no AI requests (README "Offline demo").
 const DEMO_MODE = new URLSearchParams(window.location.search).has('demo');
+// A saved room opens behind the loading mosaic for at least this long, so the switch reads as a transition.
+const SAVED_PLACE_MS = 1500;
+const pause = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
+  const timer = setTimeout(resolve, ms);
+  signal?.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+});
 
 // Sends the prompt and current scene to the server agent and applies the validated reply. Without AI,
 // the client falls back to the local presets and recorded demo, and says so in the status line.
-export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: boolean; onSceneReady: () => void; onBusyChange?: (busy: boolean) => void }) {
+export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }: { hasScene: boolean; onSceneReady: () => void; onBusyChange?: (busy: boolean) => void; onSwitching?: (switching: boolean) => void }) {
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<Status>();
   const demoMode = DEMO_MODE;
@@ -63,6 +70,26 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: 
         options.onProgress?.('updating'); setValue('');
         setStatus(voiceCommand ? undefined : { tone: 'notice', text: 'Last room change undone.' });
         return 'Last change undone.';
+      }
+      // "cyberpunk city" or a name from Save room: open the existing room instead of generating it again.
+      const place = !quick && !demoMode && !options.correction ? await findSavedPlace(prompt) : undefined;
+      if (place) {
+        options.signal?.throwIfAborted();
+        options.onProgress?.('updating');
+        setStatus({ tone: 'busy', text: `Found your saved ${place.label}. Opening it…` });
+        onSwitching?.(true);
+        try {
+          const [scene] = await Promise.all([place.load(), pause(SAVED_PLACE_MS, options.signal)]);
+          const store = useSceneStore.getState();
+          if (sceneFingerprint(store.scene) !== sceneFingerprint(original))
+            throw new Error('Your room changed while opening the saved room. Ask again to replace it.');
+          const result = store.setScene(scene);
+          if (!result.ok) throw new Error(result.error);
+        } finally { onSwitching?.(false); }
+        lastCommand.current = { prompt, change: commandChange(original, useSceneStore.getState().scene) };
+        setValue(''); setRefresh(value => value + 1); onSceneReady();
+        setStatus(voiceCommand ? undefined : { tone: 'notice', text: `Opened your saved ${place.label}.` });
+        return `Opened your saved ${place.label}.`;
       }
       options.onProgress?.('understanding');
       const reply: AgentReply = quick ? { response: SceneResponse.parse({ kind: 'edit', ops: quick.ops }), message: quick.message }
@@ -167,7 +194,7 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: 
     } finally {
       working.current = false;
     }
-  }, [agentContext, demoMode, hasScene, onSceneReady]);
+  }, [agentContext, demoMode, hasScene, onSceneReady, onSwitching]);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void submitPrompt(value).catch(() => {});
