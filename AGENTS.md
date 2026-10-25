@@ -33,13 +33,16 @@ Tasks live in GitHub Issues on `leeandyg/calhacks-2026`. Every change maps to an
 - The room view and the audio engine only render the scene store (`src/scene/store.ts`). Change the scene through `setScene` / `applyOps` (both all-or-nothing, returning `{ ok }` or `{ ok: false, error }`), never by mutating objects or reading positions from meshes. The store snaps positions onto the room grid with `src/scene/layout.ts`.
 - The room grid is fixed (1 block = 1 m, default 10 × 10 × 7); Gemini never chooses it. Camera and rotation are view-only state in `src/room/useRoomStore.ts`.
 - API keys are read only server side: in `api/` (from `.env` or Vercel) or in `convex/` (from the Convex deployment's environment). Nothing in `src/` may use a secret.
+- Claude Managed Agents (#86) is the live backend when `ANTHROPIC_API_KEY` is configured. Keep credentials in `api/` only. Run managed pxl/chirp code only in its remote sandbox; consume validated manifests and compiled PNG/audio through the signed session proxy. Preserve the canonical scene and resolver ownership of sound IDs. Media metadata belongs in browser art/audio state, never model-written JavaScript in the frontend.
+- New live worlds (#91) start from an empty canonical scene, never the starter fixture. Only explicit `?demo` uses preset content. Keep the fixed floor/wall slabs and flush corners for every generated theme; `openAir` cannot hide structure. Managed source art follows object IDs across moves and never falls back to stock props.
+- Live pxl art (#76) is generated only in `api/` and `server/`. Run model-written code only inside the QuickJS/WASM renderer, never Node `eval`/`vm`. Keep PNGs in `src/art/` browser state; scene JSON carries only `room.art` and canonical `room.terrain`. Render the environment before source generation, and keep waiting portals tied to canonical source positions.
 - Never set `sound.assetId` outside the resolver (`src/audio/resolve.ts`), except in hand-made presets or recordings. Objects without one are resolved automatically: a pack sound, or a `gen:` id that is generated with ElevenLabs (each generation costs credits).
 - Relative imports use `.js` extensions (`./scene.js`) so `api/` works on Vercel.
 - Check with `npm run build` before opening a PR.
 
 ## Frontend (pixel room)
 
-Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, the Enter-room overlay, and one BorderBeam-wrapped prompt bar with its demo row and status line.
+Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects, camera, or interactions. Keep the frontend to the room, two plain left/right rotation arrows beside it, and one BorderBeam-wrapped prompt bar with its status line. A fresh page shows only the centered prompt; reveal the room and rotation arrows and move the prompt below the room after successful creation. Prompt submission unlocks audio; there is no Enter-room overlay. No preset or demo controls; the offline demo is `?demo`.
 
 - Keep view rotation separate from canonical source positions. Room rotation is manual only, through the arrows; no edge-triggered, delayed, or automatic turns.
 - No shadows and no decorative non-source objects. Every model is one sound object.

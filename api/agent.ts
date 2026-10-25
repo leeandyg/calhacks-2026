@@ -12,6 +12,7 @@ const AgentRequest = z.object({
   prompt: z.string().trim().max(2000).default(""), scene: Scene.nullable().default(null),
   task: z.string().trim().max(80).default(""), timeBucket: TimeBucket.default("any"),
   timezone: z.string().min(1).max(80).default("UTC"),
+  sessionToken: z.string().max(2048).optional(),
   id: z.string().max(100).optional(), turns: z.array(z.string().max(600)).max(6).default([]),
 });
 
@@ -55,7 +56,7 @@ export async function POST(request: Request): Promise<Response> {
       return privateJson({ error: "No saved preference matches this task and time yet. Choose the task/time you saved or remember a room first." }, 400);
     }
     const response = await deadline(sceneResponse(new Request(request.url, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: data.prompt, scene: data.scene }) }), {
+      body: JSON.stringify({ prompt: data.prompt, scene: data.scene, sessionToken: data.sessionToken }) }), {
       ...context, preferences: memory.preferences.map(preferenceExample), recentContext: memory.recentContext,
     }), 15_000).catch(() => privateJson({ error: "Scene AI took too long to respond." }, 504));
     const body = await response.json();

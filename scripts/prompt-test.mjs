@@ -5,7 +5,9 @@ import { mkdir } from 'node:fs/promises';
 const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [], requests = [];
-// /api/scene is stubbed: a live agent reply, then an outage that must fall back to a local preset.
+// This suite tests prompts and the standard-room fallback. The art pipeline has its own suite.
+await page.route('**/api/environment', route => route.fulfill({ json: { error: 'Art disabled for prompt test' } }));
+// /api/scene is stubbed: live replies and outages that must never insert fixtures.
 let reply;
 await page.route('**/api/scene', async route => { requests.push(route.request().postDataJSON()); await reply(route); });
 page.on('pageerror', error => errors.push(error.message));
@@ -13,8 +15,6 @@ page.on('console', message => { if (message.type() === 'error' && !(reply?.outag
 try {
   await mkdir('test-results', { recursive: true });
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
-  await page.waitForFunction(() => window.__pixelRoom?.().rendering);
   const input = page.getByLabel('Prompt', { exact: true }); // a combobox while the offline demo suggests prompts
   const send = page.getByRole('button', { name: 'Send', exact: true });
   const rotate = page.getByRole('button', { name: 'Rotate Right', exact: true });
@@ -22,15 +22,30 @@ try {
   assert.equal(await page.locator('form').count(), 1);
   assert.equal(await page.locator('input[type=text]').count(), 1);
   assert.equal(await page.locator('textarea').count(), 0);
-  assert.equal(await rotate.innerText(), '');
   const left = page.getByRole('button', { name: 'Rotate Left', exact: true });
-  assert.equal(await left.innerText(), '');
-  assert.equal(await page.getByRole('button').count(), 3);
+  assert.equal(await page.getByRole('button').count(), 1);
+  assert.equal(await page.locator('canvas, .room-rotation, .overlay').count(), 0);
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const rect = await page.locator('.prompt-bar').boundingBox();
+    assert.ok(Math.abs(rect.x + rect.width / 2 - viewport.width / 2) < 1);
+    assert.ok(Math.abs(rect.y + rect.height / 2 - viewport.height / 2) < 1);
+    await page.screenshot({ path: `test-results/empty-${viewport.width}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   assert.equal(await input.getAttribute('placeholder'), 'Generate anything...');
   assert.ok(await send.isDisabled());
   await input.fill('   '); await input.press('Enter');
   assert.ok(await send.isDisabled());
   assert.equal(requests.length, 0);
+  assert.deepEqual(await page.evaluate(() => window.sceneStore.getState().scene.objects), [], 'canonical startup contains no hidden dummy objects');
+  // A failed first creation leaves the page empty and the original prompt editable.
+  reply = route => route.fulfill({ json: { kind: 'edit', ops: [] } });
+  await input.fill('Make it quieter'); await send.click();
+  await page.getByRole('alert').filter({ hasText: 'Describe a place' }).waitFor();
+  assert.equal(requests[0].scene, null);
+  assert.equal(await input.inputValue(), 'Make it quieter');
+  assert.equal(await page.locator('canvas, .room-rotation').count(), 0);
   const scene = () => page.evaluate(() => window.__pixelRoom().scene);
   // A live create reply, as /api/scene returns it: the fixed grid, unresolved sounds and the agent's
   // props. The resolver binds the sounds; the store keeps the fixed room.
@@ -42,11 +57,25 @@ try {
       { id: 'rain-1', label: 'Rain on window', kind: 'bed', sound: { query: 'steady rain on glass' }, position: [4.79, 2.5, 0], volume: 0.4, model: 'rain', wall: 'east' },
       { id: 'birds-1', label: 'Birds', kind: 'event', sound: { query: 'sparrow chirps' }, position: [4, 1.5, -3], volume: 0.2, intervalSec: [8, 25], model: 'birds' },
     ] } } });
+  const createReply = reply;
+  let releaseCreation;
+  const pendingCreation = new Promise(resolve => { releaseCreation = resolve; });
+  reply = async route => { await pendingCreation; await createReply(route); };
   await input.fill('  A quiet forest room  '); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
+  await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'true');
+  assert.equal(await page.locator('canvas, .room-rotation').count(), 0,'no starter room while creating');
+  const pendingRect = await page.locator('.prompt-bar').boundingBox();
+  assert.ok(Math.abs(pendingRect.y + pendingRect.height / 2 - 450) < 1,'progress leaves the prompt centered');
+  releaseCreation();
+  await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
+  assert.equal(await rotate.innerText(), '');
+  assert.equal(await left.innerText(), '');
+  assert.equal(await page.getByRole('button').count(), 3);
   assert.equal(await input.inputValue(), '');
-  assert.equal(requests[0].prompt, 'A quiet forest room');
-  assert.deepEqual(requests[0].scene.room.grid, grid, 'the agent sees the current room');
+  assert.equal(requests[1].prompt, 'A quiet forest room');
+  assert.equal(requests[1].scene, null, 'the first room has no dummy scene context');
+  const completedRect = await page.locator('.prompt-bar').boundingBox();
+  assert.ok(completedRect.y > 700,'the prompt moves below the created room');
   let current = await scene();
   assert.deepEqual(current.room.grid, grid);
   assert.deepEqual(current.objects.map(object => object.sound.assetId), ['creek', 'rain_window', 'sparrow']);
@@ -61,41 +90,27 @@ try {
   current = await scene();
   assert.equal(current.objects[0].muted, true);
   assert.equal(await input.inputValue(), '');
-  // A sound the pack lacks shows "generating…" over its prop until ElevenLabs answers (#38).
-  let releaseSound;
-  const soundHeld = new Promise(resolve => { releaseSound = resolve; });
-  await page.route('**/api/sound*', async route => { await soundHeld; await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: 'not audio' }); });
+  // A sound the pack lacks, with ElevenLabs off (the default, #97): no /api/sound request and no
+  // "generating…" label; it plays the closest pack sound, or the Claude agent's chirp file when there is one.
+  let soundRequests = 0;
+  await page.route('**/api/sound*', route => { soundRequests++; return route.fulfill({ status: 503, json: { error: 'off' } }); });
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'add', object: { id: 'cat-1', label: 'Cat purring', kind: 'bed', sound: { query: 'a cat purring softly' }, position: [1.5, 1, -1.5], volume: 0.4 } }]));
-  const label = page.locator('.sound-status');
-  await label.waitFor({ state: 'visible' });
-  assert.equal(await label.innerText(), 'Cat purring · generating…');
-  const box = await label.boundingBox();
-  assert.ok(box.x > 0 && box.y > 0 && box.x + box.width < 1440, 'the label sits over the room');
-  releaseSound();
-  await page.waitForFunction(() => document.querySelector('.sound-status')?.textContent.includes('using the closest sound'));
+  await page.waitForFunction(() => window.__pixelRoom().scene.objects.find(o => o.id === 'cat-1')?.sound.assetId);
+  await page.waitForTimeout(1000);
+  assert.equal(soundRequests, 0, 'live generation is off by default');
+  assert.equal(await page.locator('.sound-status').count(), 0);
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'remove', id: 'cat-1' }]));
-  await label.waitFor({ state: 'detached' });
-  // The offline demo checkbox and local presets (OakleySun's demo controls) sit above the prompt.
-  await page.getByRole('combobox', { name: 'Local preset' }).selectOption('library');
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'library');
-  assert.match(await page.getByRole('status').innerText(), /Library local preset/);
-  await page.getByRole('checkbox', { name: 'Offline demo' }).check();
-  await input.fill("Rainy Tokyo cafe, I'm writing an essay."); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'cafe');
-  assert.match(await page.getByRole('status').innerText(), /Demo mode/);
-  const sent = requests.length;
-  await page.getByRole('checkbox', { name: 'Offline demo' }).uncheck();
-  assert.equal(requests.length, sent, 'the offline demo sends no AI requests');
-  // Without the AI, a supported prompt loads its local preset and says so.
-  reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Set GEMINI_API_KEY' } }), { outage: true });
+  // Live failures preserve the generated room rather than silently loading a preset.
+  const beforeFailure = await scene();
+  reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Scene generation unavailable' } }), { outage: true });
   await input.fill('cabin'); await send.click();
-  await page.waitForFunction(() => window.__pixelRoom().scene.room.preset === 'cabin');
-  assert.match(await page.getByRole('status').innerText(), /AI unavailable/);
-  assert.ok((await scene()).objects.every(object => object.sound.assetId));
-  // An unsupported prompt keeps the room and shows an error.
+  await page.getByRole('alert').filter({ hasText: 'kept unchanged' }).waitFor();
+  assert.deepEqual(await scene(), beforeFailure);
+  assert.equal(await input.inputValue(), 'cabin');
   await input.fill('paint the walls blue'); await send.click();
+  await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'false');
   assert.match(await page.getByRole('alert').innerText(), /kept unchanged/);
-  assert.equal((await scene()).room.preset, 'cabin');
+  assert.deepEqual(await scene(), beforeFailure);
   assert.equal(await input.inputValue(), 'paint the walls blue', 'a failed prompt stays editable');
   await page.waitForFunction(() => !window.__spawnBusy);
   const before = await page.evaluate(() => window.__pixelRoom().orientation);
@@ -106,6 +121,7 @@ try {
   await input.fill('Hover check'); await send.hover(); await page.waitForTimeout(180);
   assert.ok(await send.evaluate(button => new DOMMatrix(getComputedStyle(button).transform).m42 < 0));
   await input.fill(''); await page.mouse.move(10, 10);
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.prompt-send')).opacity === '0.45');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 360, height: 780 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport); await page.waitForTimeout(180);
     const layout = await page.evaluate(() => {
@@ -128,6 +144,15 @@ try {
     assert.equal(layout.overflow, false);
     await page.screenshot({ path: `test-results/prompt-${viewport.width}.png` });
   }
+  // No preset or demo controls; ?demo replays saved responses without AI requests.
+  assert.equal(await page.locator('select, input[type=checkbox]:not(.head-tracking input)').count(), 0);
+  await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
+  assert.equal(await page.locator('canvas').count(), 0,'demo also starts empty');
+  const sent = requests.length;
+  await input.fill("Rainy Tokyo cafe, I'm writing an essay."); await send.click();
+  await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'cafe');
+  assert.match(await page.getByRole('status').innerText(), /Demo mode/);
+  assert.equal(requests.length, sent, '?demo sends no AI requests');
   assert.deepEqual(errors, []);
-  console.log('PASS: one BorderBeam pill, specified dimensions/colors, blank input guard, live create/edit and offline-fallback prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
+  console.log('PASS: one BorderBeam pill, specified dimensions/colors, blank input guard, live create/edit and safe live-failure prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
 } finally { await browser.close(); }

@@ -1,10 +1,13 @@
+import { setEventPlaying } from './activity.js';
+import { isManagedSound, loadManagedSound, parseManagedAssetId } from './managed.js';
 import { useEffect } from "react";
 import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useHeadPose } from "../sensors/headPose.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
 import { addMeter, removeMeter } from "./levels.js";
-import { isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
+import { elevenLabsEnabled, isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
+import { liveSource, startLiveAudio } from "./live.js";
 import { loadManifest } from "./manifest.js";
 import { matchSound, startResolver } from "./resolve.js";
 import { Reverb } from "./reverb.js";
@@ -123,6 +126,7 @@ export class AudioEngine {
  * gain -> analyser for the room view's level meter (levels.ts).
  * The send is taken before the panner, so the reverb doesn't fade with distance (see reverb.ts).
  * Beds loop one source (with its own fade gain so sound swaps crossfade).
+ * Live objects play an app's stream from the room helper (live.ts) instead of a file.
  * Events play soon after a new sound arrives, then wait a fresh random silent gap within intervalSec
  * (at most MAX_EVENT_GAP_SEC) after each play.
  */
@@ -134,6 +138,8 @@ class Voice {
   private send: GainNode;
   private analyser: AnalyserNode;
   private bed?: Playback;
+  private live?: { node: AudioNode; fade: GainNode };
+  private liveStream?: string;
   private events = new Set<Playback>();
   private eventLoading = false;
   private firstPlay = true; // the current event sound hasn't played yet
@@ -180,6 +186,7 @@ class Voice {
     this.gain.gain.setTargetAtTime(object.muted ? 0 : object.volume, now, fade);
     // A missing replacement asset must stop the old sound too.
     if (object.kind === "bed" && object.sound.assetId !== this.loadedAssetId) void this.playBed();
+    if (object.kind === "live" && object.sound.stream !== this.liveStream) this.playLive(object.sound.stream);
     if (object.kind === "event") {
       const changedAsset = object.sound.assetId !== this.loadedAssetId;
       if (changedAsset) {
@@ -210,6 +217,7 @@ class Voice {
     this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, RAMP_SEC);
     this.stopBed();
     this.stopEvents();
+    this.stopLive();
     // Disconnect after the fade so removing a sound never clicks
     setTimeout(() => {
       this.panner.disconnect();
@@ -244,6 +252,33 @@ class Voice {
     this.bed = { source, fade };
   }
 
+  /** Plays a live app stream through this voice. The stream's node belongs to live.ts. */
+  private playLive(stream: string) {
+    this.stopLive();
+    this.liveStream = stream;
+    const node = liveSource(stream);
+    if (!node) return;
+    const fade = new GainNode(this.ctx, { gain: 0 });
+    node.connect(fade).connect(this.gain);
+    fade.gain.setTargetAtTime(1, this.ctx.currentTime, FADE_SEC / 3);
+    this.live = { node, fade };
+  }
+
+  private stopLive() {
+    if (!this.live) return;
+    const { node, fade } = this.live;
+    this.live = undefined;
+    fade.gain.setTargetAtTime(0, this.ctx.currentTime, FADE_SEC / 3);
+    setTimeout(() => {
+      fade.disconnect();
+      try {
+        node.disconnect(fade);
+      } catch {
+        // live.ts already disconnected the ended stream
+      }
+    }, FADE_SEC * 1000 * 2);
+  }
+
   private stopBed() {
     if (!this.bed) return;
     this.stopPlayback(this.bed);
@@ -259,6 +294,7 @@ class Voice {
   private stopEvents() {
     for (const event of this.events) this.stopPlayback(event);
     this.events.clear();
+    setEventPlaying(this.object.id, false);
   }
 
   private scheduleEvent(soon = this.firstPlay) {
@@ -294,9 +330,11 @@ class Voice {
       source.disconnect();
       fade.disconnect();
       this.events.delete(playback);
+      if (!this.events.size) setEventPlaying(this.object.id, false);
       if (this.loadVersion === version) this.scheduleEvent();
     };
     source.start();
+    setEventPlaying(this.object.id, true);
   }
 }
 
@@ -314,10 +352,10 @@ function loadBuffer(ctx: AudioContext, assetId: string | undefined): Promise<Aud
   if (!assetId) return Promise.resolve(undefined); // not resolved yet (see resolve.ts)
   let buffer = buffers.get(assetId);
   if (!buffer) {
-    buffer = (isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
-      // Retry pack files after transient network/decode failures. A failed generation is not
-      // retried: each scene update (every drag frame) would otherwise call /api/sound again.
-      if (!isGenerated(assetId)) buffers.delete(assetId);
+    buffer = (isManagedSound(assetId) ? loadManagedOrFallback(ctx, assetId) : isGenerated(assetId) ? loadGeneratedOrFallback(ctx, assetId) : loadPackSound(ctx, assetId)).catch((err) => {
+      // Retry pack files after transient network/decode failures. A failed generated or agent sound
+      // is not retried: each scene update (every drag frame) would otherwise fetch it again.
+      if (!isGenerated(assetId) && !isManagedSound(assetId)) buffers.delete(assetId);
       console.warn(`audio: could not load "${assetId}"`, err);
       return undefined;
     });
@@ -334,26 +372,51 @@ async function loadPackSound(ctx: AudioContext, assetId: string) {
   return ctx.decodeAudioData(await res.arrayBuffer());
 }
 
-/** If generation fails (no key, no credits, offline), play the closest pack sound so something still plays. */
+/**
+ * A sound the library lacks: generate it with ElevenLabs when that's enabled, otherwise (or if
+ * generation fails: no key, no credits, offline) play the closest pack sound so something still plays.
+ */
 async function loadGeneratedOrFallback(ctx: AudioContext, assetId: string): Promise<AudioBuffer | undefined> {
+  const { kind, query } = parseGeneratedAssetId(assetId);
+  if (!elevenLabsEnabled) return closestPackSound(ctx, kind, query, "live generation is off");
   try {
     return await loadGenerated(ctx, assetId);
   } catch (err) {
-    const { kind, query } = parseGeneratedAssetId(assetId);
-    const fallback = matchSound(query, kind, (await loadManifest()).values());
-    console.warn(`audio: generating "${query}" failed; ${fallback ? `using "${fallback.assetId}"` : "no fallback"}`, err);
-    return fallback ? loadBuffer(ctx, fallback.assetId) : undefined;
+    console.warn(`audio: generating "${query}" failed`, err);
+    return closestPackSound(ctx, kind, query, "generation failed");
   }
 }
 
-/** Runs the engine (and the resolver that fills in assetIds) while `enabled` (after "Enter room"). */
+/** The Claude agent's chirp sound, or the closest pack sound if this page can't load it. */
+async function loadManagedOrFallback(ctx: AudioContext, assetId: string): Promise<AudioBuffer | undefined> {
+  try {
+    return await loadManagedSound(ctx, assetId);
+  } catch (err) {
+    const { kind, query } = parseManagedAssetId(assetId);
+    console.warn(`audio: the agent's sound for "${query}" is unavailable`, err);
+    return closestPackSound(ctx, kind, query, "agent sound unavailable");
+  }
+}
+
+async function closestPackSound(ctx: AudioContext, kind: Exclude<SoundObject["kind"], "live">, query: string, reason: string) {
+  const fallback = matchSound(query, kind, (await loadManifest()).values());
+  console.info(`audio: ${reason} for "${query}"; ${fallback ? `playing "${fallback.assetId}"` : "no close pack sound"}`);
+  return fallback ? loadBuffer(ctx, fallback.assetId) : undefined;
+}
+
+/**
+ * Runs the engine, the resolver and the room helper's live app audio after the user's first room
+ * has been created.
+ */
 export function useAudioEngine(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     const stopResolver = startResolver();
     const engine = new AudioEngine(getAudioContext());
     engine.start();
+    const stopLive = startLiveAudio(getAudioContext());
     return () => {
+      stopLive();
       engine.stop();
       stopResolver();
     };

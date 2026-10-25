@@ -31,7 +31,14 @@
     "art:build": "node scripts/pixel-room.mjs build",
     "art:lint": "node scripts/pixel-room.mjs lint",
     "art:verify": "node scripts/pixel-room.mjs verify",
-    "art:serve": "node scripts/pixel-room.mjs serve"
+    "art:serve": "node scripts/pixel-room.mjs serve",
+    "predev": "node scripts/build-pxl-sandbox.mjs",
+    "prebuild": "node scripts/build-pxl-sandbox.mjs",
+    "check:art": "node scripts/build-pxl-sandbox.mjs && node scripts/check-art.mjs",
+    "test:art": "node scripts/art-pipeline-test.mjs",
+    "postinstall": "node scripts/build-pxl-sandbox.mjs",
+    "test:managed": "node scripts/managed-browser-test.mjs",
+    "check:managed": "node scripts/check-managed-live.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
@@ -42,16 +49,19 @@
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "convex": "^1.48.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "three": "^0.186.1",
-    "zod": "^4.6.7",
-    "zustand": "^5.0.16",
     "@tailwindcss/vite": "^4.1.14",
     "border-beam": "^1.4.1",
-    "tailwindcss": "^4.1.14"
+    "pxl-pixelart": "github:uilianks/pxl#a012fc78b92e5deff27e56bba563f22895c3916c",
+    "quickjs-emscripten": "^0.32.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.1.14",
+    "three": "^0.186.1",
+    "zod": "^4.6.7",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -59,7 +69,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
-    "@playwright/test": "^1.56.1",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "rolldown": "^1.2.15"
   }
 }

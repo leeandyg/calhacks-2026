@@ -40,11 +40,10 @@ try {
     await assert.rejects(agent.requestAgent("remember this for coding", room, context, true), /live connection/);
     await assert.rejects(agent.requestAgent("forget my coding preference", room), /Connect/);
   });
-  await check("an agent outage replays rainier without moving existing objects", async () => {
+  await check("an agent outage never replays a dummy preset or recorded edit", async () => {
     globalThis.fetch = async () => Response.json({ error: "Service down" }, { status: 503 });
-    const reply = await agent.requestAgent("make it rainier", room, context);
-    assert.equal(reply.response.kind, "edit");
-    assert.ok(reply.response.ops.every((op) => op.op === "set_volume"));
+    await assert.rejects(agent.requestAgent("make it rainier", room, context), /kept unchanged/);
+    await assert.rejects(agent.requestAgent("forest", null, context), /kept unchanged/);
     assert.deepEqual(room.objects[0].position, [1.4, 1.2, -1.7]);
   });
   await check("unavailable memory authentication leaves live typed commands usable", async () => {
@@ -58,6 +57,26 @@ try {
   await check("unknown usual setups return a clear error without replacing the room", async () => {
     globalThis.fetch = async () => Response.json({ error: "No saved preference matches" }, { status: 400 });
     await assert.rejects(agent.requestAgent("Use my usual setup", room, context), /No saved preference/);
+  });
+
+  await check("authenticated turns follow managed world progress and keep memory notices", async () => {
+    const paths = [], updates = [];
+    globalThis.fetch = async (url) => {
+      paths.push(String(url));
+      if (url === "/api/agent") return Response.json({ kind: "managed", token: "safe-capability", recalled: ["coding (morning)"] }, { status: 202 });
+      if (String(url).includes("action=stream")) return new Response('data: {"type":"progress","message":"Painting…"}\n\ndata: {"type":"complete"}\n\n');
+      return Response.json({ response: { kind: "edit", ops: [{ op: "set_volume", id: room.objects[0].id, volume: 0.4 }] }, assets: { envId: "agent-test", sprites: [], sounds: [] } });
+    };
+    const result = await agent.requestAgent("make it rainier", room, context, false, text => updates.push(text));
+    assert.equal(result.response.kind, "edit"); assert.equal(result.response.managed.envId, "agent-test");
+    assert.deepEqual(result.recalled, ["coding (morning)"]); assert.ok(updates.includes("Painting…"));
+    assert.ok(paths.some(path => path.startsWith("/api/world?"))); assert.ok(!paths.includes("/api/scene"));
+  });
+  await check("a failed started managed turn keeps the room and reports its error", async () => {
+    globalThis.fetch = async (url) => url === "/api/agent"
+      ? Response.json({ kind: "managed", token: "safe-capability" }, { status: 202 })
+      : new Response('data: {"type":"error","error":"Generated output invalid"}\n\n');
+    await assert.rejects(agent.requestAgent("make it rainier", room, context), /Generated output invalid/);
   });
 
   process.env.MOSS_PROJECT_ID = "test-project"; process.env.MOSS_PROJECT_KEY = "test-key";

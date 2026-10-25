@@ -1,6 +1,7 @@
 import type { SoundObject } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
-import { generatedAssetId } from "./generated.js";
+import { managedSoundFor } from './managed.js';
+import { generatedAssetId, isGenerated } from "./generated.js";
 import { loadManifest, type ManifestEntry } from "./manifest.js";
 
 // The resolver (#17): turns each object's sound.query (the agent's words) into an assetId.
@@ -10,7 +11,7 @@ import { loadManifest, type ManifestEntry } from "./manifest.js";
 // startResolver() fills in any object that arrives without an assetId; objects that already
 // have one (presets, recorded demo responses, earlier resolutions) are left alone.
 
-type Kind = SoundObject["kind"];
+type Kind = Exclude<SoundObject["kind"], "live">; // only beds and events are files
 
 /** Words that describe how a sound is played or heard rather than what it is. */
 const GENERIC = new Set(
@@ -88,19 +89,30 @@ export function resolveSound(
   return match?.good ? match.assetId : generatedAssetId(kind, query);
 }
 
+/**
+ * Which sound an object plays, library first: a good pack match; otherwise the sound the Claude
+ * agent composed for it with chirp (managed:…); otherwise a gen: id, which plays an ElevenLabs
+ * generation when that is enabled and the closest pack sound when it isn't (AudioEngine).
+ */
+export function chooseSound(query: string, kind: Kind, manifest: Iterable<ManifestEntry>, taken: ReadonlySet<string>, managed?: string): string {
+  const pick = resolveSound(query, kind, manifest, taken);
+  return isGenerated(pick) && managed ? managed : pick;
+}
+
 /** Keeps every object in the scene store resolved. Returns a function that stops it. */
 export function startResolver(): () => void {
   let manifest: ManifestEntry[] | undefined;
   const run = () => {
-    if (!manifest) return;
     const { scene, applyOps } = useSceneStore.getState();
-    const missing = scene.objects.filter((o) => !o.sound.assetId);
+    if (!manifest) return; // the library decides first, so wait for it (it's local and loads fast)
+    // Live app audio is a stream, never a file.
+    const missing = scene.objects.filter((o): o is Exclude<SoundObject, { kind: "live" }> => o.kind !== "live" && !o.sound.assetId);
     if (!missing.length) return;
     const taken = new Set(scene.objects.flatMap((o) => (o.sound.assetId ? [o.sound.assetId] : [])));
     // "add" with an existing id replaces that object in place, keeping its position and mute.
     const result = applyOps(
       missing.map((object) => {
-        const assetId = resolveSound(object.sound.query, object.kind, manifest!, taken);
+        const assetId = chooseSound(object.sound.query, object.kind, manifest!, taken, managedSoundFor(scene, object));
         taken.add(assetId);
         return { op: "add" as const, object: { ...object, sound: { ...object.sound, assetId } } };
       }),
@@ -114,6 +126,7 @@ export function startResolver(): () => void {
     run();
   });
   const unsubscribe = useSceneStore.subscribe(run);
+  run();
   return () => {
     stopped = true;
     unsubscribe();

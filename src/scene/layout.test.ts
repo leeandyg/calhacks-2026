@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { OrthographicCamera, Vector3 } from 'three';
-import { DEFAULT_ROOM_GRID, getRoomDimensions, roomCamera, WALL_IDS, gridFootprint, placeObject, dragPlacement, snapCenter, wallInset, wallLength, sourceWindowOpening, buildWallSegments, getWallOpenings } from './layout.js';
+import { DEFAULT_ROOM_GRID, getRoomDimensions, roomCamera, WALL_IDS, gridFootprint, placeObject, dragPlacement, snapCenter, wallInset, wallLength, buildWallSegments, getWallOpenings } from './layout.js';
 import { useSceneStore } from './store.js';
 import { starter } from './fixtures.js';
 import reference from '../../docs/reference-proportions.json';
@@ -97,40 +97,22 @@ describe('LAYOUT.md modular grid contract', () => {
     const interior = dragPlacement(edge, [0, fan.position[1], 0], DEFAULT_ROOM_GRID);
     expect(interior.wall).toBeNull(); expect(interior.position).toEqual([0, fan.position[1], 0]);
   });
-  it('derives source-window cutouts and rebuilds the destination wall on movement', () => {
+  it('never cuts the wall slab for a wall-mounted source', () => {
     let scene = useSceneStore.getState().scene;
-    const opening = sourceWindowOpening(scene.objects[0], scene.room.grid)!;
-    expect(opening).toMatchObject({ wall: 'west', column: 5, level: 2, span: 2, height: 3 });
-    expect(buildWallSegments('west', scene.room.grid, getWallOpenings(scene.room, scene.objects, 'west'))).toHaveLength(64);
+    // objects[0] is a rain window mounted on the west wall; the slab stays whole regardless.
+    expect(getWallOpenings(scene.room, 'west')).toEqual([]);
+    expect(buildWallSegments('west', scene.room.grid, getWallOpenings(scene.room, 'west'))).toHaveLength(70);
     useSceneStore.getState().applyOps([{ op: 'move', id: 'rain-1', position: [0, 2, 0], wall: 'east' }]);
     scene = useSceneStore.getState().scene;
-    expect(buildWallSegments('west', scene.room.grid, getWallOpenings(scene.room, scene.objects, 'west'))).toHaveLength(70);
-    expect(buildWallSegments('east', scene.room.grid, getWallOpenings(scene.room, scene.objects, 'east'))).toHaveLength(64);
-  });
-  it.each(WALL_IDS)('keeps the window inside solid corner posts at both ends of %s', wall => {
-    const rain = useSceneStore.getState().scene.objects[0];
-    for (const grid of [DEFAULT_ROOM_GRID, { mode: 'Rectangle', columns: 6, rows: 4, wallHeight: 3 } as const]) {
-      for (const end of [-100, 100]) {
-        const window = placeObject({ ...rain, wall, position: [end, rain.position[1], end], scale: 4 }, grid);
-        const opening = sourceWindowOpening(window, grid)!;
-        const length = wallLength(wall, grid);
-        expect(opening.column).toBeGreaterThanOrEqual(1);
-        expect(opening.column + opening.span).toBeLessThanOrEqual(length - 1);
-        const segments = buildWallSegments(wall, grid, [opening]);
-        for (let level = opening.level; level < opening.level + opening.height; level++) {
-          expect(segments.some(segment => segment.column === 0 && segment.level === level)).toBe(true);
-          expect(segments.some(segment => segment.column === length - 1 && segment.level === level)).toBe(true);
-        }
-        expect(placeObject(window, grid)).toBe(window);
-      }
-    }
+    expect(buildWallSegments('west', scene.room.grid, getWallOpenings(scene.room, 'west'))).toHaveLength(70);
+    expect(buildWallSegments('east', scene.room.grid, getWallOpenings(scene.room, 'east'))).toHaveLength(70);
   });
   it('supports integer door/window ranges and excludes baseboard panels at doors', () => {
     const opening = { id: 'entry', kind: 'door', wall: 'west', column: 1, level: 0, span: 1, height: 2 } as const;
     expect(useSceneStore.getState().applyOps([{ op: 'set_room', preset: 'bedroom', openings: [opening] } as never]).ok).toBe(true);
     const scene = useSceneStore.getState().scene;
-    const segments = buildWallSegments('west', scene.room.grid, getWallOpenings(scene.room, scene.objects, 'west'));
-    expect(segments).toHaveLength(62);
+    const segments = buildWallSegments('west', scene.room.grid, getWallOpenings(scene.room, 'west'));
+    expect(segments).toHaveLength(68);
     expect(segments.some(segment => segment.column === 1 && segment.level === 0)).toBe(false);
   });
   it.each([

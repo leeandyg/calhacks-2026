@@ -40,11 +40,20 @@ export const RoomOpening = z.object({
 });
 export type RoomOpening = z.infer<typeof RoomOpening>;
 
+/** Ground height of each floor cell in blocks, [row][column] (row 0 is the north edge). */
+export const TERRAIN_MAX = 1.5;
+export const Terrain = z.array(z.array(z.number().min(0).max(TERRAIN_MAX)));
+export type Terrain = z.infer<typeof Terrain>;
+
 export const Room = z.object({
   preset: RoomPreset,
   grid: RoomGrid,
   openings: z.array(RoomOpening),
   reverb: ReverbPreset,
+  /** The painted environment (api/environment.ts); its textures stay in the browser (src/art/). */
+  art: z.string().min(1).max(80).optional(),
+  /** Uneven ground painted with the environment. Missing means a flat floor. */
+  terrain: Terrain.optional(),
 }).strict(); // no room.size that could disagree with the grid (#49)
 export type Room = z.infer<typeof Room>;
 
@@ -90,7 +99,16 @@ export const EventObject = z.object({
   intervalSec: z.tuple([z.number().positive(), z.number().positive()])
     .refine(([min, max]) => min <= max, "The minimum interval must not exceed the maximum."),
 });
-export const SoundObject = z.discriminatedUnion("kind", [BedObject, EventObject]);
+/** Audio playing in another app on this Mac (e.g. Spotify), streamed by the Swift helper (#28). */
+export const LiveObject = z.object({
+  ...objectFields,
+  kind: z.literal("live"),
+  sound: SoundRef.extend({
+    /** The helper's stream, e.g. "app:com.spotify.client". Never resolved to an asset. */
+    stream: z.string().min(1),
+  }),
+});
+export const SoundObject = z.discriminatedUnion("kind", [BedObject, EventObject, LiveObject]);
 export type SoundObject = z.infer<typeof SoundObject>;
 
 export const MAX_OBJECTS = 12;

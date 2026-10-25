@@ -1,3 +1,4 @@
+import { createFixtureRoom } from './create-fixture-room.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -15,8 +16,9 @@ const settle = async () => {
 };
 try {
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
-  await page.getByRole('button', { name: 'Enter room' }).click(); // browsers need a click before audio
+  await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => object.model));
+  await page.getByRole('status').waitFor({ state: 'detached' });
   const initial = await inspect();
   const verify = async turn => {
     const current = await inspect();
@@ -33,7 +35,7 @@ try {
   assert.equal(await page.getByRole('button').count(), 3, 'two rotation arrows and one send button');
   assert.deepEqual(initial.scene.room.grid, { mode: 'Square', columns: 10, rows: 10, wallHeight: 7 });
   assert.equal(initial.floorModules, 100);
-  assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 64);
+  assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 70, 'the rain window hangs on a solid wall; sources never cut the slab');
   assert.equal(initial.walls.find(wall => wall.id === 'east').modules, 70);
   assert.equal(initial.shell.floorThickness, 0.42);
   assert.equal(initial.shell.floorColor, '969aa3');
@@ -44,9 +46,8 @@ try {
   assert.ok(Math.abs(offset[0] - offset[2]) < 1e-9);
   assert.ok(Math.abs(Math.atan2(offset[1], Math.hypot(offset[0], offset[2])) - Math.PI / 6) < 1e-9);
   assert.equal(await page.getByRole('button', { name: 'Rotate Right', exact: true }).evaluate(el => getComputedStyle(el).boxShadow), 'none');
-  assert.equal((await page.locator('body').innerText()).replace(await page.locator('.demo-controls').innerText(), '').trim(), '', 'besides the demo controls, controls have icons and a placeholder only');
-  assert.equal(await page.locator('header,nav,footer,textarea,h1,h2').count(), 0);
-  assert.equal(await page.locator('label,select').count(), await page.locator('.demo-controls label, .demo-controls select').count(), 'labels and selects only in the demo controls');
+  assert.equal((await page.locator('body').innerText()).trim(), 'Head tracking', 'the only control text is the existing head-tracking toggle');
+  assert.equal(await page.locator('header,nav,footer,textarea,select,h1,h2').count(), 0);
   assert.deepEqual(initial.objects.map(object => object.model).sort(), ['birds', 'fan', 'rain']);
   const canvas = await page.locator('canvas').boundingBox();
   assert.deepEqual([canvas.x, canvas.y, canvas.width, canvas.height], [0, 0, 1440, 900], 'full-viewport canvas');
@@ -120,7 +121,7 @@ try {
   assert.ok(rectangle.shell.walls.every(wall => wall.thickness === 0.42));
   assert.deepEqual(rectangle.shell.surfaceDetails, [], 'returning to a plain room removes all dirt pixels');
   assert.equal(rectangle.walls.find(wall => wall.id === 'north').modules, 40);
-  assert.equal(rectangle.walls.find(wall => wall.id === 'west').modules, 16);
+  assert.equal(rectangle.walls.find(wall => wall.id === 'west').modules, 22, 'only the doorway opens the slab, not the 2x3 window');
   assert.ok(rectangle.bounds.left >= 0 && rectangle.bounds.top >= 0 && rectangle.bounds.right <= 1440 && rectangle.bounds.bottom < 824);
   await page.screenshot({ path: 'test-results/grid-rectangle.png' });
   for (let i = 0; i < 4; i++) {

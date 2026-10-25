@@ -12,7 +12,7 @@ Your instinct on order is right: **3D room with draggable spatial audio first, A
 - **Best stretch for a wow moment:** AirPods head tracking, so sources stay fixed in the room as you turn your head.
 - **Best stretch for the "agentic" pitch:** mic-level noise sensing + a Pomodoro-style agent that changes the scene on its own.
 - **Voice and memory (#68):** push-to-talk with Cartesia, Moss context/preference retrieval, Convex persistence and Gemini scene edits. The automatic noise/Pomodoro agent (#20) remains separate work.
-- **Planned for later (Swift helper):** capture audio from a Mac app like Spotify and place it in the room as a live, visualized sound object. Only after the core demo works.
+- **App audio (Swift helper, #26–#28, built):** an app playing sustained audio, like Spotify, joins the room automatically as a live sound object you can drag and see pulse; the app's own output is muted.
 - **Skip:** meeting speaker separation. It's real, but it can eat the whole weekend.
 
 ## The four core problems
@@ -33,8 +33,9 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 
 1. Score every pack sound of the same kind by words its tags share with the query (stemmed, with filler words like "steady" or "gentle" ignored). An entry's main noun counts triple, and a sound already used in the scene is penalized, so two rain beds get different files.
 2. A good match (the entry's main noun is the thing described, or three or more shared words) uses that pack file.
-3. Otherwise the id becomes `gen:<kind>:<query>`, and the audio engine generates it through the Convex cache or `GET /api/sound`: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (3 s, one occurrence with a natural decay). The models were picked by ear in `scripts/test-elevenlabs.mjs`. Requests describe one physical source, ask for a natural dry recording without added reverb or cinematic effects, and use prompt influence 0.5. Loudness and distance belong in the scene's volume and position rather than in the recording description.
-4. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead. Those caches are per device and per region, and Vercel's is cleared on each deployment; the planned Convex sound cache makes this durable (see "Saved sounds and saved rooms").
+3. Otherwise, if the Claude agent composed a sound for that object with chirp, that file plays (`managed:…`). The library always wins where it has a good match (#97).
+4. Otherwise the id becomes `gen:<kind>:<query>`. Live ElevenLabs generation is **off by default** (`VITE_ELEVENLABS_SOUNDS=on` enables it): the engine then plays the closest pack sound. When enabled, it fetches `GET /api/sound`, which generates with ElevenLabs: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (3 s, one occurrence with a natural decay). The models were picked by ear in `scripts/test-elevenlabs.mjs`. Requests describe one physical source, ask for a natural dry recording without added reverb or cinematic effects, and use prompt influence 0.5. Loudness and distance belong in the scene's volume and position rather than in the recording description.
+5. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead. Those caches are per device and per region, and Vercel's is cleared on each deployment; the planned Convex sound cache makes this durable (see "Saved sounds and saved rooms").
 
 `useSoundStatus` (in `src/audio/generated.ts`) reports `"generating"` or `"failed"` per assetId for the room view. Moss is planned first for voice context and preference memory (see below); semantic sound lookup remains a possible later upgrade to the word scoring.
 
@@ -82,7 +83,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 | Option | Stack | Strengths | Weaknesses | Verdict |
 | --- | --- | --- | --- | --- |
 | Web app | React + TS, React Three Fiber, Web Audio, small Node backend | Fastest iteration; shareable URL; HRTF built in | No AirPods head pose or system-audio tap from the browser | **Core** |
-| Hybrid | The web app + a \~200-line Swift menu-bar helper streaming to `ws://localhost` | Adds AirPods tracking and app-audio capture without rewriting anything | One more process to run during the demo | **Planned** for app audio (Spotify); AirPods tracking rides on the same helper |
+| Hybrid | The web app + a small Swift helper streaming to `ws://localhost` | Adds AirPods tracking and app-audio capture without rewriting anything | One more process to run during the demo | **Built** for app audio (Spotify, `helper/`); AirPods tracking can ride on the same helper |
 | Native macOS | SwiftUI + RealityKit + `AVAudioEnvironmentNode` or PHASE | Best AirPods integration; native taps | Slow UI iteration, Mac-only, fewer teammates can help | Skip |
 | Desktop wrapper | Electron or Tauri around the web app | One installable app | Native plugin setup eats hours | Skip |
 
@@ -95,7 +96,7 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 - **Voice (#68, contributes to #23):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for push-to-talk commands, Moss for context, Gemini for scene operations, and optional Sonic TTS for short acknowledgements. Pomodoro coach cues remain part of #20/#23.
 - **Memory (#68):** [Moss sessions](https://docs.moss.dev/docs/integrate/sessions) for live conversational context and persistent indexes for recalling preferences across sessions. Keep Gemini as the scene agent; Moss Inference is optional, outside the first implementation.
 - **Saved state:** Convex stores named scene snapshots (#51), scoped to an anonymous authenticated browser session. Explicit Save/Load preserves the existing scene contract; Zustand remains the active room. Separate preference records feed Moss retrieval. SpacetimeDB remains an alternative if shared rooms become the priority.
-- **Swift helper (planned, after core):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
+- **Swift helper (`helper/`, built for app audio):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); later `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
 - **Hosting:** Vercel for the frontend and `api/`; Convex for stored sounds and rooms.
 
 ## Architecture
@@ -147,6 +148,50 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
+**Managed World Director (#86):** the supplied Claude Managed Agent now owns live scene planning,
+pxl artwork/animation and chirp audio generation when `ANTHROPIC_API_KEY` is configured. The
+backend starts/continues its managed session, streams safe progress across bounded connections,
+validates a per-turn manifest, and proxies the resulting images/audio with signed session access.
+The agent runs code in Anthropic's sandbox; the application only consumes compiled assets. All
+objects still use the existing scene store and resolver. Generated media metadata lives alongside
+the browser art store, without adding fields to the shared scene JSON. `room.art` identifies that
+world; terrain and positions remain canonical. All generated themes retain the fixed volumetric shell, with 0.42-block wall/floor slabs
+and complete flush corners. Legacy `openAir` metadata cannot remove structural panels; paintings
+cover existing surfaces, including outdoors/cities. Bed sprite motion loops; event motion follows playback,
+and muting freezes it. First creation remains hidden until the manifest and images are ready.
+Follow-up edits receive the latest scene and reuse the session, preserving manual placement.
+`AGENT_CONFIG.yaml` holds the supplied system prompt; the configured agent resource supplies
+its model/tools. Gemini and offline/demo paths remain available. See README for setup and checks.
+
+**First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
+The canonical store initially contains only the fixed structure and listener, with no fixture
+objects, artwork, terrain or session. The first request sends `scene: null`. Live failures keep
+the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden during creation or errors, then reveal
+it with its rotation arrows and move the prompt below it after successful creation. Prompt
+submission supplies the audio gesture; the engine starts when the created room is revealed.
+
+**Live pxl environments (#76):** new live scenes stage the environment before revealing sources.
+`POST /api/environment` reasons about the actual place and streams a plan plus five separately
+painted PNGs (floor, north, east, south, west). Natural ground can be uneven; indoor floors remain
+flat. A source-planning pass then uses the concept and canonical terrain, and `/api/sprite` paints
+each physical source. Waiting portals occupy the chosen positions until art arrives, then sources
+emerge. All generated geometry remains structural surfaces or canonical sound objects. Offline
+presets retain their existing rendering.
+
+The optional `room.art` string names browser-cached environment PNGs; optional `room.terrain`
+stores ground heights as `[row][column]` in blocks, north to south and west to east, matching the
+fixed grid, from 0 to 1.5. Missing terrain means flat ground. Placement lifts sources above the
+ground in the shared store, so audio and drawing share canonical positions. Changing the preset
+or grid clears incompatible art and terrain. These optional contract additions need AI-owner
+review in the #76 PR. PNGs never enter scene JSON or Gemini scene requests.
+
+Art code executes with pxl's platform-independent core in QuickJS/WASM in a separate process,
+without host APIs, with memory and wall-clock limits. Gemini receives pxl's skill/reference,
+render failures, lint findings and a preview when time allows (at most three painting calls).
+The routes have separate Vercel duration budgets (120 seconds environment, 90 seconds sprite),
+and use a bounded warm-instance cache keyed by the description and art context. This cache is
+not durable across server instances. See README “Live environment art” for setup and checks.
+
 Units are meters (1 grid block = 1 m), y is up, the floor is centered on the origin, and the listener faces −z at yaw 0 (three.js defaults). The room is a fixed grid drawn by the room view (default 10 × 10 blocks, walls 7 high); the agent picks only its `preset` and `reverb`, never its size (#57).
 
 ```json
@@ -197,6 +242,8 @@ Objects also carry room-view fields: `model` (the prop drawn: `rain`, `fan`, `bi
 
 The store snaps every position onto the grid (`src/scene/layout.ts`): floor props by their whole footprint, `rain` windows onto a wall. `api/scene.ts` returns positions already snapped, so what you hear is where the prop is drawn. Turning the room with the arrows only moves the camera: the listener sits in the room facing `listener.yaw`, so what you hear doesn't change. Only drags and head tracking do.
 
+A third kind, `live`, is audio playing in another app on the Mac, streamed by the Swift helper: `"sound": { "query": "Spotify", "stream": "app:com.spotify.client" }`. The browser adds and removes these objects itself (`src/audio/live.ts`), and they keep their spot when the scene is replaced; the agent may move them, change their volume or mute them, never add one, and the resolver skips them.
+
 `assetId` is filled in by the resolver, never by the agent. That keeps the agent describing sounds in words and the resolver owning files. An `assetId` is either a pack id from `manifest.json` (`rain_window`) or a generated sound, `gen:<kind>:<query>` (`gen:bed:a cat purring softly`).
 
 ## Stretch features
@@ -212,19 +259,20 @@ Build the adaptive agent and camera head tracking first: together they make the 
 | 5 | Collab rooms | Shared scene + avatar positions in SpacetimeDB; voices over a small WebRTC mesh; each remote voice gets a PannerNode at that person's avatar | 6–10 | Med–high | Only if the core is done by Saturday noon |
 | 6 | Moss preference memory | Convex stores accepted task/time preferences; Moss retrieves relevant memories and live voice context for Gemini. Explicit remember, corrections and forgetting preserve manual edits. See above | 3–5 | Medium | Foundation in **#68**; automatic feedback suggestions later |
 | 7 | Visual polish | Per-object pulse from its `AnalyserNode`; lighting per room preset | 2 | Low | Sunday early morning |
-| 8 | App audio in the room (Spotify) | Swift helper detects which apps are playing, taps one with a Core Audio process tap, and streams it to the browser, where it becomes a live, visualized sound object | 6–10 | High | **Planned** after core; see "App audio in the room" |
+| 8 | App audio in the room (Spotify) | Swift helper detects which apps are playing, taps one with a Core Audio process tap, and streams it to the browser, where it becomes a live, visualized sound object | 6–10 | High | **Built (#26–#28)**; see "App audio in the room" |
 | 9 | Meeting speaker separation | Diarization only says who spoke when; separating overlapping voices needs a model like Meta's [SAM Audio](https://ai.meta.com/samaudio/) on a GPU | 10+ | High | Skip |
 
 ### App audio in the room (Swift helper)
 
-The team decided to add this after the core demo works: music already playing in Spotify (or any Mac app) shows up in the room as a sound object you can drag and see pulse, instead of playing flat over the soundscape.
+**Built (#26–#28).** Music already playing in Spotify (or any Mac app) shows up in the room as a sound object you can drag and see pulse, instead of playing flat over the soundscape. Run `helper/` next to the web app; see [helper/README.md](helper/README.md).
 
-- **Helper (Swift, macOS 14.2+):** a menu-bar app that lists the processes currently producing audio (Core Audio process objects that report running output) and shows which apps are playing, like Spotify.
-- **Capture:** create a process tap on the chosen app with the tap set to mute the original output, so the music plays only from its spot in the room and isn't heard twice. Read the tap through an aggregate device.
-- **Transport:** stream PCM frames (for example 48 kHz float32, 20 ms chunks) and "app started/stopped playing" events over the same `ws://localhost` socket that AirPods head tracking will use.
-- **Browser:** an `AudioWorklet` buffers the stream into a `MediaStreamAudioDestinationNode` or a source node, routed through an HRTF `PannerNode` like any other object. An `AnalyserNode` on it drives the visualizer pulse.
-- **Scene contract:** add a `live` object kind whose `sound` names a stream (e.g. `{ "stream": "app:com.spotify.client" }`) instead of an asset. The agent may place and move it but never resolves it to a file.
-- **Fallback:** if the helper isn't running, the browser tab-capture path (stretch #3) shows the same idea for a web player.
+- **Helper (`helper/`, Swift, macOS 14.2+):** a command-line tool (no menu bar or Xcode needed). It polls Core Audio's process objects every 0.5 s and groups them by the app responsible for them, so a browser's audio process counts as that browser.
+- **Detection:** an app whose output runs gets a listen-only mono tap that measures its level. About 3 s of real sound in the last 4 s brings it in; a ping never qualifies. A paused app keeps its spot, and 60 s of silence or quitting removes it. Chat and mail apps and non-regular processes are ignored.
+- **Capture:** the same tap is switched to muted (`kAudioTapPropertyDescription`), so the music plays only from its spot in the room. The tap is read through a private aggregate device; private taps end with the helper, so a crash never leaves an app muted.
+- **Never the room's own browser:** the helper finds the process at the other end of the WebSocket and excludes its app. Chrome plays every tab through one process, so a video in the same browser can't be captured; play it in another browser or app.
+- **Transport:** `ws://127.0.0.1:47800`, loopback only and limited to our origins. JSON `start` / `stop` events and binary frames (a `UInt32` channel, then mono float32 at the tap's rate, about 10 ms each). The helper only captures while a page has subscribed after Enter room.
+- **Browser (`src/audio/live.ts`, `public/live-stream-worklet.js`):** an `AudioWorklet` buffers each stream (~80 ms) and feeds a voice like any other object: HRTF panner, reverb send and level meter, so the pulse visual works unchanged.
+- **Scene contract:** the `live` object kind (see "Scene contract"). The browser adds it when a stream starts, re-adds it at its last spot after an agent create, preset or Load room, and removes it when the stream stops.
 
 **Gotchas to know before you start**
 

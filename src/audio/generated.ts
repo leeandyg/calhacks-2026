@@ -10,7 +10,7 @@ import type { SoundObject } from "../scene/scene.js";
 // once for every browser and deployment; without Convex, GET /api/sound generates it, cached only by
 // the browser and Vercel's CDN.
 
-type Kind = SoundObject["kind"];
+type Kind = Exclude<SoundObject["kind"], "live">; // only beds and events are files
 
 const PREFIX = "gen:";
 const MAX_QUERY = 300; // api/sound.ts and convex/sounds.ts reject longer queries
@@ -19,6 +19,12 @@ const CONVEX_WAIT_MS = 35_000; // generation times out at 25 s on the server
 const TARGET_LUFS: Record<Kind, number> = { bed: -20, event: -18 };
 const MAX_GAIN_DB = 40; // quiet Foley can need >30 dB; still bound amplification of noise
 const LIMIT = 0.8; // above this, peaks are softly rounded instead of stopping the boost
+
+/**
+ * Live ElevenLabs generation for sounds the library lacks. Off unless VITE_ELEVENLABS_SOUNDS=on: the
+ * Claude agent composes missing sounds with chirp, and anything else plays the closest pack sound.
+ */
+export const elevenLabsEnabled = import.meta.env?.VITE_ELEVENLABS_SOUNDS === "on";
 
 export function generatedAssetId(kind: Kind, query: string): string {
   return `${PREFIX}${kind}:${query.replace(/\s+/g, " ").trim().slice(0, MAX_QUERY)}`;
