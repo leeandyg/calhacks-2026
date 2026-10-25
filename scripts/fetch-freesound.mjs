@@ -2,15 +2,19 @@
 // Downloads candidate sounds from Freesound for the local sound pack (#4).
 //
 //   node --env-file=.env scripts/fetch-freesound.mjs [slug ...]
+//   node --env-file=.env scripts/fetch-freesound.mjs --describe [slug ...]
+//
+// --describe downloads nothing: it records files you saved from freesound.org yourself
+// (assets/raw/<slug>/<id>__<author>__<name>.wav) in candidates.json, so pack.mjs can credit them.
 //
 // For each sound below, searches CC0 + CC-BY sounds, keeps the most-downloaded few, and saves
 // their HQ preview mp3s to assets/raw/<slug>/<freesound id>.mp3 (gitignored). Then:
 //   1. Listen (Finder + spacebar) and delete every candidate you don't want, keeping one per folder.
-//   2. Run scripts/pack.sh to turn the keepers into public/sounds/.
+//   2. Run scripts/pack.mjs to turn the keepers into public/sounds/.
 // assets/raw/candidates.json records author, license and link for every download (for CREDITS.md).
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 const KEEP_PER_SOUND = 3;
@@ -53,6 +57,10 @@ const SOUNDS = {
   thunder_clap: ["thunder clap", "event"],
   dog_distant: ["dog bark distant", "event"],
   chair_creak: ["chair creak", "event"],
+  distant_siren: ["distant siren", "bed"],
+  seagull_call: ["seagull", "event"],
+  brown_noise: ["brown noise", "bed"],
+  white_noise: ["white noise", "bed"],
 };
 
 const token = process.env.FREESOUND_API_KEY;
@@ -61,10 +69,40 @@ if (!token) {
   process.exit(1);
 }
 
-const only = process.argv.slice(2);
+const describe = process.argv.includes("--describe");
+const only = process.argv.slice(2).filter((a) => a !== "--describe");
 const slugs = only.length ? only : Object.keys(SOUNDS);
 const candidatesPath = path.join(RAW_DIR, "candidates.json");
 const candidates = existsSync(candidatesPath) ? JSON.parse(await readFile(candidatesPath, "utf8")) : {};
+
+if (describe) {
+  for (const slug of slugs) {
+    const dir = path.join(RAW_DIR, slug);
+    if (!SOUNDS[slug] || !existsSync(dir)) continue;
+    for (const file of readdirSync(dir)) {
+      const id = file.match(/^(\d+)__.+\.(mp3|wav|flac|aiff?)$/i)?.[1];
+      if (!id || candidates[`${slug}/${id}`]) continue;
+      const res = await fetch(`https://freesound.org/apiv2/sounds/${id}/?fields=name,username,license,url,duration`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (!res.ok) throw new Error(`sound ${id}: ${res.status} ${await res.text()}`);
+      const r = await res.json();
+      candidates[`${slug}/${id}`] = {
+        slug,
+        kind: SOUNDS[slug][1],
+        name: r.name,
+        author: r.username,
+        license: r.license,
+        url: r.url,
+        duration: Math.round(r.duration * 10) / 10,
+      };
+      console.log(`${slug}/${id}: "${r.name}" by ${r.username} (${r.license})`);
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+  }
+  await writeFile(candidatesPath, JSON.stringify(candidates, null, 2) + "\n");
+  process.exit(0);
+}
 
 for (const slug of slugs) {
   const entry = SOUNDS[slug];
