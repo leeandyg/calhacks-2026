@@ -56,14 +56,15 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
       const env = Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'ANTHROPIC_API_KEY', 'CLAUDE_CONFIG_DIR'].filter(name => process.env[name]).map(name => [name, process.env[name]]));
       const outputs = join(cwd, 'outputs');
       const turn = text.match(/^Turn: (r_[a-f0-9]{16})\n/)?.[1];
+      const followup = !parallel && text.includes('\nCurrent canonical scene (null means create a new environment): {');
       const runBranch = async branch => {
         const working = branch ? join(cwd, branch) : state.sdkCwd ?? cwd;
         await mkdir(working, { recursive: true });
         let success = false;
         for await (const message of run({
-          prompt: branch ? branchPrompt(text.replaceAll('/mnt/session/outputs/', `${outputs}/`), branch, outputs) : text.replaceAll('/mnt/session/outputs/', `${outputs}/`) + (state.sdkSessions ? '\nThis is a complete follow-up turn; earlier branch-only restrictions no longer apply.' : ''),
+          prompt: branch ? branchPrompt(text.replaceAll('/mnt/session/outputs/', `${outputs}/`), branch, outputs) : text.replaceAll('/mnt/session/outputs/', `${outputs}/`) + (state.sdkSessions ? '\nThis is a complete follow-up turn; earlier branch-only restrictions no longer apply.' : '') + (followup ? `\nROUTING OVERRIDE FOR THIS TURN: If the request replaces the environment, write ONLY ${outputs}/${turn}_replace.json with {"replace":true} and finish immediately. Do not generate artwork, audio, or the scene manifest: the parallel workers do that next. For an ordinary edit, publish the normal edit manifest.` : ''),
           options: {
-            cwd: working, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last. Skip artwork review, lint, image inspection, and preview generation; use pxl build --no-preview and publish the first valid build. Repair compilation failures only.${branch ? ` This is the ${branch} branch only. Override the full-world workflow: ${branch === 'environment' ? 'use pxl for environment textures/terrain only; do not read chirp or build objects/audio' : 'build sources, sprites and needed audio only; do not paint the environment'}. Publish only your branch manifest.` : ''}`,
+            cwd: working, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last. Skip artwork review, lint, image inspection, and preview generation; use pxl build --no-preview and publish the first valid build. Repair compilation failures only.${followup && !branch ? ` Before reading toolkits or building, determine whether this is a complete replacement world. If so, do not build assets in this routing turn: write only ${outputs}/${turn}_replace.json containing exactly {"replace":true} and finish. The runtime will launch both creation branches. Otherwise perform the ordinary requested edit and publish its normal scene manifest.` : ''}${branch ? ` This is the ${branch} branch only. Override the full-world workflow: ${branch === 'environment' ? 'use pxl for environment textures/terrain only; do not read chirp or build objects/audio' : 'build sources, sprites and needed audio only; do not paint the environment'}. Publish only your branch manifest.` : ''}`,
             ...(!branch && state.sdkSession ? { resume: state.sdkSession } : {}),
             env, settingSources: [], tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
             permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, effort: 'low',
@@ -87,13 +88,21 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
         await save(state);
         return result.output;
       };
+      if (!parallel) {
+        await runBranch();
+        const marker = (await catalog(state, true)).find(file => file.filename === `${turn}_replace.json` && file.size_bytes < 100);
+        if (marker && followup) {
+          const decision = JSON.parse(await readFile(join(outputs, marker.filename), 'utf8'));
+          if (decision.replace !== true) throw new Error('Invalid replacement decision');
+          parallel = true;
+        }
+      }
       if (parallel) {
         const results = await Promise.allSettled(['environment', 'objects'].map(runBranch));
         if (results.some(result => result.status === 'rejected')) throw new Error('A world branch failed');
         const name = await mergeBranches(outputs, turn, results[0].value, results[1].value);
         state.files = [...new Set([...(state.files ?? []), name])];
       } else {
-        await runBranch();
         state.files = [...new Set([...(state.files ?? []), ...(await catalog(state, true)).filter(file => turn && file.filename.startsWith(`${turn}_`)).map(file => file.filename)])];
       }
       state.status = 'idle';

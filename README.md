@@ -304,7 +304,8 @@ validated branch through `POST /api/world` with `part: "environment"` or `part: 
 The first branch reveals the room immediately; the other appears without resetting manual
 positions, volume or mute. The final manifest retains the existing `WorldOutput` contract.
 A failed second branch leaves the valid first result visible with an error. Follow-up edits
-reuse the source session and remain single turns. Legacy cloud sessions still accept the old
+reuse the source session and remain single turns. A full replacement is routed before any
+asset build, then uses the same two concurrent creation jobs and first-ready rendering. Legacy cloud sessions still accept the old
 complete-result flow. A single world uses two concurrent model requests; total generation time
 is bounded by the slower job rather than their sum, plus coordination and loading overhead.
 `npm run test:parallel` covers both completion orders, reconnects and late failure with no credits.
