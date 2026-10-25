@@ -14,6 +14,8 @@ import { applyManagedPartial, installManagedAssets } from '../ai/managedClient.j
 import { resumeAudio } from '../audio/context.js';
 import { capturedDemos, loadCapturedDemo, type CapturedDemoId } from '../scene/capturedDemos.js';
 import { findSavedPlace } from '../scene/savedPlaces.js';
+import { learnPreference, type LearnedPreference } from '../ai/learnPreference.js';
+import { taskPlacePreference } from '../ai/preferences.js';
 
 type Status = { tone: 'busy' | 'notice' | 'error'; text: string };
 const NOTICE_MS = 8000;
@@ -33,6 +35,9 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
   const [status, setStatus] = useState<Status>();
   const demoMode = DEMO_MODE;
   const [agentContext, setAgentContext] = useState<AgentContext>();
+  const latestContext = useRef<AgentContext | undefined>(agentContext);
+  latestContext.current = agentContext;
+  const [learnedPreference, setLearnedPreference] = useState<LearnedPreference>();
   const [refresh, setRefresh] = useState(0);
   const working = useRef(false);
   const lastCommand = useRef<{ prompt: string; change?: CommandChange } | undefined>(undefined);
@@ -54,6 +59,26 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
     void resumeAudio().catch(error => console.warn('Audio could not be enabled.', error));
     setStatus({ tone: 'busy', text: voiceCommand ? '' : 'Building your room…' });
     let partialApplied = false;
+    const rememberAppliedRoom = async () => {
+      if (demoMode || options.correction) return '';
+      const intention = taskPlacePreference(prompt, (override ?? latestContext.current)?.timeBucket ?? 'auto');
+      if (!intention) return '';
+      const progress = `Saving your ${intention.task} environment preference…`;
+      setStatus({ tone: 'busy', text: progress }); options.onProgress?.('updating', progress);
+      try {
+        const until = Date.now() + 5_000;
+        while (convex && !(override ?? latestContext.current)?.token && Date.now() < until) {
+          options.signal?.throwIfAborted(); await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        const learned = await learnPreference(prompt, override ?? latestContext.current, useSceneStore.getState().scene, options.signal);
+        if (!learned) return '';
+        setLearnedPreference(learned); setRefresh(value => value + 1);
+        return learned.notice;
+      } catch (error) {
+        options.signal?.throwIfAborted();
+        return `Room updated. Memory save was not confirmed: ${error instanceof Error ? error.message : 'try Remember this room again.'}`;
+      }
+    };
     try {
       options.signal?.throwIfAborted();
       const original = useSceneStore.getState().scene;
@@ -151,7 +176,9 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
             lastCommand.current = { prompt, change: commandChange(before, useSceneStore.getState().scene) };
             lastAttempt.current = prompt;
             onSceneReady();
-            return 'Room created.';
+            const learned = await rememberAppliedRoom();
+            if (learned) setStatus({ tone: 'notice', text: learned });
+            return learned || 'Room created.';
           } catch (error) {
             console.warn('environment: using the standard room', error);
             artNotice = 'Environment art is unavailable. Using the standard room.';
@@ -180,13 +207,14 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
         }
       }
       if (response) onSceneReady();
+      const learned = response && !response.notice?.startsWith('Offline:') ? await rememberAppliedRoom() : '';
       lastCommand.current = { prompt, change: response ? commandChange(undoBefore, useSceneStore.getState().scene) : undefined };
       lastAttempt.current = prompt;
       setValue('');
-      const notice = [voiceCommand ? undefined : reply.message, reply.notice, artNotice, reply.recalled?.length ? `Recalled: ${reply.recalled.join(', ')}.` : undefined].filter(Boolean).join(' ');
+      const notice = [voiceCommand ? undefined : reply.message, reply.notice, artNotice, learned, reply.recalled?.length ? `Recalled: ${reply.recalled.join(', ')}.` : undefined].filter(Boolean).join(' ');
       setStatus(notice ? { tone: 'notice', text: notice } : undefined);
       setRefresh((value) => value + 1);
-      return reply.message ?? (response?.kind === 'create' ? 'Your room is ready.' : 'Room updated.');
+      return learned || reply.message || (response?.kind === 'create' ? 'Your room is ready.' : 'Room updated.');
     } catch (error) {
       if (options.signal?.aborted) { setStatus({ tone: 'notice', text: 'Voice command cancelled.' }); throw error; }
       setStatus(voiceCommand ? undefined : { tone: 'error', text: error instanceof Error ? error.message : String(error) });
@@ -223,10 +251,12 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching }:
   return <>
     <div className="prompt-tools">
     {status?.text && <p className={`prompt-status prompt-status-${status.tone}`} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
-    {/* Hidden until Convex is deployed (#54). */}
-    {hasScene && convex && <SavedRooms disabled={busy} onLoad={name => setStatus({ tone: 'notice', text: `Loaded “${name}” from saved rooms.` })}/>}
+    {/* Start authentication before the first prompt; reveal manual controls with the room. */}
+    <div hidden={!hasScene}>
+    {convex && <SavedRooms disabled={busy || !hasScene} onLoad={name => setStatus({ tone: 'notice', text: `Loaded “${name}” from saved rooms.` })}/>}
     {hasScene && <HeadTrackingControl/>}
-    {hasScene && <AgentControls disabled={busy} demoMode={demoMode} refresh={refresh} onContext={setAgentContext} onCommand={submitPrompt}/>}
+    <AgentControls disabled={busy || !hasScene} demoMode={demoMode} refresh={refresh} learnedPreference={learnedPreference} onContext={setAgentContext} onCommand={submitPrompt}/>
+    </div>
     </div>
     <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={38} className="prompt-beam">
       <form className="prompt-bar" onSubmit={submit} aria-busy={busy}>

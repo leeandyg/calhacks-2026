@@ -3,13 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { convex } from "../scene/convex.js";
 import { useSceneStore } from "../scene/store.js";
 import { memoryRequest, type AgentContext, type CommandOptions } from "./agent.js";
-import { type Preference, type TimeBucket } from "./preferences.js";
+import { type MemoryInfo, type Preference, type TimeBucket } from "./preferences.js";
+import type { LearnedPreference } from './learnPreference.js';
 import { playReadyCue, prepareVoice, speakReply, startVoice, type VoiceSession } from "./voice.js";
 import { duckSoundscape } from '../audio/ducking.js';
 import { FloatingVoice, useFloatingVoice } from './FloatingVoice.js';
 import { wakeCommand } from './wakePhrase.js';
 
-type Props = { disabled: boolean; demoMode: boolean; refresh: number;
+type Props = { disabled: boolean; demoMode: boolean; refresh: number; learnedPreference?: LearnedPreference;
   onContext: (context: AgentContext | undefined) => void;
   onCommand: (text: string, context: AgentContext, options?: CommandOptions) => Promise<string> };
 
@@ -18,14 +19,15 @@ export function AgentControls(props: Props) {
   return <ConnectedAgentControls {...props} />;
 }
 
-function ConnectedAgentControls({ disabled, demoMode, refresh, onContext, onCommand }: Props) {
+function ConnectedAgentControls({ disabled, demoMode, refresh, learnedPreference, onContext, onCommand }: Props) {
   const token = useAuthToken() ?? undefined;
-  return <VoiceAgentControls {...{ disabled, demoMode, refresh, onContext, onCommand, token }}/>;
+  return <VoiceAgentControls {...{ disabled, demoMode, refresh, learnedPreference, onContext, onCommand, token }}/>;
 }
 
-export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onCommand, token }: Props & { token?: string }) {
+export function VoiceAgentControls({ disabled, demoMode, refresh, learnedPreference, onContext, onCommand, token }: Props & { token?: string }) {
   const [task, setTask] = useState("");
-  const [timeBucket, setTimeBucket] = useState<TimeBucket | "auto">("auto");
+  const [timeBucket, setTimeBucket] = useState<TimeBucket | "auto">("any");
+  const [memoryInfo, setMemoryInfo] = useState<MemoryInfo>();
   const [summary, setSummary] = useState("");
   const [memories, setMemories] = useState<Preference[]>([]);
   const [open, setOpen] = useState(false);
@@ -57,6 +59,11 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
   const locked = disabled || pending || demoMode;
   const context = useCallback((): AgentContext => ({ token: token ?? "", task: (task.trim() || useSceneStore.getState().scene.session?.task || "").slice(0, 80),
     timeBucket, turns: turns.current }), [task, timeBucket, token]);
+  useEffect(() => {
+    if (!learnedPreference) return;
+    setTask(learnedPreference.task); setTimeBucket(learnedPreference.timeBucket); setSummary(learnedPreference.summary);
+    setNotice(learnedPreference.notice); setMemoryInfo(learnedPreference.memory);
+  }, [learnedPreference]);
 
   useEffect(() => { onContext(token ? context() : undefined); }, [context, token, onContext, refresh]);
   useEffect(() => {
@@ -80,7 +87,7 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
     if (!token || !open || demoMode) return;
     try {
       const result = await memoryRequest({ token, task: "", timeBucket: "auto", turns: [] }, { action: "list" });
-      if (mounted.current) setMemories(result.preferences ?? []);
+      if (mounted.current) { setMemories(result.preferences ?? []); setMemoryInfo(previous => previous && result.memory?.status === 'configured' ? previous : result.memory); }
     } catch (error) { if (mounted.current) setError(error instanceof Error ? error.message : "Memory is unavailable."); }
   }, [token, open, demoMode]);
   useEffect(() => { void load(); }, [load, refresh]);
@@ -90,7 +97,11 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
     setPending(true); setError("");
     try {
       const result = await memoryRequest(context(), { action: "remember", scene: useSceneStore.getState().scene, prompt: summary });
-      if (mounted.current) { setNotice([result.message, result.notice].filter(Boolean).join(" ")); await load(); }
+      if (mounted.current) {
+        setNotice([result.message, result.notice].filter(Boolean).join(" ")); setMemoryInfo(result.memory);
+        if (result.remembered) { setTask(result.remembered.task); setTimeBucket(result.remembered.timeBucket); }
+        await load();
+      }
     } catch (error) { if (mounted.current) setError(error instanceof Error ? error.message : "Save was not confirmed."); }
     finally { if (mounted.current) setPending(false); }
   }
@@ -325,21 +336,23 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
     </div>}
     <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary>Environment memory</summary>
+      <p>{!memoryInfo ? 'Checking memory connection…' : memoryInfo.status === 'configured' ? 'Moss configured · saving verifies memory sync' : memoryInfo.provider === 'moss' ? 'Moss semantic memory · preferences stored in Convex' : 'Convex memory · Moss is unavailable or not configured'}</p>
       <fieldset disabled={locked || !token} onKeyDown={(event) => {
         if (event.key === "Enter" && event.target instanceof HTMLInputElement) event.preventDefault();
       }}>
-        <label>Task <input aria-label="Preference task" value={task} maxLength={80} placeholder="coding, reading, writing…"
+        <label>Task <input aria-label="Preference task" list="memory-task-options" value={task} maxLength={80} placeholder="coding, reading, writing…"
           onChange={(event) => setTask(event.target.value)} /></label>
+        <datalist id="memory-task-options">{['coding', 'reading', 'studying', 'writing', 'sleeping', 'meditating'].map(value => <option key={value} value={value}/>)}</datalist>
         <label>When <select aria-label="Preference time" value={timeBucket} onChange={(event) => setTimeBucket(event.target.value as TimeBucket | "auto")}>
           <option value="auto">Current local time</option><option value="any">Any time</option>
           {["morning", "afternoon", "evening", "night"].map((time) => <option key={time}>{time}</option>)}
         </select></label>
         <input aria-label="Preference notes" value={summary} maxLength={600} placeholder="What do you like about this room? (optional)"
           onChange={(event) => setSummary(event.target.value)} />
-        <button type="button" onClick={() => void remember()}>Remember this room</button>
+        <button type="button" disabled={!context().task} onClick={() => void remember()}>{pending ? 'Saving memory…' : 'Remember this room'}</button>
         <button type="button" disabled={!context().task} onClick={() => void onCommand(`Set up my usual ${context().task} environment.`, context()).catch(() => {})}>Use my usual setup</button>
       </fieldset>
-      <p>Remembering the same task and time updates that preference. Unrelated edits preserve manual placements.</p>
+      <p>Choose a task and time, then remember the current room. “I’m going to code, bring me to the river” saves that association after the room is ready.</p>
       {memories.length ? <ul>{memories.map((memory) => <li key={memory._id}>
         <span><strong>{memory.task} · {memory.timeBucket}</strong> — {memory.summary}</span>
         <button type="button" disabled={locked} onClick={() => void forget(memory._id)}>Forget</button>

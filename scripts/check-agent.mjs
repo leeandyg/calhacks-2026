@@ -5,6 +5,7 @@ import { createServer } from "vite";
 import { MossClient } from "@moss-js/moss";
 
 // No real provider calls or microphone access. Cloud persistence has a separate check.
+process.env.VITE_CONVEX_URL = '';
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
 const originalFetch = globalThis.fetch;
 const originalEnv = { id: process.env.MOSS_PROJECT_ID, key: process.env.MOSS_PROJECT_KEY };
@@ -96,11 +97,11 @@ try {
   });
 
   process.env.MOSS_PROJECT_ID = "test-project"; process.env.MOSS_PROJECT_KEY = "test-key";
-  const cloud = new Map(); let closes = 0, pushStatus = "completed";
+  const cloud = new Map(); let closes = 0, pushStatus = "completed", cloudRejected = false;
   MossClient.prototype.session = async function (name) {
     let docs = new Map();
     return { name,
-      loadIndex: async () => { docs = new Map(cloud.get(name) ?? []); return docs.size; },
+      loadIndex: async () => { if (cloudRejected) throw Object.assign(new Error('Cloud snapshot rejected'), { code: 'UNAUTHORIZED' }); docs = new Map(cloud.get(name) ?? []); return docs.size; },
       getDocs: async () => [...docs.values()],
       deleteDocs: async (ids) => { ids.forEach((id) => docs.delete(id)); },
       addDocs: async (items) => { items.forEach((item) => docs.set(item.id, item)); },
@@ -132,6 +133,15 @@ try {
     assert.match(notice, /sync is pending/);
     assert.doesNotMatch(notice, /Moss memory synced/);
     pushStatus = "completed";
+  });
+  await check("Moss semantic recall remains active when cloud snapshots reject access", async () => {
+    cloudRejected = true;
+    const result = await moss.retrieveMemory('owner-local-moss', [morning], 'coding with rain', 'coding', 'morning');
+    assert.equal(result.source, 'moss');
+    assert.deepEqual(result.preferences.map(item => item._id), ['one']);
+    assert.match(result.notice, /UNAUTHORIZED/);
+    assert.equal(cloud.has(moss.memoryIndexName('owner-local-moss')), false);
+    cloudRejected = false;
   });
 
   await check("mic PCM conversion flushes the last partial chunk before finalization", async () => {
