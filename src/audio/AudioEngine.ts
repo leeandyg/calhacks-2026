@@ -159,7 +159,9 @@ class Voice {
     this.panner = new PannerNode(ctx, {
       panningModel: "HRTF",
       distanceModel: "inverse",
-      refDistance: 1,
+      // Events are brief and already mixed below beds. A 2 m reference keeps them audible
+      // at the perimeter (+6 dB beyond 2 m), while retaining inverse-distance falloff.
+      refDistance: object.kind === "event" ? 2 : 1,
       rolloffFactor: 1,
     });
     this.gain.connect(this.panner).connect(output);

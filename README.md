@@ -234,7 +234,9 @@ The Freesound candidates move to `assets/raw/<sound>/_unused/`; move them back a
 
 ### Sounds on command
 
-The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one, **library first**: a pack sound when the tags match well; otherwise the sound the Claude agent composed for that object with chirp (`managed:…`); otherwise `gen:<kind>:<query>`. A `gen:` id plays the closest pack sound unless live ElevenLabs generation is switched on with `VITE_ELEVENLABS_SOUNDS=on` (then v2 for 15 s loops, v3 for 2 s one-shots). Generated and agent sounds are converted to mono and matched to pack loudness, and fall back to the closest pack sound if they can't load, including after a reload, when the page no longer has an agent's file.
+The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one, **library first**: a pack sound when the tags match well; otherwise the sound the Claude agent composed for that object with chirp (`managed:…`); otherwise `gen:<kind>:<query>`. A `gen:` id plays the closest pack sound unless live ElevenLabs generation is switched on with `VITE_ELEVENLABS_SOUNDS=on` (then v2 for 15 s loops, v3 for 3 s one-shots with room for natural decay; requests ask for natural, dry recordings of one physical source, with prompt influence 0.5). Generated and agent sounds are converted to mono and matched to pack loudness, and fall back to the closest pack sound if they can't load, including after a reload, when the page no longer has an agent's file.
+
+Generated and agent (chirp) sounds are converted to mono with protection against stereo phase cancellation and normalized to pack loudness, including clips shorter than 400 ms and quiet Foley that needs up to 40 dB of gain. Silent output takes the existing pack fallback path. Events use a 2 m distance reference (beds keep 1 m), giving the direct sound of perimeter events about 6 dB more level without changing the saved volume, mute, position or random scheduling. Existing cached recordings receive these playback fixes after a page refresh; new descriptions use the improved generation request. Cached files are reused, not automatically regenerated at additional cost.
 
 With Convex connected (see **Save and load rooms with Convex**), each generated sound is stored once in Convex file storage (`convex/sounds.ts`) and shared by every browser and deployment, so a description is paid for once. Two browsers asking for the same new sound at once wait for one generation. Set the key in the Convex deployment, not just `.env`:
 
@@ -245,7 +247,7 @@ grep '^ELEVENLABS_API_KEY=' .env | cut -d= -f2- | npx convex env set ELEVENLABS_
 
 Without Convex, or if it fails, the browser generates through `GET /api/sound?kind=bed|event&q=...`, which only the browser and Vercel's CDN cache. `useSoundStatus` in `src/audio/generated.ts` says which sounds are still generating.
 
-Run `npm run check:resolver` to see which descriptions use a pack sound and which get generated; it reads the local manifest and makes no API calls. Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
+Run `npm run check:resolver` to see which descriptions use a pack sound and which get generated; it reads the local manifest and makes no API calls. `npm run check:generated` checks normalization in headless Chromium without using speakers or provider credits. Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
 
 ## Layout
 

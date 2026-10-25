@@ -25,7 +25,7 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 | --- | --- | --- | --- |
 | Curated local pack | 33 sounds today (21 seamless loops, 12 one-shots) tagged in `public/sounds/manifest.json`, built by `scripts/pack.mjs` | Only what's in the pack, but zero latency and works on bad Wi-Fi | **Built (#4).** The instant, offline layer |
 | Freesound API | Tag search, download the HQ preview MP3 with an API token (`scripts/fetch-freesound.mjs`) | Slow CDN; quality varies; licenses vary (we keep CC0 and CC-BY only) | **Source of most of the pack** (26 of 33), auto-picked by download count |
-| ElevenLabs Sound Effects | Text prompt to audio; `loop: true` makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | 15 s loop in ~4–7 s, 2 s one-shot in ~1.5–2.5 s; 40 credits per second | **Built (#17): the live fallback** for anything the pack lacks ("a cat purring") |
+| ElevenLabs Sound Effects | Text prompt to audio; `loop: true` makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | 15 s loops, 3 s one-shots with room for decay; 40 credits per second | **Built (#17): the live fallback** for anything the pack lacks ("a cat purring") |
 
 **Pack source is moving to generated.** In a side-by-side listening test, ElevenLabs beat the auto-picked Freesound sound for every prompt we compared, so those four (rain_window, fireplace, cup_clink, sparrow) are now generated (`scripts/generate-pack.mjs`, #40). The rest stay on Freesound until someone listens through them; any weak one can be regenerated the same way (about 600 credits per 15 s loop, 80 per one-shot). `fan` and `espresso` were removed for strong electrical hum (60 Hz and 100 Hz) until better recordings are found; requests for them are generated instead.
 
@@ -34,10 +34,12 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 1. Score every pack sound of the same kind by words its tags share with the query (stemmed, with filler words like "steady" or "gentle" ignored). An entry's main noun counts triple, and a sound already used in the scene is penalized, so two rain beds get different files.
 2. A good match (the entry's main noun is the thing described, or three or more shared words) uses that pack file.
 3. Otherwise, if the Claude agent composed a sound for that object with chirp, that file plays (`managed:…`). The library always wins where it has a good match (#97).
-4. Otherwise the id becomes `gen:<kind>:<query>`. Live ElevenLabs generation is **off by default** (`VITE_ELEVENLABS_SOUNDS=on` enables it): the engine then plays the closest pack sound. When enabled, it fetches `GET /api/sound`, which generates with ElevenLabs: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (2 s). The models were picked by ear in `scripts/test-elevenlabs.mjs`.
+4. Otherwise the id becomes `gen:<kind>:<query>`. Live ElevenLabs generation is **off by default** (`VITE_ELEVENLABS_SOUNDS=on` enables it): the engine then plays the closest pack sound. When enabled, it fetches `GET /api/sound`, which generates with ElevenLabs: **v2 for beds** (15 s, `loop: true`) and **v3 for events** (3 s, one occurrence with a natural decay). The models were picked by ear in `scripts/test-elevenlabs.mjs`. Requests describe one physical source, ask for a natural dry recording without added reverb or cinematic effects, and use prompt influence 0.5. Loudness and distance belong in the scene's volume and position rather than in the recording description.
 5. Generated audio is downmixed to mono and brought to pack loudness in the browser (EBU R128, the same scale as the pack, with a soft limiter so crackles and bass-heavy sounds still reach it). Responses are immutable, so the browser and Vercel's CDN cache them and a repeated description costs nothing. If generation fails, the closest pack sound plays instead. Those caches are per device and per region, and Vercel's is cleared on each deployment; the planned Convex sound cache makes this durable (see "Saved sounds and saved rooms").
 
 `useSoundStatus` (in `src/audio/generated.ts`) reports `"generating"` or `"failed"` per assetId for the room view. Moss is planned first for voice context and preference memory (see below); semantic sound lookup remains a possible later upgrade to the word scoring.
+
+**Generated sound quality (#96):** mono conversion retains a source channel if stereo phases would cancel it. Normalization includes short clips, allows up to 40 dB of gain for quiet Foley, and sends silent output through the existing fallback. These playback fixes apply to cached recordings after refresh; new descriptions use the revised generation request. Keep cached files rather than automatically spending credits to replace them.
 
 ### 2. Spatial audio
 
@@ -53,6 +55,7 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 - Start each loop at a random offset so two similar loops don't phase against each other.
 - **Room reverb (built, #12, `src/audio/reverb.ts`):** one shared `ConvolverNode` with synthesized impulse responses (no files) for `room.reverb`: `small-room` (0.6 s), `large-room` (1.8 s), `outdoor` (0.4 s, bright, light) or `none`. The agent picks the preset from the prompt; it doesn't depend on the drawn room's size (#49). Each voice sends to it from before its panner, so far sounds come out wetter: about 14–20 dB of reverb below a source 1 m away, roughly level with it at 6 m indoors. Switching presets fades out, swaps and fades back in.
 - Ramp every gain and position change (`setTargetAtTime`) so drags never click.
+- Events use a 2 m reference distance while beds retain 1 m: perimeter one-shots gain about 6 dB in direct sound, while still falling off with distance. Manual volume, mute, positions and random gaps remain authoritative.
 
 ### 3. The 3D room
 

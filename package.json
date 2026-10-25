@@ -17,6 +17,7 @@
     "check:placement": "node scripts/check-placement.mjs",
     "check:offline": "node scripts/check-offline.mjs",
     "check:audio": "node scripts/check-audio.mjs",
+    "check:generated": "node scripts/check-generated.mjs",
     "check:resolver": "node scripts/check-resolver.mjs",
     "check:reverb": "node scripts/check-reverb.mjs",
     "preview": "vite preview",

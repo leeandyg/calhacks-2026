@@ -84,6 +84,12 @@ Focus sound placement defaults:
   during unrelated edits even if those placements differ from the creation defaults.
 
 Describe each sound in sound.query. Never supply assetId, a filename, or a URL.
+Describe the physical source, material and action concisely, like "ceramic cup set on a
+wooden table" or "pencil writing on paper". Use one source per object. Keep the recording
+clear and natural: express playback loudness and distance through volume and position,
+not words such as "barely audible", "distant", "faint" or "muffled" in sound.query.
+Preserve actual source character (gentle rain, soft brush strokes, low-pitched hum).
+The player supplies spatial distance and room reverb; do not bake those into the recording.
 Object kind must be exactly "bed" for a continuous loop or "event" for a one-shot.
 Every event must include intervalSec: [minimum, maximum] positive seconds, with minimum <= maximum.
 Isolated cup or cutlery clinks, page turns, door creaks, and individual bird calls are

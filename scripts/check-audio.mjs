@@ -15,7 +15,11 @@ const originals = { fetch, setTimeout, clearTimeout, AudioBufferSourceNode: glob
 class Param { value = 0; setTargetAtTime(value, _at, timeConstant) { this.value = value; this.timeConstant = timeConstant; } }
 class Node { connect(node) { this.output = node; (this.outputs ??= []).push(node); return node; } disconnect() { this.disconnected = true; } }
 class Gain extends Node { gain = new Param(); constructor(_ctx, options) { super(); this.gain.value = options?.gain ?? 1; } }
-class Panner extends Node { positionX = new Param(); positionY = new Param(); positionZ = new Param(); }
+const panners = [];
+class Panner extends Node {
+  positionX = new Param(); positionY = new Param(); positionZ = new Param();
+  constructor(_ctx, options) { super(); Object.assign(this, options); panners.push(this); }
+}
 class Source extends Node {
   constructor(_ctx, options) { super(); this.loop = false; Object.assign(this, options); sources.push(this); }
   start(_when = 0, offset = 0) {
@@ -104,6 +108,17 @@ try {
     assert.equal(active().length, 0);
     setSound("ocean"); await flush();
     assert.deepEqual(active().map((source) => source.buffer.asset), ["ocean"]);
+  });
+  await check("events use a closer loudness reference while preserving the scene's volume and position", async () => {
+    assert.equal(panners.at(-1).refDistance, 1, "beds keep their existing distance attenuation");
+    setSound("cup_clink", "event"); await flush();
+    const panner = panners.at(-1);
+    assert.equal(panner.refDistance, 2);
+    assert.equal(panner.distanceModel, "inverse");
+    assert.equal(panner.rolloffFactor, 1);
+    assert.deepEqual([panner.positionX.value, panner.positionY.value, panner.positionZ.value], useSceneStore.getState().scene.objects[0].position);
+    assert.equal(useSceneStore.getState().scene.objects[0].volume, 0.5);
+    setSound("ocean"); await flush();
   });
   await check("replacing a bed with an unresolved sound stops the previous loop", async () => {
     const old = active()[0];
