@@ -1,4 +1,4 @@
-# AI Spatial Soundscape
+# roomto.study
 
 CalHacks 13.0 project. Describe a place, and Claude builds it as a pixel-art room whose props are spatial sound sources. You hear each one from where it sits (binaural, over headphones), drag it to move its sound, and change the room by typing or talking. Wear headphones.
 
