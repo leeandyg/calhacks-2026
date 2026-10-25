@@ -26,6 +26,11 @@ npm test               # scene store, layout and room unit tests (vitest)
 Browser tests need the dev server running (set `TEST_URL` if it isn't on :5173; `PLAYWRIGHT_CHANNEL=chrome`
 uses installed Chrome): `npm run test:browser`, `test:frontend`, `test:window` and `test:prompt`.
 
+`npm run test:loading` starts its own isolated server and checks that prompt submission,
+loading, typing and demo selection stay responsive without provider calls. It uses installed
+Edge on Windows (`PLAYWRIGHT_CHANNEL` overrides it). The loading mosaic uses a small Canvas 2D
+texture through the existing room renderer, avoiding a second WebGL context and GPU readback.
+
 For the self-hosted world director, follow the setup below. For the Gemini-only path, clear
 `WORLD_AGENT_URL`, leave `ANTHROPIC_API_KEY` empty, then create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
 `GEMINI_API_KEY` in `.env`. For sounds the pack doesn't have, also set `ELEVENLABS_API_KEY`
