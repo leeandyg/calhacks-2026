@@ -3,10 +3,10 @@ import { CLAUDE_BUDGET_MS, fallbackScene, requestScene } from "./client.js";
 import type { ManagedResult } from './world.js';
 import type { WorldPart } from './managedClient.js';
 import { currentAgentSession, followManagedRun } from "./managedClient.js";
-import { localContext, type Preference, type TimeBucket } from "./preferences.js";
+import { localContext, USUAL_REQUEST, type Preference, type TimeBucket } from "./preferences.js";
 
 export type AgentContext = { token: string; task: string; timeBucket: TimeBucket | "auto"; turns: string[] };
-export type AgentReply = { response?: Awaited<ReturnType<typeof requestScene>>; message?: string; notice?: string; recalled?: string[] };
+export type AgentReply = { response?: Awaited<ReturnType<typeof requestScene>>; message?: string; notice?: string; recalled?: string[]; restored?: boolean };
 export type CommandOptions = { signal?: AbortSignal; onProgress?: (phase: "understanding" | "updating", message?: string) => void; correction?: string };
 class AgentError extends Error { constructor(message: string, readonly status: number) { super(message); } }
 export function memoryCommand(prompt: string) { return /^(?:remember|forget|save (?:this|my) preference)\b/i.test(prompt.trim()); }
@@ -44,7 +44,7 @@ export async function requestAgent(prompt: string, scene: Scene | null, context?
     signal?.throwIfAborted();
     if (published || memoryCommand(prompt)) throw error;
     if (!startedManaged && error instanceof AgentError && error.status === 401) {
-      if (/\b(?:usual|remembered|saved setup)\b/i.test(prompt)) throw error;
+      if (USUAL_REQUEST.test(prompt)) throw error;
       const response = await requestScene(prompt, scene, false, progress, signal, 'agent', partial);
       return { response, notice: response.notice ?? "Memory is offline. This command used the current room and prompt." };
     }

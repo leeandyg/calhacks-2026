@@ -142,7 +142,8 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: 
           : response.ops.length ? store.applyOps(response.ops) : { ok: true as const };
         if (!result.ok) throw new Error(`The room could not apply that change: ${result.error}`);
         const active = useSceneStore.getState().scene;
-        if (!response.managed && !DEMO_MODE && active.room.art) {
+        // A restored saved room already has its art; it reinstalls from the art store or Convex.
+        if (!response.managed && !DEMO_MODE && !reply.restored && active.room.art) {
           // Gemini/offline fallback notices must not strand new audible sources
           // without artwork inside a captured or Claude-generated environment.
           const ids = response.kind === 'edit' ? new Set(response.ops.flatMap(op => op.op === 'add' ? [op.object.id] : [])) : undefined;

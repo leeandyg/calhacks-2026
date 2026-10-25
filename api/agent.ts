@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { api } from "../convex/_generated/api.js";
 import type { Id } from "../convex/_generated/dataModel.js";
-import { commandContext, exactPreferences, preferenceExample, PreferenceInput, TimeBucket } from "../src/ai/preferences.js";
+import { commandContext, preferenceExample, PreferenceInput, savedRoomFor, TimeBucket, USUAL_REQUEST, type Preference } from "../src/ai/preferences.js";
 import { Scene } from "../src/scene/scene.js";
 import { sceneResponse } from "./scene.js";
 import { authenticatedMemory, privateJson } from "./_lib/auth.js";
@@ -15,6 +15,13 @@ const AgentRequest = z.object({
   sessionToken: z.string().max(2048).optional(),
   id: z.string().max(100).optional(), turns: z.array(z.string().max(600)).max(6).default([]),
 });
+
+// A saved room loads exactly as it was remembered; the kept world's art and sounds reinstall in the browser.
+function restoreSaved(saved: Preference, current: Scene | null, notice: string) {
+  return privateJson({ kind: "create", restored: true, scene: { ...saved.scene,
+    room: { ...saved.scene.room, grid: current?.room.grid ?? saved.scene.room.grid, openings: current?.room.openings ?? saved.scene.room.openings } },
+    notice, recalled: [`${saved.task} (${saved.timeBucket})`] });
+}
 
 export async function POST(request: Request): Promise<Response> {
   const parsed = AgentRequest.safeParse(await request.json().catch(() => null));
@@ -47,13 +54,17 @@ export async function POST(request: Request): Promise<Response> {
       return privateJson({ message: "Forgot that preference.", notice });
     }
     if (!data.prompt) return privateJson({ error: "Describe an environment or an edit." }, 400);
+    // "coding" or "my usual coding setup" with coding saved: load that room now instead of asking the world agent to rebuild it.
+    const named = savedRoomFor(data.prompt, auth.preferences, context.task, context.timeBucket);
+    if (named) return restoreSaved(named, data.scene, `Loaded your saved ${named.task} room.`);
     const memory = await retrieveMemory(auth.owner, auth.preferences, data.prompt, context.task, context.timeBucket, data.turns);
     const fresh = await auth.client.query(api.preferences.context, {});
     memory.preferences = memory.preferences.filter((item) => fresh.preferences.some((record) =>
       record._id === item._id && record.updatedAt === item.updatedAt));
-    const usual = /\b(?:usual|remembered|saved setup)\b/i.test(data.prompt);
-    if (usual && !memory.preferences.length) {
-      return privateJson({ error: "No saved preference matches this task and time yet. Choose the task/time you saved or remember a room first." }, 400);
+    if (USUAL_REQUEST.test(data.prompt)) {
+      // No saved task was named; Moss picks the closest saved room for an explicit usual-setup request.
+      if (!memory.preferences.length) return privateJson({ error: "No saved preference matches this task and time yet. Choose the task/time you saved or remember a room first." }, 400);
+      return restoreSaved(memory.preferences[0], data.scene, `Loaded your closest saved room (${memory.preferences[0].task}).`);
     }
     // Starting or continuing a Claude session makes up to two Anthropic calls of up to 20 s each
     // (server/managedAgent.ts); after auth (5 s) and Moss (8 s) this still fits the 60 s function limit.
@@ -62,13 +73,6 @@ export async function POST(request: Request): Promise<Response> {
       ...context, preferences: memory.preferences.map(preferenceExample), recentContext: memory.recentContext,
     }), 40_000).catch(() => privateJson({ error: "Scene AI took too long to respond." }, 504));
     const body = await response.json();
-    // An explicit request for a saved setup can restore its validated snapshot if AI is down.
-    // Other edits must never fall back to replacing the user's room.
-    const saved = exactPreferences(memory.preferences, context.task, context.timeBucket)[0];
-    if (!response.ok && usual && saved) return privateJson({ kind: "create", scene: { ...saved.scene,
-      room: { ...saved.scene.room, grid: data.scene?.room.grid ?? saved.scene.room.grid,
-        openings: data.scene?.room.openings ?? saved.scene.room.openings } },
-      notice: "Scene AI is unavailable. Restored your saved task/time room.", recalled: [`${saved.task} (${saved.timeBucket})`] });
     return privateJson({ ...body, notice: memory.notice,
       recalled: memory.preferences.map(({ task, timeBucket }) => `${task} (${timeBucket})`) }, response.status);
   } catch {
