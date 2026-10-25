@@ -1,0 +1,249 @@
+{
+  "envId": "demo-zen",
+  "environment": {
+    "concept": "Serene Japanese Zen garden: warm ivory raked gravel, dark irregular stepping stones, moss patches, aged timber slat walls with glimpses of maple and bamboo, soft morning light. Sage, cream, moss and timber palette.",
+    "shell": "#6b6356",
+    "colors": [
+      "#efe6cf",
+      "#e0d3b2",
+      "#c9b98f",
+      "#4a4843",
+      "#6a675f",
+      "#8e897d",
+      "#4f6b3a",
+      "#6f8a4e",
+      "#9cb27a",
+      "#6e7f63",
+      "#8c9c7d",
+      "#a9b59a",
+      "#5a422b",
+      "#7d5e3e",
+      "#a8845a",
+      "#c9a77a",
+      "#b7b274",
+      "#8f9058",
+      "#a85e3e",
+      "#c57f55",
+      "#7f9ea0",
+      "#c4dad6"
+    ],
+    "openAir": false,
+    "terrain": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "textures": {
+      "floor": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 160,
+        "url": "/demo/zen/assets/floor.png"
+      },
+      "north": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/zen/assets/north.png"
+      },
+      "east": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/zen/assets/east.png"
+      },
+      "south": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/zen/assets/south.png"
+      },
+      "west": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/zen/assets/west.png"
+      }
+    }
+  },
+  "sprites": [
+    {
+      "frames": 4,
+      "fps": 6,
+      "w": 48,
+      "h": 30,
+      "url": "/demo/zen/assets/source-1.png",
+      "objectId": "demo-zen-source-1",
+      "label": "Stone water basin",
+      "query": "Small Japanese bamboo spout continuously trickling water into a stone tsukubai basin, delicate clear droplets and gentle water flow, authentic garden water recording",
+      "wall": null
+    },
+    {
+      "frames": 6,
+      "fps": 8,
+      "w": 96,
+      "h": 96,
+      "url": "/demo/zen/assets/source-2.png",
+      "objectId": "demo-zen-source-2",
+      "label": "Bamboo grove",
+      "query": "wind, trees, leaves, rustling, forest, breeze, bamboo",
+      "wall": null
+    },
+    {
+      "frames": 4,
+      "fps": 6,
+      "w": 24,
+      "h": 40,
+      "url": "/demo/zen/assets/source-3.png",
+      "objectId": "demo-zen-source-3",
+      "label": "Bamboo shishi-odoshi",
+      "query": "One hollow bamboo shishi odoshi deer scarer gently striking its stone stop, a natural woody bamboo clack with a short decay, isolated single occurrence",
+      "wall": null
+    }
+  ],
+  "sounds": [
+    {
+      "objectId": "demo-zen-source-1",
+      "query": "Small Japanese bamboo spout continuously trickling water into a stone tsukubai basin, delicate clear droplets and gentle water flow, authentic garden water recording",
+      "kind": "bed",
+      "fileId": "demo-zen-1",
+      "url": "/demo/zen/assets/sound-1.mp3"
+    },
+    {
+      "objectId": "demo-zen-source-2",
+      "query": "wind, trees, leaves, rustling, forest, breeze, bamboo",
+      "kind": "bed",
+      "fileId": "demo-zen-2",
+      "url": "/demo/zen/assets/sound-2.mp3"
+    },
+    {
+      "objectId": "demo-zen-source-3",
+      "query": "One hollow bamboo shishi odoshi deer scarer gently striking its stone stop, a natural woody bamboo clack with a short decay, isolated single occurrence",
+      "kind": "event",
+      "fileId": "demo-zen-3",
+      "url": "/demo/zen/assets/sound-3.mp3"
+    }
+  ]
+}

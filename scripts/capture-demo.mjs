@@ -8,11 +8,15 @@ import { createServer } from 'vite';
 // temporary provider capabilities and stay in the ignored .convex directory.
 const ffmpeg = process.env.FFMPEG_PATH ?? 'ffmpeg';
 const rooms = {
-  cafe: { label: 'Rainy café', prompt: 'Capture a beautifully detailed cozy cafe in the rain, with warm amber lighting, dark walnut floor, brick and plaster cafe walls, large rain-streaked windows and rich coherent pixel art. EXACTLY THREE sound objects: rain pattering against a glass window (bed), a working espresso machine with steady steam hiss (bed), and a porcelain cup and saucer clinking once (event, random gaps 12-25 seconds). Give every sound its recognizable animated physical source sprite. No speech or music. Only these three objects; no decorative freestanding objects. Preserve the normal full room dimensions. Use restrained detailed material shading, readable silhouettes and a cohesive palette.' },
+  cafe: { label: 'Rainy café', prompt: 'Create a fresh, beautifully composed rainy Japanese neighborhood cafe in refined pixel art. Warm amber pendant light against cool blue rain outside broad dark wooden framed windows, soft sage plaster, walnut wainscot, a quiet terracotta herringbone floor. The fixed room walls should feel like cafe architecture with large rain-streaked windows; no giant brick checkerboard, random speckle, text, fake floor table circles, or floor shadows. EXACTLY THREE physical sound sources with distinct clear animated sprites: a rain-streaked window on the north wall with steady rain on glass (bed), a compact chrome espresso machine standing on the floor in the rear right with continuous steam hiss (bed), and a small porcelain cup and saucer on a compact pedestal near the left perimeter with one isolated cup clink (event, gaps 12-25 seconds). Cup must be small, not a giant mug. Keep all three visible in the initial view. No speech or music or extra objects. Flat ground, normal full room dimensions. Cohesive detailed material shading, 3-4 shades per material, restrained textures, readable silhouettes, polished highlights. Exactly two beds and one event.' },
   beach: { label: 'Beach', prompt: 'Capture a beautiful tranquil tropical beach at golden hour in rich coherent pixel art. Paint the sandy floor with a shallow turquoise water edge, and the fixed walls as a continuous ocean horizon and warm sky. EXACTLY THREE sound objects: gently breaking ocean surf (bed, a small animated waterline pool), sea breeze rustling a palm (bed, a recognizable palm tree), and a seagull calling once (event, gull perched on driftwood, random gaps 15-30 seconds). No speech or music. Only these three objects; no decorative freestanding objects. Preserve the normal full room dimensions. Use restrained detailed material shading, readable silhouettes and a cohesive palette.' },
   cyberpunk: { label: 'Cyberpunk city', prompt: 'Capture a beautiful atmospheric cyberpunk city street at night in rich coherent pixel art: violet and cyan neon, wet pavement reflections, detailed architecture painted into the fixed wall surfaces, warm windows, readable midtone slab edges. EXACTLY THREE sound objects: rain pattering on wet street pavement (bed, an animated puddle), a ventilation unit humming (bed, a recognizable industrial vent), and a futuristic electric vehicle passing once (event, a small hovering vehicle, random gaps 12-25 seconds). No speech, sirens or music. Only these three objects; no decorative freestanding objects. Preserve the normal full room dimensions. Use restrained detailed material shading, readable silhouettes and a cohesive palette.' },
+  zen: { label: 'Zen garden', prompt: 'Create a serene Japanese Zen garden in polished detailed pixel art: warm ivory raked gravel, irregular dark stepping stones as flat floor texture, moss patches, aged wooden slat walls with glimpses of distant Japanese maple foliage and bamboo, soft morning light. Restrained sage, cream, moss green and warm timber palette, 3-4 material shades, deliberate texture, no noisy confetti or lettering. EXACTLY THREE physical sound objects and no decorative freestanding objects: a low stone water basin with a bamboo spout and gently trickling water (bed), an elegant small bamboo grove rustling in a breeze (bed), and a recognizable bamboo shishi-odoshi deer-scarer making one hollow bamboo clack (event, random gaps 15-30 seconds). Distinct animated transparent sprites. Put beds near the listener on opposite sides, quiet event at a visible far perimeter. Keep all three visible initially. No voices or music. Use the normal fixed full-size room shell, flat gravel terrain and outdoor reverb. Exactly two beds and one event.' },
 };
-const selected = process.argv.slice(2);
+const staging = process.argv.includes('--staging');
+const selected = process.argv.slice(2).filter(argument => argument !== '--staging');
+const outputRoot = staging ? '.convex/demo-staging/public/demo' : 'public/demo';
+const captureRoot = staging ? '.convex/demo-staging/runs' : '.convex/demo-capture';
 for (const id of selected) assert.ok(rooms[id], `Unknown demo room: ${id}`);
 process.env.VITE_CONVEX_URL = ''; // no cloud writes while capturing a local bundle
 const server = await createServer({ server: { middlewareMode: true, hmr: false, watch: null }, appType: 'custom' });
@@ -31,7 +35,7 @@ async function api(url, options = {}) {
   return response;
 }
 async function generate(id) {
-  const spec = rooms[id], privateDir = `.convex/demo-capture/${id}`;
+  const spec = rooms[id], privateDir = `${captureRoot}/${id}`;
   await mkdir(privateDir, { recursive: true });
   const saved = await json(`${privateDir}/result.json`);
   if (saved) return ManagedResult.parse(saved);
@@ -76,7 +80,7 @@ async function generate(id) {
   throw new Error(`${id}: files are not yet available; rerun to resume.`);
 }
 async function capture(id) {
-  if (await json(`public/demo/${id}/scene.json`) && await json(`public/demo/${id}/assets.json`)) {
+  if (await json(`${outputRoot}/${id}/scene.json`) && await json(`${outputRoot}/${id}/assets.json`)) {
     console.log(`${id}: keeping the existing reviewed capture`);
     return;
   }
@@ -85,7 +89,7 @@ async function capture(id) {
   const scene = structuredClone(result.response.scene), assets = structuredClone(result.assets);
   assert.equal(scene.objects.length, 3, `${id}: expected exactly three sounds`);
   assert.ok(scene.objects.every(object => object.kind !== 'live'));
-  const dir = `public/demo/${id}`, prefix = `/demo/${id}/assets/`;
+  const dir = `${outputRoot}/${id}`, prefix = `/demo/${id}/assets/`;
   await mkdir(`${dir}/assets`, { recursive: true });
   scene.room.art = assets.envId = `demo-${id}`;
   async function image(record, name) {
@@ -113,7 +117,7 @@ async function capture(id) {
     } else {
       const response = generated ? await api(generated.url)
         : await api(`/api/sound?${new URLSearchParams({ kind: object.kind, q: object.sound.query })}`);
-      const raw = `.convex/demo-capture/${id}/sound-${index + 1}.input`;
+      const raw = `${captureRoot}/${id}/sound-${index + 1}.input`;
       await writeFile(raw, Buffer.from(await response.arrayBuffer()));
       const converted = spawnSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, '-vn', '-ac', '1', '-ar', '44100', '-codec:a', 'libmp3lame', '-b:a', '128k', `${dir}/assets/${name}`], { encoding: 'utf8', windowsHide: true });
       assert.equal(converted.status, 0, `Audio conversion failed; set FFMPEG_PATH. ${converted.error?.message ?? ''}`);

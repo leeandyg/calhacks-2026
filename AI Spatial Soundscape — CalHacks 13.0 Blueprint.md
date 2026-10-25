@@ -70,9 +70,9 @@ The room is a floor plane with an isometric orthographic camera. Each sound obje
 
 ### 4. The AI that builds and edits the room
 
-**Captured demo rooms:** bundle a rainy café, beach and cyberpunk city in `public/demo/`, each
+**Captured demo rooms:** bundle a rainy café, beach, cyberpunk city and Zen garden in `public/demo/`, each
 with exactly three sounds (two continuous beds and one randomly spaced event), its validated
-scene, painted floor/four walls, source sprites and compressed audio. Three explicit choices
+scene, painted floor/four walls, source sprites and compressed audio. Four explicit choices
 load these pre-generated rooms without provider calls. Reuse the normal scene store, dragging,
 spatial playback and live voice/AI edits. Local asset preloading must not change the active room.
 Provider capabilities remain in ignored capture scratch files, never in the public bundles.

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "label": "Zen garden",
+  "prompt": "Create a serene Japanese Zen garden in polished detailed pixel art: warm ivory raked gravel, irregular dark stepping stones as flat floor texture, moss patches, aged wooden slat walls with glimpses of distant Japanese maple foliage and bamboo, soft morning light. Restrained sage, cream, moss green and warm timber palette, 3-4 material shades, deliberate texture, no noisy confetti or lettering. EXACTLY THREE physical sound objects and no decorative freestanding objects: a low stone water basin with a bamboo spout and gently trickling water (bed), an elegant small bamboo grove rustling in a breeze (bed), and a recognizable bamboo shishi-odoshi deer-scarer making one hollow bamboo clack (event, random gaps 15-30 seconds). Distinct animated transparent sprites. Put beds near the listener on opposite sides, quiet event at a visible far perimeter. Keep all three visible initially. No voices or music. Use the normal fixed full-size room shell, flat gravel terrain and outdoor reverb. Exactly two beds and one event.",
+  "capturedAt": "2026-10-25T03:39:13.219Z",
+  "artwork": "Claude/pxl",
+  "sounds": [
+    {
+      "objectId": "demo-zen-source-1",
+      "provider": "ElevenLabs",
+      "note": "Natural physical source recording for the Zen garden."
+    },
+    {
+      "objectId": "demo-zen-source-2",
+      "libraryId": "wind_trees",
+      "license": "CC0"
+    },
+    {
+      "objectId": "demo-zen-source-3",
+      "provider": "ElevenLabs",
+      "note": "Natural physical source recording for the Zen garden."
+    }
+  ],
+  "reviewNotes": "Two close ambient beds with a quieter randomly spaced bamboo clack at the perimeter."
+}

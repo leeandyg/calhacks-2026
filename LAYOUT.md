@@ -128,11 +128,11 @@ Disable renderer/light/mesh shadows. The explicitly requested BorderBeam glow is
 
 ## 10. Prompt controls
 
-The three captured demo choices (Rainy café, Beach, Cyberpunk city) sit in one compact row below
+The four captured demo choices (Rainy café, Beach, Cyberpunk city, Zen garden) sit in one compact row below
 the prompt. Before the first room, position the row independently so the prompt stays centered.
 After selection, retain the row for quick switching. Load the entire local scene and its assets
 before revealing it; warming bundles must never populate the canonical scene or play audio.
-These three explicit demo choices are the exception to the no-preset-controls rule above.
+These four explicit demo choices are the exception to the no-preset-controls rule above.
 
 A fresh page shows only the prompt, centered horizontally and vertically. Keep it centered during creation and after an error; progress/error text sits above it without shifting the pill. Do not mount the room canvas, audio engine or rotation arrows until the first creation succeeds. Submit with `scene: null` for the first request and unlock audio from that user gesture. After successful environment painting and source placement, reveal the room and arrows and move the same prompt below it. Generated source portals may continue their existing reveal after the room appears. `?demo` follows the same empty start and creates its room on the first supported prompt.
 

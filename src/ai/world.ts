@@ -20,9 +20,9 @@ export const WorldOutput = z.object({
 });
 export type WorldOutput = z.infer<typeof WorldOutput>;
 
-// Provider files, their kept Convex copies, or the three captured local demo bundles.
+// Provider files, their kept Convex copies, or the captured local demo bundles.
 const assetUrl = z.string().refine(url => url.startsWith('/api/world?') || /^https:\/\/[a-z0-9-]+\.convex\.cloud\/api\/storage\/[\w-]+$/.test(url)
-  || /^\/demo\/(cafe|beach|cyberpunk)\/assets\/[a-zA-Z0-9_-]+\.(png|mp3|ogg|wav)$/.test(url), 'Unknown asset URL');
+  || /^\/demo\/(cafe|beach|cyberpunk|zen)\/assets\/[a-zA-Z0-9_-]+\.(png|mp3|ogg|wav)$/.test(url), 'Unknown asset URL');
 const runtimeImage = ImageOutput.omit({ file: true }).extend({ url: assetUrl });
 export const ManagedAssets = z.object({
   envId: z.string(),

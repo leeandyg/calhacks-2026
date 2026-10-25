@@ -1,31 +1,49 @@
 {
   "envId": "demo-beach",
   "environment": {
-    "concept": "Tranquil tropical beach at golden hour: warm lilac-to-amber sky, a continuous turquoise ocean horizon on all four walls, a sandy floor with a shallow turquoise water edge and foam line at the north side, a swaying coconut palm, and a gull perched on driftwood. Sand is granular and wind-rippled; the sea is banded for depth.",
-    "shell": "#8c7360",
+    "concept": "Cohesive horizontally wrapping tropical beach panorama (640x112) with calm turquoise ocean, soft sky with gentle warm sun, and matching seamless sand floor (160x160)",
+    "shell": "#edd4a6",
     "colors": [
-      "#7a6aa0",
-      "#b96a86",
-      "#e0786e",
-      "#f5a77a",
-      "#ffd58a",
-      "#fff1c4",
-      "#15566b",
-      "#1f7f8f",
       "#36b1b4",
-      "#6fd6c8",
       "#c9f2ea",
+      "#fbf7ef",
+      "#6fd6c8",
       "#f6d9a0",
-      "#e8bf7e",
-      "#c9975c",
-      "#9c6e44",
+      "#1d3f30",
       "#4f8a4f",
       "#2c5e3d",
+      "#5b3f2c",
       "#b98a5e",
       "#7d5638",
-      "#fbf7ef",
+      "#2a2630",
+      "#f2b53a",
       "#c9ccd8",
-      "#f2b53a"
+      "#8f96a8",
+      "#ffd58a",
+      "#3d739c",
+      "#589bbd",
+      "#81bed3",
+      "#b4dce2",
+      "#f5e8cf",
+      "#faeed8",
+      "#ffffff",
+      "#fff7dd",
+      "#fde3b8",
+      "#e8f0f3",
+      "#c5dce4",
+      "#366874",
+      "#4a7e86",
+      "#165063",
+      "#1d6f7a",
+      "#268e8e",
+      "#38b3a7",
+      "#5ad2be",
+      "#98eedb",
+      "#d8faf1",
+      "#caa775",
+      "#ddbe8c",
+      "#edd4a6",
+      "#fae7c3"
     ],
     "openAir": false,
     "terrain": [
@@ -152,39 +170,39 @@
     ],
     "textures": {
       "floor": {
-        "frames": 1,
-        "fps": 10,
+        "url": "/demo/beach/assets/floor.png",
         "w": 160,
         "h": 160,
-        "url": "/demo/beach/assets/floor.png"
+        "frames": 1,
+        "fps": 10
       },
       "north": {
-        "frames": 1,
-        "fps": 10,
+        "url": "/demo/beach/assets/north.png",
         "w": 160,
         "h": 112,
-        "url": "/demo/beach/assets/north.png"
+        "frames": 1,
+        "fps": 10
       },
       "east": {
-        "frames": 1,
-        "fps": 10,
+        "url": "/demo/beach/assets/east.png",
         "w": 160,
         "h": 112,
-        "url": "/demo/beach/assets/east.png"
+        "frames": 1,
+        "fps": 10
       },
       "south": {
-        "frames": 1,
-        "fps": 10,
+        "url": "/demo/beach/assets/south.png",
         "w": 160,
         "h": 112,
-        "url": "/demo/beach/assets/south.png"
+        "frames": 1,
+        "fps": 10
       },
       "west": {
-        "frames": 1,
-        "fps": 10,
+        "url": "/demo/beach/assets/west.png",
         "w": 160,
         "h": 112,
-        "url": "/demo/beach/assets/west.png"
+        "frames": 1,
+        "fps": 10
       }
     }
   },

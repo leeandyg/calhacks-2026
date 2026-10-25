@@ -32,7 +32,7 @@ try {
     assert.deepEqual(current.shadows, { enabled: false, casting: 0, receiving: 0 });
     assert.ok(current.bounds.left >= 0 && current.bounds.top >= 0 && current.bounds.right <= 1440 && current.bounds.bottom < 824);
   };
-  assert.equal(await page.getByRole('button').count(), 6, 'two rotation arrows, send, and three captured demo choices');
+  assert.equal(await page.getByRole('button').count(), 7, 'two rotation arrows, send, and four captured demo choices');
   assert.deepEqual(initial.scene.room.grid, { mode: 'Square', columns: 10, rows: 10, wallHeight: 7 });
   assert.equal(initial.floorModules, 100);
   assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 70, 'the rain window hangs on a solid wall; sources never cut the slab');
@@ -46,7 +46,7 @@ try {
   assert.ok(Math.abs(offset[0] - offset[2]) < 1e-9);
   assert.ok(Math.abs(Math.atan2(offset[1], Math.hypot(offset[0], offset[2])) - Math.PI / 6) < 1e-9);
   assert.equal(await page.getByRole('button', { name: 'Rotate Right', exact: true }).evaluate(el => getComputedStyle(el).boxShadow), 'none');
-  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), 'Head tracking Rainy café Beach Cyberpunk city', 'head tracking and the three captured choices');
+  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), 'Head tracking Rainy café Beach Cyberpunk city Zen garden', 'head tracking and the four captured choices');
   assert.equal(await page.locator('header,nav,footer,textarea,select,h1,h2').count(), 0);
   assert.deepEqual(initial.objects.map(object => object.model).sort(), ['birds', 'fan', 'rain']);
   const canvas = await page.locator('canvas').boundingBox();
@@ -141,7 +141,7 @@ try {
     assert.equal(rect.width, viewport.width); assert.equal(rect.height, viewport.height);
     const bounds = (await inspect()).bounds;
     assert.ok(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= viewport.width && bounds.bottom < viewport.height - 76);
-    assert.equal(await page.getByRole('button').count(), 6);
+    assert.equal(await page.getByRole('button').count(), 7);
     await page.getByRole('button', { name: 'Rotate Right', exact: true }).click(); await settle();
     await page.screenshot({ path: `test-results/grid-${viewport.width}.png` });
   }

@@ -49,6 +49,10 @@ canvas { display: block; touch-action: none; }
 .demo-rooms button:hover:not(:disabled), .demo-rooms button:focus-visible { border-color: #97b8c4; color: #fff; }
 .demo-rooms button:disabled { opacity: .5; cursor: default; }
 .room-controls-centered .demo-rooms { position: absolute; top: 100%; width: 100%; }
+@media (max-width: 480px) {
+  .demo-rooms { gap: 6px; }
+  .demo-rooms button { padding: 6px 10px; font-size: 11px; }
+}
 .rotate-room {
   display: inline-flex;
   align-items: center;
