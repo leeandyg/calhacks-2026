@@ -115,7 +115,8 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  const managed = agentSettings();
+  let managed;
+  try { managed = agentSettings(); } catch (error) { return agentError(error); }
   if (managed) {
     try {
       const previousToken = typeof raw?.sessionToken === 'string' ? raw.sessionToken : undefined;
