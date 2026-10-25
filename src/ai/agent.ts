@@ -1,5 +1,7 @@
 import { SceneResponse, type Scene } from "../scene/scene.js";
 import { CLAUDE_BUDGET_MS, fallbackScene, requestScene } from "./client.js";
+import type { ManagedResult } from './world.js';
+import type { WorldPart } from './managedClient.js';
 import { currentAgentSession, followManagedRun } from "./managedClient.js";
 import { localContext, type Preference, type TimeBucket } from "./preferences.js";
 
@@ -21,28 +23,28 @@ export async function memoryRequest(context: AgentContext, body: Record<string, 
   return result as AgentReply & { kind?: string; token?: string; preferences?: Preference[] };
 }
 
-export async function requestAgent(prompt: string, scene: Scene | null, context?: AgentContext, demoMode = false, progress?: (message: string) => void, signal?: AbortSignal): Promise<AgentReply> {
+export async function requestAgent(prompt: string, scene: Scene | null, context?: AgentContext, demoMode = false, progress?: (message: string) => void, signal?: AbortSignal, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<AgentReply> {
   signal?.throwIfAborted();
   if (demoMode || !context?.token) {
     if (memoryCommand(prompt)) throw new Error(demoMode ? "Memory commands need a live connection. Turn off Offline demo." : "Connect to saved rooms to use memory.");
-    const response = await requestScene(prompt, scene, demoMode, progress, signal);
+    const response = await requestScene(prompt, scene, demoMode, progress, signal, 'agent', partial);
     return { response, notice: response.notice };
   }
-  let startedManaged = false;
+  let startedManaged = false, published = false;
   try {
     const result = await memoryRequest(context, { prompt, scene, sessionToken: scene ? currentAgentSession() : undefined }, signal);
     if (result.kind === 'managed' && result.token) {
       startedManaged = true;
-      const generated = await followManagedRun(result.token, scene, progress, signal, CLAUDE_BUDGET_MS);
+      const generated = await followManagedRun(result.token, scene, progress, signal, CLAUDE_BUDGET_MS, partial ? (ready, part) => { partial(ready, part); published = true; } : undefined);
       return { ...result, response: { ...generated.response, managed: generated.assets } };
     }
     return result.kind ? { ...result, response: SceneResponse.parse(result) } : result;
   } catch (error) {
     signal?.throwIfAborted();
-    if (memoryCommand(prompt)) throw error;
+    if (published || memoryCommand(prompt)) throw error;
     if (!startedManaged && error instanceof AgentError && error.status === 401) {
       if (/\b(?:usual|remembered|saved setup)\b/i.test(prompt)) throw error;
-      const response = await requestScene(prompt, scene, false, progress, signal);
+      const response = await requestScene(prompt, scene, false, progress, signal, 'agent', partial);
       return { response, notice: response.notice ?? "Memory is offline. This command used the current room and prompt." };
     }
     if (!startedManaged && error instanceof AgentError && error.status < 500 && error.status !== 429) throw error;

@@ -1,14 +1,13 @@
-import { GoogleGenAI, type Interactions } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { describeLint, renderPxl, type RenderedAsset } from "./pxl.js";
+import { renderPxl, type RenderedAsset } from "./pxl.js";
 
 // The loop behind the art agents (api/environment.ts, api/sprite.ts), following pxl's own agent
-// workflow: write pxl code, render it, read the errors and lint, look at the result, fix it.
+// workflow: write pxl code, compile, and repair only invalid output.
 //   1. Gemini calls `paint` with its reasoning and pxl code.
 //   2. The code renders in the sandbox (server/pxl.ts). Errors, wrong sizes or a failed `check`
 //      go back as feedback, up to MAX_FIXES times.
-//   3. Review, when time allows: Gemini sees its own images and the findings, and
-//      either calls `accept` or `paint` again with a fix. Skipped when time is short.
+//   3. Publish the first valid build immediately; there is no model artwork review pass.
 // Thinking costs time: at "high", one 160x112 texture took over two minutes, at "low" about 20 s.
 // So the environment reasons once, in planAgent, and the painters work fast in parallel.
 
@@ -42,24 +41,12 @@ export async function runArtAgent<T extends { code: string }>(options: {
 
   const paintArgs = options.args.extend({ code: z.string().min(1).max(60_000).describe("The complete .px.js source.") });
   const paint = { type: "function", name: "paint", description: "Submit pxl code for the requested assets, with your reasoning.", parameters: toolSchema(paintArgs) } as const;
-  const accept = { type: "function", name: "accept", description: "Keep the current images as they are.", parameters: { type: "object", properties: {} } } as const;
   const sizes = options.assets.map((a) => `${a.name}: ${a.exact ? "exactly" : "at most"} ${a.w}x${a.h} px`).join("; ");
 
   let feedback: string | undefined;
-  let best: ArtResult<T> | undefined;
-  let reviewed = false;
   let previousCode = '';
   for (let round = 1; round <= MAX_FIXES + 1 && left() > 15_000; round++) {
-    const reviewing = best && !reviewed;
-    const input: Interactions.InteractionCreateParams["input"] = reviewing
-      ? [
-          { type: "text", text: `${options.brief}\n\nYour previous pxl code:\n${previousCode}\n\nThis is what your code rendered (${sizes}). Look at it as a pixel artist: does it read as the real place or thing, with believable shapes, light from the top-left and no noise? Lint:\n${Object.entries(best!.assets).map(([name, a]) => describeLint(name, a.lint)).join("\n")}\nCall accept if it is good, or paint with an improved, complete version.` },
-          ...Object.entries(best!.assets).map(([name, a]) => [
-            { type: "text" as const, text: `${name} (${a.w}x${a.h}):` },
-            { type: "image" as const, data: a.png, mime_type: "image/png" },
-          ]).flat(),
-        ]
-      : `${options.brief}\n\nAssets to define (${sizes}).${feedback ? `\n\nYour previous attempt failed. Fix this and call paint again with the complete code:\n${feedback}\nPrevious code:\n${previousCode}` : ""}`;
+    const input = `${options.brief}\n\nAssets to define (${sizes}).${feedback ? `\n\nYour previous attempt failed. Fix this and call paint again with the complete code:\n${feedback}\nPrevious code:\n${previousCode}` : ""}`;
     let interaction;
     try {
       interaction = await client.interactions.create({
@@ -67,7 +54,7 @@ export async function runArtAgent<T extends { code: string }>(options: {
         store: false,
         system_instruction: options.system,
         input,
-        tools: reviewing ? [paint, accept] : [paint],
+        tools: [paint],
         generation_config: { tool_choice: "any", thinking_level: options.thinking ?? "low", max_output_tokens: 12_288 },
       }, {
         timeout: Math.max(1_000, left() - 13_000),
@@ -75,15 +62,12 @@ export async function runArtAgent<T extends { code: string }>(options: {
         retry_codes: ["429", "500", "502", "503", "504"],
       });
     } catch (error) {
-      if (best) return best; // keep what we have rather than failing at the last step
       const status = error && typeof error === "object" && "status" in error ? Number(error.status) : undefined;
       console.warn("art agent: Gemini request failed:", Number.isFinite(status) ? status : error instanceof Error ? `${error.name}: ${error.message}` : "unknown");
       throw new ArtError(status === 429 ? "Gemini's request limit was reached." : "Gemini could not paint this right now.", status === 429 ? 429 : 502);
     }
     const call = interaction.steps.find((step) => step.type === "function_call");
-    if (reviewing) reviewed = true;
     if (!call) { feedback = "Call the paint tool."; continue; }
-    if (call.name === "accept" && best) return best;
 
     const parsed = paintArgs.safeParse(call.arguments);
     if (!parsed.success) { feedback = `Invalid paint arguments: ${parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`; continue; }
@@ -102,12 +86,8 @@ export async function runArtAgent<T extends { code: string }>(options: {
     }
     const problem = options.check?.(args, rendered.assets);
     if (problem) { feedback = problem; continue; }
-    best = { args, assets: rendered.assets, rounds: round };
-    feedback = undefined;
-    // A lint-clean image can still have a weak silhouette. Review the preview when time permits.
-    if (reviewed || left() < 20_000) return best;
+    return { args, assets: rendered.assets, rounds: round };
   }
-  if (best) return best;
   throw new ArtError(`Gemini could not produce valid pixel art${feedback ? `: ${feedback.slice(0, 300)}` : "."}`, 502);
 }
 

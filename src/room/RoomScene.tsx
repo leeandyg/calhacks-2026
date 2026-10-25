@@ -300,7 +300,8 @@ function DevInspection() {
         objects: useSceneStore.getState().scene.objects.map(object => {
           const model = room?.getObjectByName(`sound-${object.id}`);
           const hitAnchor = model?.userData.model === 'birds' ? new Vector3(-0.4, 0.06, 0.21) : new Vector3(0, 0, 0.16);
-          const projected = model?.localToWorld(hitAnchor).project(state.camera);
+          const painted = model?.getObjectByName('painted-prop') as Mesh<PlaneGeometry, MeshStandardMaterial> | undefined;
+          const projected = (painted ? painted.localToWorld(new Vector3()) : model?.localToWorld(hitAnchor))?.project(state.camera);
           let color: number[] | undefined;
           model?.traverse(child => { if (!color && child instanceof Mesh && !Array.isArray(child.material) && 'color' in child.material) color = (child.material.color as { toArray(): number[] }).toArray(); });
           const birdPoses = ['bird-blue', 'bird-gold'].flatMap(name => {
@@ -308,8 +309,8 @@ function DevInspection() {
             return bird ? [{ y: bird.position.y, blinking: bird.getObjectByName('bird-blink')?.visible }] : [];
           });
           const rainPoses = Array.from({ length: 8 }, (_, i) => model?.getObjectByName(`rain-streak-${i}`)).filter(mesh => mesh !== undefined).map(mesh => ({ y: mesh.position.y, height: mesh.scale.y, visible: mesh.visible }));
-          const painted = model?.getObjectByName('painted-prop') as Mesh<PlaneGeometry, MeshStandardMaterial> | undefined;
-          return { id: object.id, artFrame: painted?.material.map?.offset.x, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
+          const artCorners = painted && room ? Array.from({ length: painted.geometry.attributes.position.count }, (_, i) => room.worldToLocal(painted.localToWorld(new Vector3().fromBufferAttribute(painted.geometry.attributes.position, i))).toArray()) : undefined;
+          return { id: object.id, artCorners, renderPosition: model?.position.toArray(), artFrame: painted?.material.map?.offset.x, model: model?.userData.model, position: object.position, wall: object.wall, muted: object.muted, opacity: model?.userData.opacity, color, bladeAngle: model?.getObjectByName('fan-blades')?.rotation.z, fanBaseX: model?.getObjectByName('fan-base')?.position.x, birdPoses, rainPoses, screen: projected ? [canvas.left + (projected.x * 0.5 + 0.5) * canvas.width, canvas.top + (-projected.y * 0.5 + 0.5) * canvas.height] : null };
         }),
         windowOpacities,
         shadows,

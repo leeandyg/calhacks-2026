@@ -10,7 +10,7 @@ import { convex } from '../scene/convex.js';
 import { SavedRooms } from '../scene/SavedRooms.js';
 import { applyOp, useSceneStore } from '../scene/store.js';
 import { paintEnvironment, paintSprites } from '../art/client.js';
-import { installManagedAssets } from '../ai/managedClient.js';
+import { applyManagedPartial, installManagedAssets } from '../ai/managedClient.js';
 import { resumeAudio } from '../audio/context.js';
 import { capturedDemos, loadCapturedDemo, type CapturedDemoId } from '../scene/capturedDemos.js';
 
@@ -45,6 +45,7 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
     const voiceCommand = Boolean(options.onProgress);
     void resumeAudio().catch(error => console.warn('Audio could not be enabled.', error));
     setStatus({ tone: 'busy', text: voiceCommand ? '' : 'Building your room…' });
+    let partialApplied = false;
     try {
       options.signal?.throwIfAborted();
       const original = useSceneStore.getState().scene;
@@ -65,7 +66,11 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
       options.onProgress?.('understanding');
       const reply: AgentReply = quick ? { response: SceneResponse.parse({ kind: 'edit', ops: quick.ops }), message: quick.message }
         : await requestAgent(prompt, hasScene ? before : null, override ?? agentContext, demoMode,
-          text => voiceCommand ? options.onProgress?.('understanding', text) : setStatus({ tone: 'busy', text }), options.signal);
+          text => voiceCommand ? options.onProgress?.('understanding', text) : setStatus({ tone: 'busy', text }), options.signal, (result, part) => {
+            applyManagedPartial(result, part, !partialApplied);
+            partialApplied = true;
+            onSceneReady();
+          });
       options.signal?.throwIfAborted();
       const initialResponse = reply.response;
       if (initialResponse) {
@@ -79,7 +84,7 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
         const movedTarget = response.kind === 'edit' && response.ops.some((op) =>
           (op.op === 'move' || op.op === 'remove') && store.scene.objects.find((object) => object.id === op.id)?.position !==
             before.objects.find((object) => object.id === op.id)?.position);
-        if (!options.correction && changed && (response.kind === 'create' || replaced || movedTarget))
+        if (!options.correction && !partialApplied && changed && (response.kind === 'create' || replaced || movedTarget))
           throw new Error('Your room changed while the agent was working. Please repeat the command for this room.');
       }
       let artNotice: string | undefined;
@@ -87,7 +92,7 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
         options.onProgress?.('updating');
         const response = initialResponse;
         if (!hasScene && response.kind !== 'create') throw new Error('Describe a place to create your first room.');
-        if (response.managed) installManagedAssets(response.managed, response.kind === 'create' ? response.scene : useSceneStore.getState().scene);
+        if (response.managed && !partialApplied) installManagedAssets(response.managed, response.kind === 'create' ? response.scene : useSceneStore.getState().scene);
         if (response.kind === 'create' && !response.managed && !DEMO_MODE && !response.notice) {
           setStatus({ tone: 'busy', text: 'Imagining the ground and surroundings…' });
           try {
@@ -130,7 +135,8 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
       const response = reply.response;
       if (response) {
         options.signal?.throwIfAborted();
-        const result = options.correction ? store.setScene(response.kind === 'create' ? response.scene : response.ops.reduce(applyOp, before))
+        const result = partialApplied ? { ok: true as const }
+          : options.correction ? store.setScene(response.kind === 'create' ? response.scene : response.ops.reduce(applyOp, before))
           : response.kind === 'create' ? store.setScene(response.scene)
           : response.ops.length ? store.applyOps(response.ops) : { ok: true as const };
         if (!result.ok) throw new Error(`The room could not apply that change: ${result.error}`);

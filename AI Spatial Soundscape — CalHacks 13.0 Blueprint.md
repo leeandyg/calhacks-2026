@@ -159,7 +159,24 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
-**Managed World Director (#86):** the supplied Claude Managed Agent now owns live scene planning,
+**Self-hosted World Director (#114):** live agent execution now uses a persistent Node.js 24
+Claude Agent SDK worker in a dedicated Docker container when `WORLD_AGENT_URL` is configured.
+The model remains Claude Opus 5.5 at low effort via Anthropic's inference API; the agent loop,
+pxl/chirp builds, working files and SDK session history live on our infrastructure. Toolkits are
+installed in the image once. New-world environment and source-art/audio jobs run concurrently
+from one prompt, fixed grid and palette. Each publishes its own validated manifest immediately;
+the first ready branch reveals the renderer while its peer continues. Late terrain is applied by
+the canonical scene store, preserving manual source edits. The worker merges the unchanged final
+WorldOutput after both finish. Follow-up edits reuse the source SDK session as single turns;
+full replacements route before building and then use the same two concurrent jobs.
+The worker implements the existing session/events/files protocol,
+so signed capabilities, validated `WorldOutput` manifests, compiled PNG/audio, canonical scene,
+resolver ownership and browser rendering remain unchanged. A volume persists completed worlds
+and SDK resumptions; interrupted builds fail visibly. One world runs at a time, with two concurrent creation jobs. Credentials
+stay in server API configuration and worker environment only. Clear `WORLD_AGENT_URL` for the
+explicit Managed Agents rollback below. The app retains its existing fallback behavior and notices.
+
+**Managed World Director (#86):** the supplied Claude Managed Agent owns live scene planning in the legacy cloud configuration,
 pxl artwork/animation and chirp audio generation when `ANTHROPIC_API_KEY` is configured. The
 backend starts/continues its managed session, streams safe progress across bounded connections,
 validates a per-turn manifest, and proxies the resulting images/audio with signed session access.
@@ -177,7 +194,7 @@ its model/tools. Gemini and offline/demo paths remain available. See README for 
 **First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
 The canonical store initially contains only the fixed structure and listener, with no fixture
 objects, artwork, terrain or session. The first request sends `scene: null`. Live failures fall back
-in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Keep the room hidden during creation or errors, then reveal
+in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Before any valid result, the existing fallback chain applies. After a first valid branch appears, preserve it on later failure. Reveal each validated branch immediately; then show
 it with its rotation arrows and move the prompt below it after successful creation. Prompt
 submission supplies the audio gesture; the engine starts when the created room is revealed.
 
@@ -198,7 +215,9 @@ review in the #76 PR. PNGs never enter scene JSON or Gemini scene requests.
 
 Art code executes with pxl's platform-independent core in QuickJS/WASM in a separate process,
 without host APIs, with memory and wall-clock limits. Gemini receives pxl's skill/reference,
-render failures, lint findings and a preview when time allows (at most three painting calls).
+compilation and contract failures for repair (at most three painting calls). Publish the first valid
+build immediately; no artwork review, image inspection or aesthetic refinement pass runs. The
+self-hosted director follows the same build-and-publish policy, skipping toolkit preview/lint steps.
 The routes have separate Vercel duration budgets (120 seconds environment, 90 seconds sprite),
 and use a bounded warm-instance cache keyed by the description and art context. This cache is
 not durable across server instances. See README “Live environment art” for setup and checks.
