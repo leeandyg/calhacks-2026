@@ -29,6 +29,7 @@
     "test:window": "node scripts/window-edge-test.mjs",
     "test:prompt": "node scripts/prompt-test.mjs",
     "test:captured": "node scripts/captured-demo-test.mjs",
+    "test:hover": "node scripts/hover-test.mjs",
     "art:build": "node scripts/pixel-room.mjs build",
     "art:lint": "node scripts/pixel-room.mjs lint",
     "art:verify": "node scripts/pixel-room.mjs verify",

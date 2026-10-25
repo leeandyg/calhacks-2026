@@ -1,7 +1,7 @@
 import { Component, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
-import { BoxGeometry, Color, DepthTexture, HalfFloatType, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, NearestFilter, NoBlending, OrthographicCamera as ThreeOrthographicCamera, PlaneGeometry, Raycaster, Scene, ShaderMaterial, UnsignedIntType, Vector3, WebGLRenderTarget } from 'three';
+import { BoxGeometry, Color, DepthTexture, HalfFloatType, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, NearestFilter, NoBlending, OrthographicCamera as ThreeOrthographicCamera, PlaneGeometry, Raycaster, Scene, ShaderMaterial, UnsignedIntType, Vector2, Vector3, WebGLRenderTarget, type Material } from 'three';
 import { getRoomConfig, roomConfig } from './roomConfig.js';
 import { useRoomStore } from './useRoomStore.js';
 import { useSceneStore } from '../scene/store.js';
@@ -29,17 +29,21 @@ function PixelRoomRenderer() {
   const { gl, scene, size, viewport } = useThree();
   const envId = useSceneStore(state => state.scene.room.art);
   const artColors = useArtStore(state => envId ? state.envs[envId]?.colors : undefined);
-  const cache = useRef({ tick: -1, objects: useSceneStore.getState().scene.objects });
+  const cache = useRef({ tick: -1, objects: useSceneStore.getState().scene.objects, hovered: null as string | null });
   const resources = useMemo(() => {
     const shell = target(true);
     const props = target();
     const propDepth = target(true);
+    const hover = target(true);
     const depthMaterial = new MeshBasicMaterial({ colorWrite: false, depthWrite: true });
     const material = new ShaderMaterial({
       depthTest: false, depthWrite: false, blending: NoBlending, toneMapped: false,
       uniforms: {
         shell: { value: shell.texture }, props: { value: props.texture },
         shellDepth: { value: shell.depthTexture }, propDepth: { value: propDepth.depthTexture },
+        hoverMask: { value: hover.texture }, hoverDepth: { value: hover.depthTexture },
+        hoverEnabled: { value: 0 }, pixelStep: { value: new Vector2() },
+        outlineColor: { value: new Color('#e1d9c1') },
         palette: { value: Array.from({ length: MAX_ART_COLORS }, (_, i) => new Color(PIXEL_PALETTE[i % PIXEL_PALETTE.length])) },
         paletteCount: { value: PIXEL_PALETTE.length },
         toneMappingExposure: { value: 1 },
@@ -47,7 +51,10 @@ function PixelRoomRenderer() {
       vertexShader: `varying vec2 uvScreen;
         void main() { uvScreen = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
       fragmentShader: `
-        uniform sampler2D shell, props, shellDepth, propDepth;
+        uniform sampler2D shell, props, shellDepth, propDepth, hoverMask, hoverDepth;
+        uniform float hoverEnabled;
+        uniform vec2 pixelStep;
+        uniform vec3 outlineColor;
         uniform vec3 palette[${MAX_ART_COLORS}];
         uniform int paletteCount;
         varying vec2 uvScreen;
@@ -62,6 +69,11 @@ function PixelRoomRenderer() {
           }
           return best;
         }
+        float hoveredAt(vec2 point) {
+          float depth = texture2D(hoverDepth, point).r;
+          float front = min(texture2D(shellDepth, point).r, texture2D(propDepth, point).r);
+          return step(0.05, texture2D(hoverMask, point).a) * step(depth, front + 0.00002);
+        }
         void main() {
           vec4 base = texture2D(shell, uvScreen);
           vec4 object = texture2D(props, uvScreen);
@@ -73,6 +85,15 @@ function PixelRoomRenderer() {
           vec3 objectColor = nearestColor(ACESFilmicToneMapping(rawObject.rgb / max(rawObject.a, 0.00001)));
           float alpha = object.a + base.a * (1.0 - object.a);
           vec3 color = objectColor * object.a + baseColor * base.a * (1.0 - object.a);
+          if (hoverEnabled > 0.5) {
+            // Dilate the visible alpha silhouette by one shared room pixel.
+            // Sampling the original sprite preserves its cutout and animation.
+            float edge = max(max(hoveredAt(uvScreen + vec2(pixelStep.x, 0.0)), hoveredAt(uvScreen - vec2(pixelStep.x, 0.0))),
+                             max(hoveredAt(uvScreen + vec2(0.0, pixelStep.y)), hoveredAt(uvScreen - vec2(0.0, pixelStep.y))));
+            edge *= 1.0 - hoveredAt(uvScreen);
+            color = mix(color, outlineColor, edge);
+            alpha = max(alpha, edge);
+          }
           gl_FragColor = vec4(color, alpha);
           #include <colorspace_fragment>
         }`,
@@ -81,7 +102,7 @@ function PixelRoomRenderer() {
     const quad = new Mesh(new PlaneGeometry(2, 2), material);
     quad.frustumCulled = false;
     composite.add(quad);
-    return { shell, props, propDepth, depthMaterial, material, composite, quad, camera: new ThreeOrthographicCamera(-1, 1, 1, -1, 0, 1) };
+    return { shell, props, propDepth, hover, depthMaterial, material, composite, quad, camera: new ThreeOrthographicCamera(-1, 1, 1, -1, 0, 1) };
   }, []);
 
   useLayoutEffect(() => {
@@ -96,13 +117,15 @@ function PixelRoomRenderer() {
     resources.props.setSize(Math.ceil(size.width / pixelSize), Math.ceil(size.height / pixelSize));
     resources.shell.setSize(resources.props.width, resources.props.height);
     resources.propDepth.setSize(resources.props.width, resources.props.height);
+    resources.hover.setSize(resources.props.width, resources.props.height);
+    resources.material.uniforms.pixelStep.value.set(1 / resources.props.width, 1 / resources.props.height);
     resources.material.uniforms.toneMappingExposure.value = gl.toneMappingExposure;
     cache.current.tick = -1;
     scene.userData.rendering = { interactive: true, pixelated: 'whole-room', objectPixelSize: pixelSize, shellPixelSize: pixelSize, shellSamples: resources.shell.samples, paletteColors: PIXEL_PALETTE.length };
   }, [gl, resources, scene, size, viewport.dpr]);
 
   useLayoutEffect(() => () => {
-    resources.shell.dispose(); resources.props.dispose(); resources.propDepth.dispose();
+    resources.shell.dispose(); resources.props.dispose(); resources.propDepth.dispose(); resources.hover.dispose();
     resources.depthMaterial.dispose(); resources.material.dispose(); resources.quad.geometry.dispose();
     delete scene.userData.rendering;
   }, [resources, scene]);
@@ -114,12 +137,16 @@ function PixelRoomRenderer() {
     const statics = room.children.filter(child => child !== sources);
     const visibility = statics.map(child => child.visible);
     const sourcesVisible = sources.visible;
+    const sourceVisibility = sources.children.map(child => child.visible);
     const override = scene.overrideMaterial;
     const previousTarget = gl.getRenderTarget();
     const tick = Math.floor(state.clock.elapsedTime * 10);
     const objects = useSceneStore.getState().scene.objects;
     const moving = useRoomStore.getState();
-    const updateProps = tick !== cache.current.tick || objects !== cache.current.objects || moving.isRotating || moving.draggingObjectId !== null;
+    const hovered = moving.hoveredObjectId;
+    const hoveredSource = hovered ? sources.getObjectByName(`sound-${hovered}`) : undefined;
+    resources.material.uniforms.hoverEnabled.value = hoveredSource ? 1 : 0;
+    const updateProps = tick !== cache.current.tick || objects !== cache.current.objects || hovered !== cache.current.hovered || moving.isRotating || moving.draggingObjectId !== null;
     try {
       sources.visible = false;
       gl.setRenderTarget(resources.shell);
@@ -134,10 +161,29 @@ function PixelRoomRenderer() {
         scene.overrideMaterial = resources.depthMaterial;
         gl.setRenderTarget(resources.propDepth);
         gl.render(scene, state.camera);
-        cache.current = { tick, objects };
+        if (hoveredSource) {
+          scene.overrideMaterial = override;
+          sources.children.forEach(child => { child.visible = child === hoveredSource && child.visible; });
+          const depths = new Map<Material, boolean>();
+          hoveredSource.traverse(child => {
+            if (!(child instanceof Mesh)) return;
+            for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+              if (!depths.has(material)) depths.set(material, material.depthWrite);
+              material.depthWrite = true;
+            }
+          });
+          try {
+            gl.setRenderTarget(resources.hover);
+            gl.render(scene, state.camera);
+          } finally {
+            for (const [material, depthWrite] of depths) material.depthWrite = depthWrite;
+          }
+        }
+        cache.current = { tick, objects, hovered };
       }
     } finally {
       sources.visible = sourcesVisible;
+      sources.children.forEach((child, i) => { child.visible = sourceVisibility[i]; });
       statics.forEach((child, i) => { child.visible = visibility[i]; });
       scene.overrideMaterial = override;
       gl.setRenderTarget(previousTarget);
@@ -269,7 +315,7 @@ function DevInspection() {
         shadows,
         rendering: state.scene.userData.rendering,
         bounds: { left: Math.min(...corners.map(point => point[0])), right: Math.max(...corners.map(point => point[0])), top: Math.min(...corners.map(point => point[1])), bottom: Math.max(...corners.map(point => point[1])) },
-        scene: structuredClone(useSceneStore.getState().scene), dragging: useRoomStore.getState().draggingObjectId,
+        scene: structuredClone(useSceneStore.getState().scene), dragging: useRoomStore.getState().draggingObjectId, hovered: useRoomStore.getState().hoveredObjectId,
       };
     };
     const project = (position: [number, number, number]) => {
@@ -303,7 +349,10 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
 export function RoomScene() {
   const room = useSceneStore(state => state.scene.room);
   const config = useMemo(() => getRoomConfig(room), [room]);
-  return <SoundStatusProvider><SceneBoundary><Canvas shadows={false} dpr={[1, 1.8]} gl={{ antialias: false, alpha: true }} fallback={<div className="scene-error">Your browser needs WebGL to show this room.</div>} aria-label="Isometric pixel-art room with movable sound objects. Click an object to mute or unmute it.">
+  return <SoundStatusProvider><SceneBoundary><Canvas shadows={false} dpr={[1, 1.8]} gl={{ antialias: false, alpha: true }} fallback={<div className="scene-error">Your browser needs WebGL to show this room.</div>} aria-label="Isometric pixel-art room with movable sound objects. Hover for sound names. Click an object to mute or unmute it." onPointerLeave={() => {
+    const state = useRoomStore.getState();
+    if (!state.draggingObjectId) state.setHovered(null);
+  }}>
     <SpawnProvider>
       <FixedCamera/>
       <Lighting/>

@@ -9,6 +9,8 @@ import type { Vec3 as Position, SoundObject } from '../scene/scene.js';
 
 interface Gesture {
   pointerId: number;
+  pointerType: string;
+  x: number; y: number;
   startX: number; startY: number;
   offset: Vector3;
   original: SoundObject;
@@ -39,13 +41,19 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
       if (mode === 'cancel' && gesture.moved) store.applyOps([{ op: 'move', id, position: gesture.original.position, wall: gesture.original.wall }]);
       if (mode === 'drop' && !gesture.moved) store.applyOps([{ op: 'set_muted', id, muted: !object.muted }]);
     }
-    if (useRoomStore.getState().draggingObjectId === id) useRoomStore.getState().setDragging(null);
-    gl.domElement.style.cursor = ''; document.body.style.cursor = '';
+    const state = useRoomStore.getState();
+    if (state.draggingObjectId === id) state.setDragging(null);
+    // Releasing capture need not move the pointer. Keep hover after a click/drop
+    // only if the mouse still hits the prop; touch and cancelled drags clear it.
+    const hovering = object && mode === 'drop' && gesture.pointerType !== 'touch' && getFloorPoint(gesture.x, gesture.y) && group.current && ray.current.intersectObject(group.current, true).length > 0;
+    state.setHovered(hovering ? id : null);
+    gl.domElement.style.cursor = ''; document.body.style.cursor = hovering ? 'grab' : '';
   };
   useEffect(() => {
     const move = (event: PointerEvent) => {
       const gesture = active.current;
       if (!gesture || event.pointerId !== gesture.pointerId) return;
+      gesture.x = event.clientX; gesture.y = event.clientY;
       if (event.cancelable) event.preventDefault();
       if (!gesture.moved && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) < DRAG_THRESHOLD_PX) return;
       gesture.moved = true;
@@ -57,7 +65,11 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
       const placement = dragPlacement(object, raw, store.scene.room.grid);
       store.applyOps([{ op: 'move', id, position: placement.position, wall: placement.wall }]);
     };
-    const up = (event: PointerEvent) => { if (event.pointerId === active.current?.pointerId) finish('drop'); };
+    const up = (event: PointerEvent) => {
+      if (event.pointerId !== active.current?.pointerId) return;
+      active.current.x = event.clientX; active.current.y = event.clientY;
+      finish('drop');
+    };
     const cancelPointer = (event: PointerEvent) => { if (event.pointerId === active.current?.pointerId) finish('cancel'); };
     const cancel = () => finish('cancel');
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') cancel(); };
@@ -83,7 +95,7 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
     const object = useSceneStore.getState().scene.objects.find(object => object.id === id);
     const hit = getFloorPoint(event.clientX, event.clientY);
     if (!object || !hit) return;
-    active.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, original: object, moved: false, offset: hit.clone().sub(new Vector3(...object.position)) };
+    active.current = { pointerId: event.pointerId, pointerType: event.pointerType, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, original: object, moved: false, offset: hit.clone().sub(new Vector3(...object.position)) };
     state.selectObject(id); state.setDragging(id);
     gl.domElement.setPointerCapture(event.pointerId);
     gl.domElement.style.cursor = 'grabbing'; document.body.style.cursor = 'grabbing';

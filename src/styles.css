@@ -201,6 +201,7 @@ canvas { display: block; touch-action: none; }
   animation: sound-status-pulse 1.2s ease-in-out infinite;
 }
 .sound-status-failed { color: #9a9fac; animation: none; }
+.sound-name { color: #e1d9c1; animation: none; }
 @keyframes sound-status-pulse { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .sound-status, .enter-room { animation: none; transition: none; } }
 .saved-rooms { margin: 0 0 10px; font-size: 13px; color: #9a9fac; text-align: center; pointer-events: auto; }
