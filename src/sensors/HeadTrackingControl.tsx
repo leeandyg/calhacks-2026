@@ -18,8 +18,8 @@ export function HeadTrackingControl() {
   return (
     <div className="head-tracking">
       <label className="switch-row">
-        <span className="switch-label">Head tracking</span>
         <span className="head-angle">{!on || degrees === 0 ? '0°' : `${Math.abs(degrees)}° ${degrees > 0 ? 'left' : 'right'}`}</span>
+        <span className="switch-label">Head tracking</span>
         <span className="switch">
           <input type="checkbox" aria-label="Head tracking" role="switch" checked={on} onChange={(event) => (event.target.checked ? startHeadTracking() : stopHeadTracking())} />
           <span className="switch-track"><span className="switch-knob" /></span>

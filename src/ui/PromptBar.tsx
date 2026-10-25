@@ -101,7 +101,7 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, v
       if (place) {
         options.signal?.throwIfAborted();
         options.onProgress?.('updating');
-        setStatus({ tone: 'busy', text: `Found your saved ${place.label}. Opening it…` });
+        setStatus({ tone: 'busy', text: place.task ? `Your ${place.task} place is the ${place.label}. Opening it…` : `Found your saved ${place.label}. Opening it…` });
         onSwitching?.(true);
         try {
           const [scene] = await Promise.all([place.load(), pause(SAVED_PLACE_MS, options.signal)]);
@@ -113,8 +113,9 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, v
         } finally { onSwitching?.(false); }
         lastCommand.current = { prompt, change: commandChange(original, useSceneStore.getState().scene) };
         setValue(''); setRefresh(value => value + 1); onSceneReady();
-        setStatus(voiceCommand ? undefined : { tone: 'notice', text: `Opened your saved ${place.label}.` });
-        return `Opened your saved ${place.label}.`;
+        const opened = place.task ? `Opened your ${place.task} place, the ${place.label}.` : `Opened your saved ${place.label}.`;
+        setStatus(voiceCommand ? undefined : { tone: 'notice', text: opened });
+        return opened;
       }
       options.onProgress?.('understanding');
       const reply: AgentReply = quick ? { response: SceneResponse.parse({ kind: 'edit', ops: quick.ops }), message: quick.message }

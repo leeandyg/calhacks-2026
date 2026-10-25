@@ -178,6 +178,8 @@ canvas { display: block; touch-action: none; }
 .head-tracking { pointer-events: auto; font-size: 13px; color: #e8e8f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .switch-row { display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer; }
 .switch-row > .switch { margin-left: auto; }
+/* On narrow sidebars the label wraps instead of pushing the switch past the row's right edge. */
+.head-tracking .switch-label { min-width: 0; }
 .switch-label { font-size: 14px; color: #e8e8f0; font-weight: 500; }
 /* iOS-style toggle: a visually hidden checkbox drives a purple track + sliding knob. */
 .switch { position: relative; display: inline-flex; flex: 0 0 auto; width: 40px; height: 24px; }

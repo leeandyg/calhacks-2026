@@ -62,3 +62,13 @@ describe('task and place memory intent', () => {
     expect(taskPlacePreference('Do not remember this: I am going to code, bring me to the river')).toBeUndefined();
   });
 });
+
+describe('demo task places', () => {
+  it.each(['I want to code', "I'm going to code", 'time to code', 'coding', 'programming', 'I want to read', 'I want to read now', "let's read", 'reading'])(
+    'names only the task: %s', prompt => {
+      expect(asksOnlyFor(prompt, 'coding') || asksOnlyFor(prompt, 'reading')).toBe(true);
+    });
+  it.each(['I want to code in a forest', 'read me the news', 'make the rain quieter while I code'])('asks for more: %s', prompt => {
+    expect(asksOnlyFor(prompt, 'coding') || asksOnlyFor(prompt, 'reading')).toBe(false);
+  });
+});
