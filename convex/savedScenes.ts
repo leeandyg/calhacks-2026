@@ -39,6 +39,38 @@ export const save = mutation({
   },
 });
 
+function validName(raw: string) {
+  const name = raw.trim();
+  if (!name || name.length > 80) throw new ConvexError("Use a room name of 1–80 characters.");
+  return name;
+}
+
+// A place is auto-saved once and then patched in place as it is edited (Visited places sidebar).
+export const create = mutation({
+  args: { name: v.string(), scene: v.any() },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+    const name = validName(args.name);
+    const parsed = Scene.safeParse(args.scene);
+    if (!parsed.success) throw new ConvexError("This room is invalid and could not be saved.");
+    return ctx.db.insert("savedScenes", { userId, name, scene: parsed.data, updatedAt: Date.now() });
+  },
+});
+
+export const update = mutation({
+  args: { id: v.id("savedScenes"), name: v.string(), scene: v.any() },
+  handler: async (ctx, { id, name: rawName, scene }) => {
+    const userId = await requireUser(ctx);
+    const existing = await ctx.db.get(id);
+    if (!existing || existing.userId !== userId) throw new ConvexError("That saved room is unavailable.");
+    const name = validName(rawName);
+    const parsed = Scene.safeParse(scene);
+    if (!parsed.success) throw new ConvexError("This room is invalid and could not be saved.");
+    await ctx.db.patch(id, { name, scene: parsed.data, updatedAt: Date.now() });
+    return id;
+  },
+});
+
 export const load = query({
   args: { id: v.id("savedScenes") },
   handler: async (ctx, { id }) => {
