@@ -141,14 +141,28 @@ try {
     mute(false);
     assert.equal(voiceGain().value, 0.5);
   });
-  await check("turning the room turns the listener: screen-left stays left", async () => {
+  await check("room rotation leaves listener orientation and source panners unchanged", async () => {
     const forward = () => [context.listener.forwardX.value, context.listener.forwardZ.value].map((v) => Math.round(v * 1000) / 1000);
-    // At rest the listener looks into the screen, from the camera's +x/+z corner toward -x/-z
+    const listener = () => Object.values(context.listener).map(param => param.value);
+    const panner = active()[0].outputs[0].outputs[0].outputs.find(node => node instanceof Panner);
+    const position = () => [panner.positionX.value, panner.positionY.value, panner.positionZ.value];
+    const originalListener = listener(), originalPosition = position();
+    // Retain the initial camera-aligned audio frame, regardless of subsequent view turns.
     assert.deepEqual(forward(), [-0.707, -0.707]);
-    useRoomStore.setState({ viewAngle: Math.PI / 2 }); // the room turned a quarter counterclockwise
-    assert.deepEqual(forward(), [0.707, -0.707]);
+    for (const viewAngle of [0.25, Math.PI / 2, Math.PI, -Math.PI / 2, 2 * Math.PI]) {
+      useRoomStore.setState({ viewAngle });
+      assert.deepEqual(listener(), originalListener);
+      assert.deepEqual(position(), originalPosition);
+    }
+    useRoomStore.setState({ viewAngle: Math.PI / 2 });
+    setSound("ocean"); await flush(); // A scene replacement while rotated must not turn the listener.
+    assert.deepEqual(listener(), originalListener);
+    assert.ok(useSceneStore.getState().applyOps([{ op: "move", id: "same-object", position: [-3, 1.5, 2] }]).ok);
+    const moved = useSceneStore.getState().scene.objects[0].position;
+    assert.deepEqual(position(), moved, 'dragged canonical positions still reach the panner');
+    assert.notDeepEqual(position(), originalPosition);
+    assert.deepEqual(listener(), originalListener);
     useRoomStore.setState({ viewAngle: 0 });
-    assert.deepEqual(forward(), [-0.707, -0.707]);
   });
   await check("engine stop cancels loops and future event callbacks", async () => {
     setSound("ocean"); await flush(); engine.stop(); await advance(3);

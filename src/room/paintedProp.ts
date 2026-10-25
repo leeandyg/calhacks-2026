@@ -8,8 +8,9 @@ export function paintedPropLayout(object: SoundObject, room: Scene['room'], art:
   const xSpace = room.grid.columns / 2 - SLAB_THICKNESS / 2 - Math.abs(position[0]);
   const zSpace = room.grid.rows / 2 - SLAB_THICKNESS / 2 - Math.abs(position[2]);
   const halfSpan = mounted ? (object.wall === 'north' || object.wall === 'south' ? xSpace : zSpace) : Math.min(xSpace, zSpace);
+  const heightLimit = mounted ? Infinity : Math.max(0.01, room.grid.wallHeight - position[1]) * art.w / art.h / object.scale;
   // A standing billboard can turn through any yaw; its whole width must fit inside the slabs.
-  const width = Math.min(art.w / ART_PX_PER_BLOCK, gridFootprint(object).columns / object.scale, Math.max(0.01, halfSpan * 2 / object.scale));
+  const width = Math.min(art.w / ART_PX_PER_BLOCK, gridFootprint(object).columns / object.scale, Math.max(0.01, halfSpan * 2 / object.scale), heightLimit);
   const height = width * art.h / art.w;
   return { mounted, position, width, height, offsetY: mounted ? 0 : height / 2 };
 }

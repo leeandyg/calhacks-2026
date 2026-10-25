@@ -32,10 +32,10 @@ try {
     assert.deepEqual(current.shadows, { enabled: false, casting: 0, receiving: 0 });
     assert.ok(current.bounds.left >= 0 && current.bounds.top >= 0 && current.bounds.right <= 1440 && current.bounds.bottom < 824);
   };
-  assert.equal(await page.getByRole('button').count(), 3, 'two rotation arrows and one send button');
+  assert.equal(await page.getByRole('button').count(), 3 + 2 * initial.scene.objects.length, 'two arrows + send, plus disable & delete per asset');
   assert.deepEqual(initial.scene.room.grid, { mode: 'Square', columns: 10, rows: 10, wallHeight: 7 });
   assert.equal(initial.floorModules, 100);
-  assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 64);
+  assert.equal(initial.walls.find(wall => wall.id === 'west').modules, 70, 'a wall-mounted source no longer cuts the wall slab');
   assert.equal(initial.walls.find(wall => wall.id === 'east').modules, 70);
   assert.equal(initial.shell.floorThickness, 0.42);
   assert.equal(initial.shell.floorColor, '969aa3');
@@ -46,8 +46,9 @@ try {
   assert.ok(Math.abs(offset[0] - offset[2]) < 1e-9);
   assert.ok(Math.abs(Math.atan2(offset[1], Math.hypot(offset[0], offset[2])) - Math.PI / 6) < 1e-9);
   assert.equal(await page.getByRole('button', { name: 'Rotate Right', exact: true }).evaluate(el => getComputedStyle(el).boxShadow), 'none');
-  assert.equal((await page.locator('body').innerText()).trim(), '', 'controls have icons and a placeholder only');
-  assert.equal(await page.locator('header,nav,footer,label,textarea,select,h1,h2').count(), 0);
+  assert.equal((await page.locator('body').innerText()).trim(), (await page.locator('.assets-panel').innerText()).trim(), 'the room chrome is icon-only; only the Assets panel shows text');
+  assert.equal(await page.locator('header,nav,footer,label,textarea,select,h1').count(), 0);
+  assert.equal(await page.locator('h2').count(), 1, 'only the Assets panel heading');
   assert.deepEqual(initial.objects.map(object => object.model).sort(), ['birds', 'fan', 'rain']);
   const canvas = await page.locator('canvas').boundingBox();
   assert.deepEqual([canvas.x, canvas.y, canvas.width, canvas.height], [0, 0, 1440, 900], 'full-viewport canvas');
@@ -121,7 +122,7 @@ try {
   assert.ok(rectangle.shell.walls.every(wall => wall.thickness === 0.42));
   assert.deepEqual(rectangle.shell.surfaceDetails, [], 'returning to a plain room removes all dirt pixels');
   assert.equal(rectangle.walls.find(wall => wall.id === 'north').modules, 40);
-  assert.equal(rectangle.walls.find(wall => wall.id === 'west').modules, 16);
+  assert.equal(rectangle.walls.find(wall => wall.id === 'west').modules, 22, 'only the explicit door cuts the west wall; the window source does not');
   assert.ok(rectangle.bounds.left >= 0 && rectangle.bounds.top >= 0 && rectangle.bounds.right <= 1440 && rectangle.bounds.bottom < 824);
   await page.screenshot({ path: 'test-results/grid-rectangle.png' });
   for (let i = 0; i < 4; i++) {
@@ -132,7 +133,7 @@ try {
     assert.ok(current.bounds.left >= 0 && current.bounds.top >= 0 && current.bounds.right <= 1440 && current.bounds.bottom < 824);
   }
   assert.equal((await inspect()).orientation, 0);
-  console.log('PASS: 10-by-6 rectangle, modular doorway and moving-window cutout, complete framing at all four orientations');
+  console.log('PASS: 10-by-6 rectangle, modular doorway (window sources no longer cut walls), complete framing at all four orientations');
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 780 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
     await page.waitForTimeout(200);
@@ -141,7 +142,7 @@ try {
     assert.equal(rect.width, viewport.width); assert.equal(rect.height, viewport.height);
     const bounds = (await inspect()).bounds;
     assert.ok(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= viewport.width && bounds.bottom < viewport.height - 76);
-    assert.equal(await page.getByRole('button').count(), 3);
+    assert.equal(await page.getByRole('button').count(), 3 + 2 * (await inspect()).scene.objects.length);
     await page.getByRole('button', { name: 'Rotate Right', exact: true }).click(); await settle();
     await page.screenshot({ path: `test-results/grid-${viewport.width}.png` });
   }

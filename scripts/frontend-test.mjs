@@ -77,9 +77,9 @@ try {
       const current = await source(id);
       assert.equal(current.wall, wall, `${id} reaches ${wall}`);
       if (id === 'rain-1') {
+        // A wall-mounted source no longer cuts the wall: it mounts on the intact slab.
         const room = await inspect();
-        assert.equal(room.walls.find(item => item.id === wall).openings.filter(opening => opening.id === 'source-rain-1').length, 1);
-        assert.ok(room.walls.filter(item => item.id !== wall).every(item => !item.openings.some(opening => opening.id === 'source-rain-1')));
+        assert.ok(room.walls.every(item => !item.openings.some(opening => opening.id === 'source-rain-1')), 'no source leaves a wall cutout');
       }
       assert.equal(current.muted, false, 'dragging never mutes');
       assert.equal(current.position[1], original.position[1], 'drag preserves height');
@@ -131,9 +131,9 @@ try {
   assert.equal((await source('fan-1')).muted, true, 'moving a muted object preserves mute');
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
-  assert.equal(await page.getByRole('button').count(), 3);
+  assert.equal(await page.getByRole('button').count(), 3 + 2 * (await inspect()).scene.objects.length, '2 arrows + send, plus disable & delete per asset');
   await page.getByRole('status').waitFor({ state: 'detached' });
-  assert.equal((await page.locator('body').innerText()).trim(), '');
+  assert.equal((await page.locator('body').innerText()).trim(), (await page.locator('.assets-panel').innerText()).trim(), 'only the Assets panel shows text');
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');
   console.log('PASS: touch tap mute/unmute, muted dragging, minimal mobile UI, no shadows and no browser errors');

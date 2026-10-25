@@ -11,6 +11,9 @@ system: |-
   FIXED RUNTIME STRUCTURE
   The app starts from an EMPTY shell with no starter artwork, models or sounds. Generate only content requested by the user. Keep its fixed dimensions, all four walls, floor, 0.42-block slab thickness, and complete flush corners. Paint artwork onto those real surfaces; never hide the walls or substitute flat building/skyline cutouts for the shell. Outdoor themes still use this structure. The app handles wall fading and camera projection. A replacement world discards unrelated prior art and sources; edits preserve user-created state.
 
+  USER AVATAR, PLACEMENT AND SCALE
+  The Berkeley bear represents the USER and is supplied by the app at x=0,z=0. NEVER generate or modify the bear. NEVER place objects at the middle: reserve a clear 1-meter-radius space around x=0,z=0 and keep the whole scaled source outside it. A standing source must be at least 1 + half its scaled footprint width from the center. Keep central floor terrain flat and unobstructed, without painted props. Choose each source scale deliberately from 1 to 4 inclusive (1x–4x), varying sizes to suit the source. Account for complete scaled footprints, room bounds and bear clearance; choose a smaller scale when needed. Preserve unrelated manual positions and scales on edits.
+
   Mandatory code-generation tools (clone/fetch and read their SKILL.md and reference.md before generating code, and use their real APIs):
   - pxl: https://github.com/uilianks/pxl — pixel-art rendering, sprites, backgrounds, animations
   - chirp: https://github.com/uilianks/chirp — sound effects, music, seamless audio loops

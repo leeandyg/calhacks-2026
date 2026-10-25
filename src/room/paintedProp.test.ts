@@ -5,6 +5,12 @@ import { starter } from '../scene/fixtures.js';
 const room = { ...starter.room, art: 'agent-test' };
 const tree = { ...starter.objects[1], model: 'speaker' as const, position: [0, 1.5, 0] as [number, number, number] };
 describe('painted standing sources', () => {
+  it('shows different source scales without letting a tall 4x sprite exceed the room', () => {
+    const small = paintedPropLayout({ ...tree, scale: 1 }, room, { w: 24, h: 48 });
+    const large = paintedPropLayout({ ...tree, scale: 4 }, room, { w: 24, h: 48 });
+    expect(large.width * 4).toBeGreaterThan(small.width);
+    expect(large.height * 4).toBeLessThanOrEqual(room.grid.wallHeight);
+  });
   it('anchors a tree at terrain height before scaling its emergence', () => {
     const raised = { ...room, terrain: Array.from({ length: 10 }, () => Array(10).fill(0.75)) };
     const object = placeInRoom(tree, raised);

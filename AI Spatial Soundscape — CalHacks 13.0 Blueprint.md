@@ -61,6 +61,8 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 | 2D top-down canvas | Cheapest fallback. Audio still works, since positions are just x and z |
 | Unity or Godot | Overkill; slows the web deploy |
 
+A persistent pixel-art Berkeley golden bear wearing the supplied silver/black headphones (with the red accent preserved) sits at the center of every ready world. This is a view-only listener avatar, not a generated sound source; it follows canonical terrain and survives all scene replacements. Its colors bypass generated room palette changes. Two front and two back sprites follow manual room rotation, with a permanent matching You portrait in Assets even after all sources are removed. The agent reserves a one-meter radius around the center plus each standing source’s scaled half-width, chooses source scale deliberately from 1x to 4x, and preserves unrelated manual edits. Both Managed/Self-hosted and Gemini paths apply this agent-only placement guard without changing the canonical scene schema.
+
 The room is a floor plane with an isometric orthographic camera. Each sound object is an icon, a label and a ring sized to its volume. Drag by raycasting the pointer onto the floor. The listener is a head avatar in the center with a facing arrow that later turns with head tracking.
 
 ### 4. The AI that builds and edits the room
@@ -130,7 +132,7 @@ the browser art store, without adding fields to the shared scene JSON. `room.art
 world; terrain and positions remain canonical. All generated themes retain the fixed volumetric shell, with 0.42-block wall/floor slabs
 and complete flush corners. Legacy `openAir` metadata cannot remove structural panels; paintings
 cover existing surfaces, including outdoors/cities. Bed sprite motion loops; event motion follows playback,
-and muting freezes it. First creation remains hidden until the manifest and images are ready.
+and muting freezes it. Generated content remains hidden until the manifest and images are ready; the first pending prompt shows the fixed base shell with an img-fx loading mosaic on its floor and two visible walls.
 Follow-up edits receive the latest scene and reuse the session, preserving manual placement.
 `AGENT_CONFIG.yaml` holds the supplied system prompt; the configured agent resource supplies
 its model/tools. Gemini and offline/demo paths remain available. See README for setup and checks.
@@ -138,8 +140,7 @@ its model/tools. Gemini and offline/demo paths remain available. See README for 
 **First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
 The canonical store initially contains only the fixed structure and listener, with no fixture
 objects, artwork, terrain or session. The first request sends `scene: null`. Live failures keep
-the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden until the first validated branch is ready; errors before any result keep it hidden. Then reveal
-it with its rotation arrows and move the prompt below it after successful creation. Prompt
+the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. After first submission, show the fixed empty shell with the img-fx pixels-organic loading effect on its floor and two visible walls, and move the prompt below it. The effect is view-only and stops when the first validated branch is ready. Errors before any result hide the shell and recenter the prompt. Reveal generated content, rotation arrows and the Assets panel after successful creation. Prompt
 submission supplies the audio gesture; the engine starts when the created room is revealed.
 
 **Live pxl environments (#76):** new live scenes stage the environment before revealing sources.
@@ -214,7 +215,7 @@ Edits from the agent (and from voice commands) are a list of ops applied in orde
 
 Objects also carry room-view fields: `model` (the prop drawn: `rain`, `fan`, `birds`, `speaker`; the agent picks it, otherwise the room derives it from `sound.query`), `muted` (default `false`; silences without changing `volume`), `wall` (default `null`; the wall a prop is mounted on or snapped against) and `scale` (default `1`). `add` with an existing id replaces that object in place (the resolver relies on this); the agent itself may only add new ids. `move` takes an optional `wall`.
 
-The store snaps every position onto the grid (`src/scene/layout.ts`): floor props by their whole footprint, `rain` windows onto a wall. `api/scene.ts` returns positions already snapped, so what you hear is where the prop is drawn. Turning the room with the arrows turns the listener with it: a sound on the left of the screen is on your left.
+The store snaps every position onto the grid (`src/scene/layout.ts`): floor props by their whole footprint, `rain` windows onto a wall. `api/scene.ts` returns positions already snapped, so what you hear is where the prop is drawn. Turning the room with the arrows changes only the visual view and bear direction. Audio remains in its fixed canonical coordinate frame; dragging a source updates its panner position.
 
 `assetId` is filled in by the resolver, never by the agent. That keeps the agent describing sounds in words and the resolver owning files. An `assetId` is either a pack id from `manifest.json` (`rain_window`) or a generated sound, `gen:<kind>:<query>` (`gen:bed:a cat purring softly`).
 

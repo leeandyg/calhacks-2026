@@ -13,10 +13,11 @@ const DEMO_MODE = new URLSearchParams(window.location.search).has('demo');
 
 // Sends the prompt and current scene to POST /api/scene (Gemini) and applies the reply. Without AI,
 // the client falls back to the local presets and recorded demo, and says so in the status line.
-export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSceneReady: () => void }) {
+export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: boolean; onSceneReady: () => void; onBusyChange?: (busy: boolean) => void }) {
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<Status>();
   const busy = status?.tone === 'busy';
+  useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => {
     if (status?.tone !== 'notice') return;
     const timer = setTimeout(() => setStatus(undefined), NOTICE_MS);
@@ -28,10 +29,10 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
     if (!prompt || busy) return;
     // Submit is the user gesture that unlocks audio; the engine starts after creation succeeds.
     void resumeAudio().catch(error => console.warn('Audio could not be enabled.', error));
-    setStatus({ tone: 'busy', text: 'Building your space...' });
+    setStatus({ tone: 'busy', text: 'Claude is thinking...' });
     let partialApplied = false;
     try {
-      const response = await requestScene(prompt, hasScene ? useSceneStore.getState().scene : null, DEMO_MODE, text => setStatus({ tone: 'busy', text }), (result, part) => {
+      const response = await requestScene(prompt, hasScene ? useSceneStore.getState().scene : null, DEMO_MODE, () => setStatus({ tone: 'busy', text: 'Claude is thinking...' }), (result, part) => {
         applyManagedPartial(result, part, !partialApplied);
         partialApplied = true;
         onSceneReady();

@@ -7,19 +7,20 @@ import {
   roomSize,
 } from "../src/scene/scene.js";
 import { applyOp, clampScene } from "../src/scene/store.js";
+import { AGENT_PLACEMENT_RULES, placeAgentObject } from '../server/agentPlacement.js';
 
 // POST /api/scene: { prompt, scene } -> { kind: "create", scene } | { kind: "edit", ops }
 // Runs as a Vercel function in production and through the Vite dev middleware locally.
 // Server-only: read keys from process.env here, never in src/.
 //
 // The agent describes sounds; resolving queries to playable assets belongs to #17.
-// The agent may pick the prop (model); mute, wall mounting and scale belong to the room view.
+// The agent picks the prop and its 1x–4x scale; mute remains room-view state.
 const agentSound = SoundRef.omit({ assetId: true }).strict();
 // The agent may mount an object on a wall (a branch growing out of it, a clock hanging on it).
-const viewFields = { muted: true, scale: true } as const;
+const viewFields = { muted: true } as const;
 const agentObject = z.discriminatedUnion("kind", [
-  BedObject.omit(viewFields).extend({ sound: agentSound }),
-  EventObject.omit(viewFields).extend({ sound: agentSound }),
+  BedObject.omit(viewFields).extend({ sound: agentSound, scale: z.number().min(1).max(4).default(1) }),
+  EventObject.omit(viewFields).extend({ sound: agentSound, scale: z.number().min(1).max(4).default(1) }),
 ]);
 // The room's grid and openings are fixed by the room view; the agent only picks preset and reverb.
 // The environment's art and terrain come from api/environment.ts, after the scene.
@@ -65,6 +66,7 @@ Positions are meters, y is up, and the listener faces -z at yaw 0. The room's si
 and given as roomSize [width, height, depth]: keep x within ±width/2, z within ±depth/2 and y
 between 0 and height. Volumes are between 0 and 1. Use at most 12 objects.
 For a new scene, place the listener at [0, 1.6, 0], facing -z.
+${AGENT_PLACEMENT_RULES}
 
 Focus sound placement defaults:
 - Put steady broadband masking beds (rain, fans, brown noise, flowing water, wind)
@@ -185,7 +187,8 @@ export async function POST(request: Request): Promise<Response> {
         const { scene: created } = createArgs.parse(call.arguments);
         // Parsing fills the room-view defaults (unmuted, on the floor, scale 1); clampScene then snaps
         // every object onto the grid (windows onto a wall), exactly as the browser's store keeps it.
-        const scene = clampScene(Scene.parse({ ...created, room: { ...created.room, grid, openings } }));
+        const initial = clampScene(Scene.parse({ ...created, room: { ...created.room, grid, openings } }));
+        const scene = { ...initial, objects: initial.objects.map(object => placeAgentObject(object, initial.room)) };
         validateScene(scene);
         response = { kind: "create", scene };
       } else if (call.name === "edit_scene" && parsed.data.scene) {
@@ -198,11 +201,18 @@ export async function POST(request: Request): Promise<Response> {
             if (scene.objects.some((object) => object.id === id)) {
               throw new Error(`Added object ID ${id} already exists. Use a new ID.`);
             }
+            op = { ...op, object: placeAgentObject(op.object, scene.room) };
           } else if (op.op !== "set_room") {
             const id = op.id;
             if (!scene.objects.some((object) => object.id === id)) {
               throw new Error(`No object has ID ${id}. Use an existing ID.`);
             }
+          }
+          if (op.op === 'move') {
+            const moveId = op.id;
+            const moved = applyOp(scene, op).objects.find(object => object.id === moveId)!;
+            const placed = placeAgentObject(moved, scene.room, false);
+            op = { ...op, position: placed.position, wall: placed.wall };
           }
           scene = applyOp(scene, op);
           validateScene(scene);
