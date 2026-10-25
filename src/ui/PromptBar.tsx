@@ -20,7 +20,7 @@ const NOTICE_MS = 8000;
 // /?demo replays saved responses and local presets only, with no AI requests (README "Offline demo").
 const DEMO_MODE = new URLSearchParams(window.location.search).has('demo');
 // A saved room opens behind the loading mosaic for at least this long, so the switch reads as a transition.
-const SAVED_PLACE_MS = 1500;
+const SAVED_PLACE_MS = 2500;
 const pause = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
   const timer = setTimeout(resolve, ms);
   signal?.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
