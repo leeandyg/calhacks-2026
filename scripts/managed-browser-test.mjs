@@ -55,11 +55,11 @@ await page.route('**/api/world*',async route=>{
 });
 try{
  await page.goto(process.env.TEST_URL??'http://localhost:5173');
- assert.equal(await page.locator('canvas').count(),0);
+ assert.equal(await page.locator('canvas').count(),1);
  assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[]);
  await page.getByLabel('Prompt',{exact:true}).fill('An open forest');await page.getByRole('button',{name:'Send',exact:true}).click();
  await page.getByRole('status').filter({hasText:'Claude'}).waitFor();
- assert.equal(await page.locator('.room-rotation, .assets-panel').count(),0,'only the loading shell shows while Claude is working');
+ assert.equal(await page.locator('.room-rotation, .assets-panel').count(),2,'the empty shell and controls stay visible while Claude is working');
  assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[],'the loading shell leaves the canonical scene empty');
  // Library first: the oak's wind has a good pack match; the woodpecker uses the agent's chirp file.
  // The loading shell mounts the room view with an empty scene, so wait for the world's objects too.

@@ -9,7 +9,8 @@ page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 try {
   await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
-  assert.equal(await page.locator('canvas').count(), 0, 'avatar does not reveal the room before submission');
+  assert.equal(await page.locator('canvas').count(), 1, 'the empty shell is visible before submission');
+  await page.waitForFunction(() => window.__pixelRoom?.().avatar === null);
   await page.getByLabel('Prompt', { exact: true }).fill('forest');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await page.waitForFunction(() => window.__pixelRoom?.().avatarReady);

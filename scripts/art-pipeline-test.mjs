@@ -33,12 +33,12 @@ await page.route('**/api/sprite',async route=>{spriteRequests++; await spritesHe
 await page.route('**/api/sound*',route=>route.fulfill({status:503,json:{error:'offline test'}}));
 try {
   await page.goto(process.env.TEST_URL??'http://localhost:5173');
-  assert.equal(await page.locator('canvas').count(),0,'no environment before a prompt');
+  assert.equal(await page.locator('canvas').count(),1,'the empty shell is visible before a prompt');
   await page.getByLabel('Prompt',{exact:true}).fill('A mossy forest with birds on a branch');
   await page.getByRole('button',{name:'Send',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Imagining'}).waitFor();
   assert.equal(spriteRequests,0,'no sprite generation before the environment');
-  assert.equal(await page.locator('.room-rotation, .assets-panel').count(),0,'the loading shell has no room controls');
+  assert.equal(await page.locator('.room-rotation, .assets-panel').count(),2,'controls stay visible while the shell loads');
   assert.deepEqual(await page.evaluate(()=>window.sceneStore.getState().scene.objects),[],'the loading shell leaves the canonical scene empty');
   releaseEnvironment();
   await page.waitForFunction(()=>window.__pixelRoom?.().scene.room.art==='test-forest' && window.__pixelRoom().objects.length===2);

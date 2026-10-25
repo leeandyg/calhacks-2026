@@ -1,20 +1,31 @@
 # Modular room layout contract for AI agents
 
-Read this before generating rooms, source geometry, or interactions. The supplied [My Dream Setup dimension profile](docs/reference-dimensions.json) governs grid behavior. The [measured visual reference](docs/reference-proportions.json) governs the default proportions and camera framing. Keep the frontend to a full-viewport room, two plain left/right rotation arrows beside the room and one bottom prompt bar, plus what the full-stack app needs: a status line above the prompt, a "generating…" label over a prop while its sound is generated, a temporary sound-name label and pixel outline on hover, and an Assets panel pinned top-right that lists each sound source (sprite, label, volume slider, a reversible hide-from-environment toggle, and delete) in the same BorderBeam frosted style as the prompt bar. Hiding removes a source's prop/portal (view-only `useRoomStore` state) and silences it (`set_muted`); volume and delete go through `applyOps`. No labels or panels beyond these, and no room shadows. The rotation arrows render above the Assets panel so they stay clickable when a short viewport makes them overlap. The prompt calls `POST /api/scene` and the audio engine renders the same scene store (`src/scene/store.ts`; see README).
+Read this before generating rooms, source geometry, or interactions. The supplied [My Dream Setup dimension profile](docs/reference-dimensions.json) governs grid behavior. The [measured visual reference](docs/reference-proportions.json) governs the default proportions and camera framing. Keep the frontend to a full-viewport room, two plain left/right rotation arrows beside the room and one bottom prompt bar, plus what the full-stack app needs: a status line above the prompt, a "generating…" label over a prop while its sound is generated, a temporary sound-name label and pixel outline on hover, and an Assets panel pinned top-right that lists each sound source (sprite, label, volume slider, a reversible hide-from-environment toggle, and delete) in the same square, pixel-styled BorderBeam frame as the prompt bar. Hiding removes a source's prop/portal (view-only `useRoomStore` state) and silences it (`set_muted`); volume and delete go through `applyOps`. No labels or panels beyond these, and no room shadows. The rotation arrows render above the Assets panel so they stay clickable when a short viewport makes them overlap. The prompt calls `POST /api/scene` and the audio engine renders the same scene store (`src/scene/store.ts`; see README).
 
 Reference views: [Image 1](docs/references/room-view-1.png) and [Image 2](docs/references/room-view-2.png). Follow their aligned orthographic room presentation. Exclude their clutter and shadows.
 
 The requested optional floating voice controller (#139) is a portal from the existing app into a small Picture-in-Picture window (or popup fallback), never a separate frontend or scene. Main voice controls may expose Float controls and an opt-in Hey agent toggle. Both windows share listening state, transcript and stop controls.
 
-Before a place is shown, hide the left sidebar cards and show saved visited places as a plain
-list below the centered prompt. Template selections never enter Visited places. Once a place is
-visible, the left Visited places card matches the right sidebar width. Settings is pinned to the bottom of the right sidebar; Assets fills the remaining space above
+The floating controller is branded **roomto.study** and opens at 300 × 240. Keep its microphone action,
+recording indicator, Hey agent switch, Stop voice and Close controls visible without scrolling. Use one
+fixed message area with a two-line visual clamp; the main controller retains the full transcript and
+errors. The popup inherits the app base URL and loads the cached bundled pixel font from font data,
+avoiding stalled font loading in a blank popup. Apply the
+active environment's validated art palette to the page, UI surfaces and an already-open floating window,
+using dark tints for legible text. New Place restores the existing grey defaults (#11171e page, #202936
+panels); this is view state and adds no fields to scene JSON.
+
+Open directly into the empty fixed room, with the prompt below it and Templates plus Saved places
+in the left sidebar. There is no welcome page or flow-state heading. Saved places has a name field,
+an explicit Save place action, named Load buttons and New Place to clear back to the empty shell.
+Saving with an existing name updates that save. Merely generating or visiting a template never saves it.
+Keep anonymous authentication for voice/memory and existing saves. The left sidebar matches the right sidebar width. Settings is pinned to the bottom of the right sidebar; Assets fills the remaining space above
 it and keeps its hidden-scrollbar scrolling. Settings holds head
 tracking, with a small `0°` / degrees-left / degrees-right pill before its label and its switch
 pinned to the right edge; there is no Recenter button. Its Voice Agent section contains the
 Finish automatically and Hey agent slider-style switches, with a full-width Float controls
-button below. The prompt has a microphone icon immediately before the text input, matching the send button's 44px circular shape and padding, with a transparent background. The prompt input has a 5px bottom margin. Preloaded-room
-pills and visited-place names use 20px text. Before a room is shown, the heading "Where's your flow state, Coin?" appears above the preloaded-room pills; hide the heading once a room appears. These voice
+button below. The prompt has a microphone icon immediately before the text input, matching the send button's 44px square shape and padding. Vertically center the input without a bottom offset. Preloaded-room
+buttons and saved-place names use 20px pixel text (16px in narrow sidebars). Hide the idle keyboard-shortcut hint; retain active microphone, progress and error messages. These voice
 controls render through portals from the same controller; there is no central activation row.
 
 ## 1. Modular dimensions
@@ -71,7 +82,7 @@ For a rectangle use, for example, `mode: "Rectangle", columns: 10, rows: 6, wall
   `openAir` art metadata must never remove structural geometry. Paint outdoor/city themes on the
   surfaces; do not substitute detached flat skyline panels for walls. Environment and source
   strips use horizontal equal-size frames on the shared pixel grid. Bed motion loops; event motion
-  runs during playback. Muting freezes source animation. Keep the initial prompt centered before submission. During first creation, show only the base shell with the img-fx loading mosaic on the floor and two visible walls, with the prompt below. Reveal generated content after the first branch validates and its images finish loading while the other branch runs. Start the canonical scene empty:
+  runs during playback. Muting freezes source animation. Show the empty shell and bottom prompt immediately, without an avatar or loading mosaic. During first creation, add the img-fx loading mosaic on the floor and two visible walls. Reveal generated content after the first branch validates and its images finish loading while the other branch runs. Start the canonical scene empty:
   no fixture artwork, sources or session. Live generation errors never insert demo content.
 
 - Live generated environments (#76) extend these defaults: `room.art` references five pxl PNGs in
@@ -148,16 +159,17 @@ Disable renderer/light/mesh shadows. The explicitly requested BorderBeam glow is
 
 ## 10. Prompt controls
 
-The four captured demo choices (Rainy café, Beach, Cyberpunk city, Zen garden) sit in one compact row above
-the initial prompt. Before the first room, position the row independently so the prompt stays centered.
-Once an environment is visible, hide the prompt row and show the four choices as full-width
-buttons in a Templates card above Visited places in the left sidebar. Visited places fills the
-remaining sidebar height down to the bottom margin; its list scrolls with a hidden vertical scrollbar. Load the entire local scene and its assets
+The four captured demo choices (Rainy café, Beach, Cyberpunk city, Zen garden) are full-width
+buttons in a Templates card above Saved places from startup. Saved places fills the
+remaining sidebar height; its card scrolls with a hidden vertical scrollbar. On narrow or short screens,
+keep sidebar actions above the bottom prompt so every save/load control stays reachable. Load the entire local scene and its assets
 before revealing it; warming bundles must never populate the canonical scene or play audio.
 These four explicit demo choices are the exception to the no-preset-controls rule above.
 
-A fresh page shows only the prompt, centered horizontally and vertically. On the first submission, mount the fixed base shell with the Libraries.dev img-fx pixels-organic mosaic mapped onto its floor and two visible walls, and move the prompt below it. This loading effect is view-only; it never adds canonical scene content. Stop the mosaic when the first creation branch validates and its images decode. Audio, rotation arrows and the Assets panel remain gated on that first ready branch. A failure before any result hides the loading shell and recenters the editable prompt. Submit with `scene: null` for the first request and unlock audio from that user gesture. Reveal the room and arrows after the first validated branch and move the same prompt below it; keep it visible if the remaining branch fails. Generated source portals may continue their existing reveal after the room appears. `?demo` follows the same empty start and creates its room on the first supported prompt.
+A fresh page opens the fixed, empty shell with the bottom prompt, rotation arrows, Templates, Saved places, Assets and Settings. Do not paint art, spawn sources, show the bear or play sounds before a room is created or loaded. On the first submission, show the Libraries.dev img-fx pixels-organic mosaic on the floor and two visible walls. This effect is view-only and stops when the first validated branch and its images are ready. A first-request failure keeps the empty shell and editable bottom prompt visible. Send `scene: null` for the first creation; prompt submission, demo selection or clicking a named Load button supplies the audio gesture. Audio and the bear start with a validated room. Later failures preserve the current world. New Place clears the canonical content and returns to the same empty shell. `?demo` follows the same empty start.
 
-The app includes exactly two plain arrow icons flanking the room and exactly one `BorderBeam size="md" colorVariant="colorful" strength={0.7} theme="dark"` prompt. Use system sans-serif and light text #e8e8f0. The prompt is a 74px-high pill, width min(640px,92vw), background #15151f, radius 999px, padding 16px 6px 16px 20px, gap 8px. Its controlled `input type="text"` is single-line with aria-label Prompt, 15px font, and placeholder Generate anything... in #7a7a90. Never use a textarea. The Send button is a 44px circle with white-to-light-gray gradient and an inline 18px upward-arrow SVG, stroke width 2.5. Disable it for blank/whitespace-only input (opacity .45); enabled hover moves up 1px. Form submission by Enter or click trims the value and sends it with the current scene to `POST /api/scene` through `src/ai/client.ts`; a successful reply updates the scene store and clears the input. One small status line above the prompt reports progress, fallback notices and errors; a failed prompt stays in the input. BorderBeam and img-fx (the first-room surface loader) are the approved UI effect dependencies; do not add icon or other animation packages. Keep the room above both controls at desktop/mobile/landscape sizes.
+The app includes exactly two plain arrow icons flanking the room and exactly one `BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0}` prompt. Controls follow an 8-bit style: bundled Pixelify Sans throughout interface text, square cards and switches, two-pixel bevel borders, block SVG icons and square slider thumbs. Keep light text #e8e8f0 and slate/lavender defaults; tint the UI from the active environment as described above. No new animation or icon dependencies, soft shadows or page effects. Hover brightens a button; a press moves it down 2px immediately. Keep visible keyboard focus, disabled states and a red active microphone. On narrow sidebars, wrap source actions beneath their sprite/volume row so every control remains reachable.
 
-Rotation arrows have no visible borders, backgrounds, circular containers or text. Use inline 30px horizontal arrow icons in transparent 44px hit targets. Keep them just outside the room silhouette at its vertical center; reserve horizontal viewport space on mobile. Do not bring back the refresh icon.
+The prompt is 74px high, width min(640px,92vw), radius 0, padding 14px and gap 10px (12px/8px on narrow screens). Its controlled `input type="text"` is single-line with aria-label Prompt, 22px pixel font (18px narrow) and placeholder Generate anything... in #a1adc2. Never use a textarea. The Send button is a 44px square with a filled pixel upward arrow. Disable it for blank/whitespace-only input (opacity .45). Form submission by Enter or click trims the value and sends it with the current scene to `POST /api/scene` through `src/ai/client.ts`; a successful reply updates the scene store and clears the input. One small status line above the prompt reports progress, fallback notices and errors; a failed prompt stays in the input. BorderBeam and img-fx (the first-room surface loader) are the approved UI effect dependencies. Keep the room above both controls at desktop/mobile/landscape sizes.
+
+Rotation arrows have no visible borders, backgrounds, circular containers or text. Use inline 32px pixel horizontal arrow icons in transparent 44px hit targets. Keep them just outside the room silhouette at its vertical center; reserve horizontal viewport space on mobile. Do not bring back the refresh icon.

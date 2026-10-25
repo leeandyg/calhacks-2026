@@ -73,14 +73,14 @@ scene store without an `assetId`; the active resolver fills it with a library so
 Claude agent's chirp file (`managed:`) or a `gen:` ID (see **Sounds on command**). Existing resolved objects keep their assets during edits.
 Six local presets (Rainy café, Bedroom, Forest, Library, Cabin, Coast) are available only in
 explicit `?demo` mode. Live requests never load a preset or recorded edit on failure. The app
-starts with an empty canonical scene and a centered prompt; errors keep it empty, or preserve
+starts with an empty canonical scene, a visible empty room shell and the prompt below it; errors keep it empty, or preserve
 the current generated world and prompt for retry. Missing asset IDs in valid AI output are
 resolved normally and do not trigger offline replay.
 
 ## Opening a saved environment by name
 
 A prompt that names an existing room and asks for nothing else opens that room instead of generating
-it again: "cyberpunk city", "take me to the rainy café", or the name of a place in **Visited places**
+it again: "cyberpunk city", "take me to the rainy café", or the name of a place in **Saved places**
 ("study cave"). The saved room appears with its art and sounds, behind the loading mosaic, and **undo**
 returns to the previous room. Your own saved rooms win over a captured room of the same name. Anything
 more ("a cyberpunk city at dawn") still goes to the world agent. Matching is in `asksOnlyFor`
@@ -89,8 +89,7 @@ own preset names.
 
 ## Offline demo
 
-Four fully captured rooms are available from the buttons above the initial prompt, then from
-the **Templates** card above Visited places once a room appears: **Rainy café**,
+Four fully captured rooms are available from the **Templates** card above Saved places, starting with the empty room: **Rainy café**,
 **Beach**, **Cyberpunk city**, and **Zen garden**. Each has exactly three sounds (two beds and one random event),
 pixel artwork, and fixed starting placements. Complete bundles live in `public/demo/<id>/`:
 `scene.json`, `assets.json`, capture/provenance notes, PNGs and compressed MP3s. A source the sound
@@ -171,12 +170,11 @@ configures a deployment and writes `CONVEX_DEPLOYMENT` and the public
 a Convex account. In another terminal, run `npm run convex:auth` once to configure
 the deployment's signing keys, then start/restart `npm run dev`.
 
-Generated rooms are automatically saved in **Visited places**; selecting a captured template never adds one.
-Before a place is shown, saved places appear as a plain list below the centered prompt. Rooms are named by the environment AI agent as part of the same generation request
-(`environment.title`). Older recordings without a title retain their existing fallback label. Later edits update that place; switching environments
-creates a separate entry. Click an entry to reopen it, or **New Place** to start from an empty
-room. Saving uses the existing Convex `savedScenes.save` function. Repeated environment labels
-get a numbered suffix so each visit keeps its own snapshot. Snapshots include positions, volumes,
+The **Saved places** card is available immediately beside the empty room. Create a room or choose a template,
+enter a **Place name**, and click **Save place**. A name can have 1–80 characters; saving the same name updates
+that save. Visiting a room does not save it automatically. Choose a named **Load** row to restore a save,
+or **New Place** to return to an empty shell. Existing saved rooms remain available. Saving uses the existing
+Convex `savedScenes.save` function. Snapshots include positions, volumes,
 sound references, event intervals, listener orientation, room settings and session
 state. The existing Zod scene contract validates saves and loads.
 
@@ -238,10 +236,13 @@ within the active tab; there is no system-wide keyboard shortcut.
 Allow the site's microphone permission when you first use it. No raw recordings
 are saved. Ink-2 streaming transcription feeds the same command path as typed input.
 
-For homework, click **Float controls** to open a small voice controller. On supported
+For homework, click **Float controls** to open the compact **roomto.study** microphone controller
+(300 × 240, without scrolling). Its background follows the current environment, with the existing
+grey colors for an empty room. Long messages stay in a fixed two-line area; the main panel retains
+the full transcript and errors. On supported
 desktop browsers it stays above other windows; otherwise it opens as a normal separate
 window. Its **Talk to agent** button ends a command automatically, and its **Stop voice**
-button cancels listening or processing. Keep the original soundscape tab open.
+button cancels listening or processing. Keep the original roomto.study tab open.
 
 Enable **Hey agent** in either window to keep listening while you work elsewhere.
 Say **“Hey agent, mute rain”** in one sentence, or **“Hey agent”** followed by your command.
@@ -398,7 +399,7 @@ The live site and `?mode=cloud` (the default) use **Claude Managed Agents**: `ap
 `server/managedAgent.ts` start a session on the configured agent (`AGENT_CONFIG.yaml` holds its system
 prompt), and the agent paints pxl art and composes chirp audio in Anthropic's sandbox. The app only
 needs `ANTHROPIC_API_KEY`; nothing runs on your machine. A new world takes a few minutes, so
-pre-generate demo worlds; each one is kept in **Visited places**.
+pre-generate demo worlds, then name and save each one in **Saved places**.
 
 ### Optional: self-hosted worker (`?mode=local`)
 
@@ -482,10 +483,11 @@ page, matching the app's existing painted-art lifecycle.
 
 ## Gemini environment art (#76)
 
-The page starts with only a centered prompt, including in `?demo`. The first request sends no
-current scene. While creation runs, progress stays above that prompt. Successful creation reveals
-the room and rotation arrows and moves the prompt below the room; errors leave the centered
-prompt editable. Submitting the prompt unlocks audio, so no Enter-room overlay is needed.
+The page starts directly in the empty fixed room, including in `?demo`, with the prompt below it.
+Templates, Saved places, rotation, Assets and Settings are available immediately. The first creation
+sends no current scene. Progress stays above the prompt, and successful creation reveals the generated
+content and bear; first-request errors keep the empty shell and editable prompt visible. Submitting a
+prompt, choosing a template or loading a saved place unlocks audio; no Enter-room overlay is needed.
 
 Since `?mode` (#144) the browser names a backend on every request, so in the app Gemini only stands
 in for Claude, with a notice, and builds the standard room without paintings. `/api/sprite` still

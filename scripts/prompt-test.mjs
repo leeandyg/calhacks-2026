@@ -23,18 +23,20 @@ try {
   const input = page.getByLabel('Prompt', { exact: true }); // a combobox while the offline demo suggests prompts
   const send = page.getByRole('button', { name: 'Send', exact: true });
   const rotate = page.getByRole('button', { name: 'Rotate Right', exact: true });
-  assert.equal(await page.locator('[data-beam]').count(), 1, 'only the prompt bar before an environment is shown');
-  assert.equal(await page.locator('form').count(), 1);
-  assert.equal(await page.locator('input[type=text]').count(), 1);
+  await page.getByRole('region', { name: 'Templates', exact: true }).waitFor();
+  assert.equal(await page.locator('[data-beam]').count(), 5, 'prompt and four sidebar cards are visible from startup');
+  assert.equal(await page.locator('form.prompt-bar').count(), 1);
+  assert.equal(await page.locator('.prompt-bar input[type=text]').count(), 1);
   assert.equal(await page.locator('textarea').count(), 0);
   const left = page.getByRole('button', { name: 'Rotate Left', exact: true });
-  assert.equal(await page.locator('.prompt-send, .demo-rooms button, .place-new').count(), 5, 'send and four captured choices; New Place is hidden initially');
-  assert.equal(await page.locator('canvas, .room-rotation, .overlay').count(), 0);
+  assert.equal(await page.locator('.prompt-send, .templates-list button').count(), 5, 'send and four captured choices');
+  assert.equal(await page.locator('canvas, .room-rotation').count(), 2);
+  assert.equal(await page.locator('.overlay, .initial-title').count(), 0);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     const rect = await page.locator('.prompt-bar').boundingBox();
     assert.ok(Math.abs(rect.x + rect.width / 2 - viewport.width / 2) < 1);
-    assert.ok(Math.abs(rect.y + rect.height / 2 - viewport.height / 2) < 1);
+    assert.ok(rect.y > viewport.height / 2 && rect.y + rect.height <= viewport.height);
     await page.screenshot({ path: `test-results/empty-${viewport.width}.png` });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -50,7 +52,7 @@ try {
   await page.getByRole('alert').filter({ hasText: 'Describe a place' }).waitFor();
   assert.equal(requests[0].scene, null);
   assert.equal(await input.inputValue(), 'Make it quieter');
-  assert.equal(await page.locator('canvas, .room-rotation').count(), 0);
+  assert.equal(await page.locator('canvas, .room-rotation').count(), 2, 'first-request errors keep the empty shell open');
   const scene = () => page.evaluate(() => window.__pixelRoom().scene);
   // A live create reply, as /api/scene returns it: the fixed grid, unresolved sounds and the agent's
   // props. The resolver binds the sounds; the store keeps the fixed room.
@@ -67,9 +69,9 @@ try {
   const pendingCreation = new Promise(resolve => { releaseCreation = resolve; });
   reply = async route => { await pendingCreation; await createReply(route); };
   await input.fill('  A quiet forest room  '); await send.click();
-  await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'true');
+  await page.waitForFunction(() => document.querySelector('.prompt-bar')?.getAttribute('aria-busy') === 'true');
   await page.locator('canvas').waitFor();
-  assert.equal(await page.locator('.room-rotation, .assets-panel').count(), 0, 'loading shell has no room controls');
+  assert.equal(await page.locator('.room-rotation, .assets-panel').count(), 2, 'controls stay visible during first creation');
   assert.deepEqual(await page.evaluate(() => window.sceneStore.getState().scene.objects), [], 'loading effect leaves the canonical scene empty');
   const pendingRect = await page.locator('.prompt-bar').boundingBox();
   assert.ok(pendingRect.y > 700, 'loading shell moves the prompt below the room');
@@ -123,7 +125,7 @@ try {
   assert.equal(await input.inputValue(), '');
   // A prompt the offline demo has no recording for keeps the room and stays editable.
   await input.fill('paint the walls blue'); await send.click();
-  await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'false');
+  await page.waitForFunction(() => document.querySelector('.prompt-bar')?.getAttribute('aria-busy') === 'false');
   assert.match(await page.getByRole('alert').innerText(), /^Offline:.*kept unchanged/);
   assert.deepEqual(await scene(), offlineRoom);
   assert.equal(await input.inputValue(), 'paint the walls blue', 'a failed prompt stays editable');
@@ -162,12 +164,12 @@ try {
   // The captured choices need no extra selectors; ?demo also retains saved prompt replay.
   assert.equal(await page.locator('.prompt-tools select, .prompt-tools input[type=checkbox]').count(), 0);
   await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
-  assert.equal(await page.locator('canvas').count(), 0,'demo also starts empty');
+  assert.equal(await page.locator('canvas').count(), 1,'demo also starts with the empty shell');
   const sent = requests.length;
   await input.fill("Rainy Tokyo cafe, I'm writing an essay."); await send.click();
   await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'cafe');
   assert.match(await page.getByRole('status').innerText(), /Demo mode/);
   assert.equal(requests.length, sent, '?demo sends no AI requests');
   assert.deepEqual(errors, []);
-  console.log('PASS: one BorderBeam pill, specified dimensions/colors, blank input guard, live create/edit and safe live-failure prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
+  console.log('PASS: empty-shell startup, blank input guard, live create/edit and safe live-failure prompts through /api/scene, icon rotation, desktop/mobile/landscape clearance and no browser errors');
 } finally { await browser.close(); }

@@ -72,6 +72,14 @@ A persistent pixel-art Berkeley golden bear wearing the supplied silver/black he
 
 **As built:** a fixed 10 × 10 × 7 block room with an isometric orthographic camera, pixelated on one shared grid (see [LAYOUT.md](LAYOUT.md)). Each sound object is a prop (a Claude or Gemini sprite, or stock geometry) with a name label and outline on hover. Drag by raycasting the pointer onto the floor; click to mute. Two arrows turn the view (never the listener). The listener is the bear avatar above. The Assets panel lists each source with volume, hide and delete.
 
+**Frontend (#176):** the prompt, sidebars and floating voice window use square 8-bit controls, block icons, bevel borders, square switches/slider thumbs and locally bundled Pixelify Sans throughout. Open directly into the empty fixed shell with the prompt below it, without a welcome page, artwork, sources, sounds or bear. Templates and a named Saved places panel are available immediately. Save explicitly under a name, load an existing save, or use New Place to clear the room. Hide the idle voice-shortcut hint while retaining active voice status; see LAYOUT for responsive and keyboard states.
+
+The product is branded **roomto.study**. Its shared floating microphone controller opens at 300 × 240
+with no page scrolling: microphone/recording state, Hey agent, Stop and Close remain visible while long
+messages use a fixed area. Main and floating UI backgrounds follow the current environment's art palette,
+with the existing grey defaults for an empty room. This uses browser art metadata and does not change
+the scene contract or restart the voice session when colors change.
+
 ### 4. The AI that builds and edits the room
 
 **Captured demo rooms:** bundle a rainy café, beach, cyberpunk city and Zen garden in `public/demo/`, each
@@ -197,12 +205,10 @@ Follow-up edits receive the latest scene and reuse the session, preserving manua
 `AGENT_CONFIG.yaml` holds the supplied system prompt; the configured agent resource supplies
 its model/tools. Gemini and offline/demo paths remain available. See README for setup and checks.
 
-**First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
+**First room (#81, #176):** a fresh page shows the empty fixed shell and bottom prompt, with no welcome page or starter environment. Rotation, Templates, Saved places, Assets and Settings are available immediately; the bear stays hidden until a validated room arrives.
 The canonical store initially contains only the fixed structure and listener, with no fixture
 objects, artwork, terrain or session. The first request sends `scene: null`. Live failures fall back
-in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Before any valid result, the existing fallback chain applies. After a first valid branch appears, preserve it on later failure. After first submission, show the fixed empty shell with the img-fx pixels-organic loading effect on its floor and two visible walls, and move the prompt below it. The effect is view-only and stops when the first validated branch is ready. Errors before any result hide the shell and recenter the prompt. Reveal each validated branch immediately; then show
-it with its rotation arrows and the Assets panel, and move the prompt below it after successful creation. Prompt
-submission supplies the audio gesture; the engine starts when the created room is revealed.
+in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Before any valid result, the existing fallback chain applies. After a first valid branch appears, preserve it on later failure. On first submission, add the img-fx pixels-organic loading effect to the shell's floor and two visible walls. The effect is view-only and stops when the first validated branch is ready. Errors before any result keep the empty shell and bottom prompt visible. Reveal each validated branch immediately. Prompt submission, demo selection or a named Load button supplies the audio gesture; the engine and bear start with the validated room.
 
 **Live pxl environments (#76):** new live scenes stage the environment before revealing sources.
 `POST /api/environment` reasons about the actual place and streams a plan plus five separately
@@ -322,20 +328,19 @@ For the Convex track. Convex sits **next to** the current app, not under it: the
 
 **Saved rooms (C, @OakleySun, #51, PR #52)**
 
-- Named **Save room** / **Load room** controls in the prompt bar. Loading goes through `setScene`; saving never changes the playing room.
+- The **Saved places** sidebar has a name field, **Save place**, named **Load** rows and **New Place**. Saving is explicit; saving the same name updates that saved room. Loading goes through `setScene`; saving never changes the playing room. Existing saved rooms remain available.
 - Convex Auth anonymous sessions keep each browser's library private.
 - Scenes are stored as `v.any()` and validated with the zod `Scene`, so `scene.ts` stays the only contract.
 - The PR also sets Convex up: the package, `convex/schema.ts`, the browser client (`src/scene/convex.ts`) and `npm run convex:dev`.
 
-### AI-authored saved-place names (#151)
+### World titles and saved-place names (#151, #176)
 
 New managed worlds include `environment.title`, a short, literal 1–4 word environment label authored by the
 world agent alongside its artwork (for example, "Rainy Cafe", "Beach", or "Zen Garden").
 Names use the place type and defining atmosphere; avoid poetic names or invented venue names. The Gemini environment planner returns the same `title`
-metadata. The browser keeps it in art state and auto-saves it as the Visited places name,
-without another model call or changes to the canonical scene JSON. Legacy worlds without a
-title retain the description/source-label fallback. Distinct visits with the same title receive
-a numbered suffix; later edits preserve the saved name.
+metadata. The browser keeps it in art state without another model call or changes to the canonical scene JSON.
+Saved places uses the name the user enters, rather than automatically saving every visit. An existing
+name updates that saved snapshot; a new name creates another save. Previously stored rooms remain loadable.
 
 **Saved sounds (A, @leeandyg, #53, after #52)**
 

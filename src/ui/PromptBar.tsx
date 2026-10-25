@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom';
 import { TemplatesPanel } from './TemplatesPanel.js';
 import { BorderBeam } from 'border-beam';
+import { PixelIcon } from './PixelIcon.js';
 import { requestScene } from '../ai/client.js';
 import { requestAgent, type AgentContext, type AgentReply, type CommandOptions } from '../ai/agent.js';
 import { commandChange, quickCommand, sceneFingerprint, undoScene, type CommandChange } from '../ai/quickCommands.js';
@@ -43,6 +44,11 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, v
   const lastCommand = useRef<{ prompt: string; change?: CommandChange } | undefined>(undefined);
   const lastAttempt = useRef('');
   const busy = status?.tone === 'busy';
+  useEffect(() => {
+    if (hasScene) return;
+    setValue(''); setStatus(undefined);
+    lastCommand.current = undefined; lastAttempt.current = '';
+  }, [hasScene]);
   useEffect(() => { void Promise.allSettled(capturedDemos.map(demo => loadCapturedDemo(demo.id))); savedRooms(); }, []);
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => {
@@ -254,21 +260,15 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, v
     {status?.text && <p className={`prompt-status prompt-status-${status.tone}`} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
     <AgentControls disabled={busy} demoMode={demoMode} refresh={refresh} onContext={setAgentContext} onCommand={submitPrompt} portals={{ microphone: microphoneTarget, settings: voiceSettingsTarget ?? null }}/>
     </div>
-    <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={38} className="prompt-beam">
+    <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0} className="prompt-beam">
       <form className="prompt-bar" onSubmit={submit} aria-busy={busy}>
         <span className="prompt-microphone" ref={setMicrophoneTarget}/>
         <input type="text" aria-label="Prompt" placeholder="Generate anything..." value={value} onChange={event => setValue(event.target.value)} autoComplete="off"/>
         <button type="submit" className="prompt-send" aria-label="Send" disabled={busy || !value.trim()}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5"/><polyline points="5 12 12 5 19 12"/></svg>
+          <PixelIcon name="send" size={24}/>
         </button>
       </form>
     </BorderBeam>
-    {hasScene ? templatesTarget && createPortal(<TemplatesPanel disabled={busy} onSelect={id => { void selectDemo(id); }}/>, templatesTarget) : <div className="prompt-intro">
-      <h1 className="initial-title">Where's your flow state, Coin?</h1>
-      <div className="demo-rooms" role="group" aria-label="Preloaded demo rooms">
-      {capturedDemos.map(demo => <button key={demo.id} type="button" disabled={busy}
-        onClick={() => { void selectDemo(demo.id); }}>{demo.label}</button>)}
-      </div>
-    </div>}
+    {templatesTarget && createPortal(<TemplatesPanel disabled={busy} onSelect={id => { void selectDemo(id); }}/>, templatesTarget)}
   </>;
 }
