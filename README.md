@@ -158,7 +158,7 @@ sceneStore.getState().applyOps([{ op: "move", id: "rain-1", position: [3, 1.5, 0
 
 ## Voice agent and environment memory
 
-Enter the room, then click **Talk to agent** to start listening and **Stop & send**
+Create a room with the prompt, then click **Talk to agent** to start listening and **Stop & send**
 to submit the final transcript. Alternatively, hold **Ctrl+Shift+Space** while the
 page is focused and the cursor is outside text fields; releasing any key in the
 shortcut ends the turn. **Esc** or leaving the page cancels it. The microphone is

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cafe } from "../scene/fixtures.js";
+import { Scene } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
 import { commandChange, quickCommand, sceneFingerprint, undoScene } from "./quickCommands.js";
 
@@ -43,5 +44,12 @@ describe("quick voice commands", () => {
     expect(() => undoScene(undefined, after)).toThrow(/no room change/);
     expect(commandChange(before, structuredClone(before))).toBeUndefined();
     expect(sceneFingerprint(after)).not.toContain("gen:bed:test");
+  });
+  it("a changed live audio stream also invalidates undo", () => {
+    const before = Scene.parse({ ...cafe, objects: [{ ...cafe.objects[0], kind: "live", sound: { query: "Spotify", stream: "app:spotify" } }] });
+    const after = structuredClone(before); after.objects[0].volume = 0.3;
+    const change = commandChange(before, after);
+    if (after.objects[0].kind === "live") after.objects[0].sound.stream = "app:browser";
+    expect(() => undoScene(change, after)).toThrow(/preserve your edits/);
   });
 });
