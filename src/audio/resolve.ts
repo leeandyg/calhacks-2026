@@ -11,7 +11,7 @@ import { loadManifest, type ManifestEntry } from "./manifest.js";
 // startResolver() fills in any object that arrives without an assetId; objects that already
 // have one (presets, recorded demo responses, earlier resolutions) are left alone.
 
-type Kind = SoundObject["kind"];
+type Kind = Exclude<SoundObject["kind"], "live">; // only beds and events are files
 
 /** Words that describe how a sound is played or heard rather than what it is. */
 const GENERIC = new Set(
@@ -105,7 +105,8 @@ export function startResolver(): () => void {
   const run = () => {
     const { scene, applyOps } = useSceneStore.getState();
     if (!manifest) return; // the library decides first, so wait for it (it's local and loads fast)
-    const missing = scene.objects.filter((o) => !o.sound.assetId);
+    // Live app audio is a stream, never a file.
+    const missing = scene.objects.filter((o): o is Exclude<SoundObject, { kind: "live" }> => o.kind !== "live" && !o.sound.assetId);
     if (!missing.length) return;
     const taken = new Set(scene.objects.flatMap((o) => (o.sound.assetId ? [o.sound.assetId] : [])));
     // "add" with an existing id replaces that object in place, keeping its position and mute.

@@ -12,7 +12,7 @@ export const demoPrompts = [
 function recorded(name: keyof typeof demoRecordings.responses): SceneResponse {
   const response = SceneResponse.parse(structuredClone(demoRecordings.responses[name]));
   // Fixed, reviewed bindings for saved responses only. General sound resolution belongs to #17.
-  const bind = (object: SoundObject) => ({
+  const bind = (object: SoundObject): SoundObject => object.kind === "live" ? object : ({
     ...object,
     sound: { ...object.sound, assetId: demoRecordings.assets[object.id as keyof typeof demoRecordings.assets] },
   });

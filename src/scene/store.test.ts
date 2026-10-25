@@ -81,7 +81,7 @@ describe('frontend scene contract and edit operations', () => {
     expect(useSceneStore.getState().scene).toBe(original);
   });
   it('replaces a same-id add in place and rejects the thirteenth source', () => {
-    const resolved = { ...starter.objects[1], sound: { ...starter.objects[1].sound, assetId: 'brown_noise' } };
+    const resolved = { ...starter.objects[1], sound: { ...starter.objects[1].sound, assetId: 'brown_noise' } } as typeof starter.objects[number];
     expect(useSceneStore.getState().applyOps([{ op: 'add', object: resolved }]).ok).toBe(true);
     expect(useSceneStore.getState().scene.objects.map(object => object.id)).toEqual(['rain-1', 'fan-1', 'birds-1']);
     expect(useSceneStore.getState().scene.objects[1].sound.assetId).toBe('brown_noise');
