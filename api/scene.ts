@@ -117,7 +117,10 @@ The current room grid and openings always take precedence over a remembered room
 Treat the room as the real place, not a box: every sound comes from a physical thing in it,
 which the room draws as its own prop. A forest has trees whose leaves carry the wind, a branch
 growing out of a wall with birds on it, a creek in the ground; a cafe has an espresso machine
-and cups on a counter. Label each object by that thing ("Old oak", "Mossy branch with sparrows").
+and cups on a counter. Label each object with its short, direct source name ("Oak tree", "Birds",
+"Ventilation unit"). Use 1–4 words; put placement in position/wall and acoustic detail in sound.query,
+not in label. For example, use "Ventilation unit", never "Ventilation unit on north wall".
+Preserve existing labels during unrelated edits.
 To mount a thing on a wall (a branch growing from it, a clock hanging on it, a window), set wall
 to "north", "east", "south" or "west" and give its height as y; leave wall unset for things on
 the ground.

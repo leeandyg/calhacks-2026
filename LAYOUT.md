@@ -1,6 +1,6 @@
 # Modular room layout contract for AI agents
 
-Read this before generating rooms, source geometry, or interactions. The supplied [My Dream Setup dimension profile](docs/reference-dimensions.json) governs grid behavior. The [measured visual reference](docs/reference-proportions.json) governs the default proportions and camera framing. Keep the frontend to a full-viewport room, two plain left/right rotation arrows beside the room and one bottom prompt bar, plus what the full-stack app needs: a status line above the prompt, and a "generating…" label over a prop while its sound is generated. No other labels/panels and no room shadows. The prompt calls `POST /api/scene` and the audio engine renders the same scene store (`src/scene/store.ts`; see README).
+Read this before generating rooms, source geometry, or interactions. The supplied [My Dream Setup dimension profile](docs/reference-dimensions.json) governs grid behavior. The [measured visual reference](docs/reference-proportions.json) governs the default proportions and camera framing. Keep the frontend to a full-viewport room, two plain left/right rotation arrows beside the room and one bottom prompt bar, plus what the full-stack app needs: a status line above the prompt, a "generating…" label over a prop while its sound is generated, and a temporary sound-name label and pixel outline on hover. No other labels/panels and no room shadows. The prompt calls `POST /api/scene` and the audio engine renders the same scene store (`src/scene/store.ts`; see README).
 
 Reference views: [Image 1](docs/references/room-view-1.png) and [Image 2](docs/references/room-view-2.png). Follow their aligned orthographic room presentation. Exclude their clutter and shadows.
 
@@ -88,9 +88,9 @@ For a rectangle use, for example, `mode: "Rectangle", columns: 10, rows: 6, wall
 
 ## 4. Only sound-producing objects
 
-Every non-structural model must correspond to one canonical `scene.objects` entry with a unique ID and sound description. Supported renderers: `rain`, `fan`, `birds`, `speaker`. Use recognizable source geometry and essential supports only. The default rain window occupies 2×3 wall modules on the west (left visible) wall, matching the tall, narrow reference window. No chairs, tables, rugs, shelves, plants, lamps, pictures, avatars, rings, floating markers or labels.
+Every non-structural model must correspond to one canonical `scene.objects` entry with a unique ID and sound description. Supported renderers: `rain`, `fan`, `birds`, `speaker`. Use recognizable source geometry and essential supports only. The default rain window occupies 2×3 wall modules on the west (left visible) wall, matching the tall, narrow reference window. No chairs, tables, rugs, shelves, plants, lamps, pictures, avatars, rings, floating markers or permanent labels. On pointer hover, outline the visible source silhouette on the shared pixel grid and show its canonical sound label above it; generated sprites retain their transparent cutout. Hover feedback is view-only and disappears on leave, room replacement or rotation.
 
-Sources retain the shared contract: `id`, `model`, metadata `label`, `sound`, `kind`, `position`, `volume`, `muted`, `wall`, `scale`, and event intervals when needed. All sources remain under the room's source group, independently movable to any of the four walls.
+Sources retain the shared contract: `id`, `model`, metadata `label`, `sound`, `kind`, `position`, `volume`, `muted`, `wall`, `scale`, and event intervals when needed. All sources remain under the room's source group, independently movable to any of the four walls. Display short, direct source names in hover labels ("Ventilation unit", not "Ventilation unit on north wall"); keep existing canonical labels and audio descriptions intact.
 
 ## 5. Grid-snapped placement
 
@@ -120,7 +120,7 @@ Disable renderer/light/mesh shadows. The explicitly requested BorderBeam glow is
 - Modular floor/wall geometry and source footprints align; openings and moved source windows stay synchronized.
 - Holding each edge longer than the former delay never rotates. Only the two arrow buttons rotate; four turns in either direction restore home.
 - All sources reach every wall, retain mute/volume, support click and touch, and cancel safely.
-- Verify the reference floor-edge slope and default silhouette ratio as well as complete desktop/mobile/landscape framing, no shadows, no added labels or controls. Inspect rendered output before claiming visual verification.
+- Verify the reference floor-edge slope and default silhouette ratio as well as complete desktop/mobile/landscape framing, no shadows, and only the requested temporary hover labels. Inspect rendered output before claiming visual verification.
 
 ## 9. Pixel-art export
 

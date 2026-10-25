@@ -1,6 +1,6 @@
 import { eventIsPlaying } from '../audio/activity.js';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Color, DoubleSide, Group, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
 import { useSceneStore } from '../scene/store.js';
 import { useRoomStore } from './useRoomStore.js';
@@ -43,6 +43,10 @@ function Source({ object }: { object: SoundObject }) {
   const parts = useRef<Part[]>([]);
   const startGesture = useSourceDrag(object.id, group);
   const schedule = useSpawnSchedule();
+  useEffect(() => () => {
+    const state = useRoomStore.getState();
+    if (state.hoveredObjectId === object.id) state.setHovered(null);
+  }, [object.id]);
   const room = useSceneStore(state => state.scene.room);
   const managed = useArtStore(state => room.art ? state.envs[room.art]?.managed : false);
   const art = useArtStore(state => room.art ? state.sprites[spriteKey(room.art, object)] : undefined);
@@ -89,16 +93,34 @@ function Source({ object }: { object: SoundObject }) {
   const rotation = object.wall ? WALL_ROTATIONS[object.wall] : model === 'fan' ? Math.PI / 4 : 0;
   const height = object.position[1] / object.scale;
   const footprint = gridFootprint(object);
-  return <group ref={group} name={`sound-${object.id}`} position={object.position} rotation={[0, rotation, 0]} scale={object.scale} userData={{ model, muted: object.muted, wall: object.wall }} onPointerDown={startGesture} onPointerOver={event => { event.stopPropagation(); if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = 'grab'; }} onPointerOut={() => { if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = ''; }}>
+  const hover = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    const state = useRoomStore.getState();
+    if (event.pointerType === 'touch' || state.isRotating || state.draggingObjectId) return;
+    state.setHovered(object.id);
+    document.body.style.cursor = 'grab';
+  };
+  return <group ref={group} name={`sound-${object.id}`} position={object.position} rotation={[0, rotation, 0]} scale={object.scale} userData={{ model, muted: object.muted, wall: object.wall }} onPointerDown={startGesture} onPointerOver={hover} onPointerMove={hover} onPointerOut={() => {
+    const state = useRoomStore.getState();
+    if (state.draggingObjectId) return;
+    if (state.hoveredObjectId === object.id) state.setHovered(null);
+    document.body.style.cursor = '';
+  }}>
     {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : (managed && object.kind !== 'live') || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
   </group>;
 }
 
 export function SoundObjects() {
   const objects = useSceneStore(state => state.scene.objects);
-  const preset = useSceneStore(state => state.scene.room.preset);
+  const room = useSceneStore(state => state.scene.room);
+  useEffect(() => { useRoomStore.getState().setHovered(null); }, [room]);
+  useEffect(() => {
+    const clear = () => { useRoomStore.getState().setHovered(null); document.body.style.cursor = ''; };
+    window.addEventListener('blur', clear);
+    return () => window.removeEventListener('blur', clear);
+  }, []);
   return <group name="sound-objects">
     {objects.map(object => <Source key={object.id} object={object}/>)}
-    {objects.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={object.position} scale={object.scale} preset={preset}/>)}
+    {objects.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={object.position} scale={object.scale} preset={room.preset}/>)}
   </group>;
 }
