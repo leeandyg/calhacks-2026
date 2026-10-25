@@ -12,7 +12,7 @@
       "focus"
     ],
     "kind": "bed",
-    "license": "CC0 (generated)"
+    "license": "CC0"
   },
   {
     "id": "pink_noise",
@@ -40,7 +40,7 @@
       "bright"
     ],
     "kind": "bed",
-    "license": "CC0 (generated)"
+    "license": "CC0"
   },
   {
     "id": "ac_hum",
@@ -154,7 +154,7 @@
       "dishes"
     ],
     "kind": "event",
-    "license": "Generated (ElevenLabs)"
+    "license": "CC0"
   },
   {
     "id": "dog_distant",
@@ -208,7 +208,7 @@
       "warm"
     ],
     "kind": "bed",
-    "license": "Generated (ElevenLabs)"
+    "license": "CC0"
   },
   {
     "id": "forest",
@@ -348,7 +348,7 @@
       "bedroom"
     ],
     "kind": "bed",
-    "license": "Generated (ElevenLabs)"
+    "license": "CC0"
   },
   {
     "id": "songbird",
@@ -414,7 +414,7 @@
       "rumble"
     ],
     "kind": "bed",
-    "license": "CC0"
+    "license": "CC-BY-NC 4.0"
   },
   {
     "id": "traffic_distant",
@@ -456,6 +456,66 @@
       "outdoor"
     ],
     "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "distant_siren",
+    "file": "distant_siren.mp3",
+    "tags": [
+      "siren",
+      "ambulance",
+      "police",
+      "emergency",
+      "city",
+      "urban",
+      "distant",
+      "street"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "espresso",
+    "file": "espresso.mp3",
+    "tags": [
+      "espresso",
+      "coffee machine",
+      "steam",
+      "hiss",
+      "cafe",
+      "barista"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "fan",
+    "file": "fan.mp3",
+    "tags": [
+      "fan",
+      "electric fan",
+      "hum",
+      "steady",
+      "masking",
+      "bedroom"
+    ],
+    "kind": "bed",
+    "license": "CC0"
+  },
+  {
+    "id": "seagull_call",
+    "file": "seagull_call.mp3",
+    "tags": [
+      "seagull",
+      "gull",
+      "bird",
+      "call",
+      "beach",
+      "ocean",
+      "sea",
+      "coast"
+    ],
+    "kind": "event",
     "license": "CC0"
   }
 ]

@@ -14,9 +14,9 @@ const CASES = [
   ["warm crackling fireplace hearth wood embers burning gently", "bed", "fireplace"],
   ["steady gentle rain against window pane, continuous calming downpour, no thunder", "bed", "rain_window"],
   ["soft indistinct cafe background chatter, gentle coffee shop ambiance, unintelligible murmured voices, no music", "bed", "cafe_murmur"],
-  ["gentle warm low hum of an espresso machine and refrigerator in cafe", "bed", "gen"],
+  ["gentle warm low hum of an espresso machine and refrigerator in cafe", "bed", "espresso"],
   ["occasional gentle clinking of porcelain ceramic coffee cups and saucers in distance", "bed", "gen"],
-  ["soft periodic hiss of milk frother espresso steam in distant cafe", "bed", "gen"],
+  ["soft periodic hiss of milk frother espresso steam in distant cafe", "bed", "espresso"],
   // Everyday descriptions that the pack covers
   ["steady rain on glass", "bed", "rain_window"], ["heavy rain on a roof", "bed", "rain_*"],
   ["soft indistinct café murmur", "bed", "cafe_murmur"], ["busy coffee shop", "bed", "cafe_murmur"],
@@ -27,6 +27,8 @@ const CASES = [
   ["night crickets", "bed", "crickets"], ["thunder rumbling far away", "bed", "thunder_distant"],
   ["pages turning", "event", "page_flip"], ["keyboard typing", "bed", "keyboard"], ["clock ticking", "bed", "clock"],
   ["white noise", "bed", "white_noise"], ["air conditioner hum", "bed", "ac_hum"], ["library ambience", "bed", "library"],
+  ["steady electric fan hum", "bed", "fan"], ["espresso machine steaming milk", "bed", "espresso"],
+  ["seagulls calling", "event", "seagull_call"], ["distant police sirens in the city", "bed", "distant_siren"],
   ["owl hooting at night", "event", "owl"], ["birds singing in the morning", "event", "any"],
   ["distant city traffic at night", "bed", "traffic_distant"], ["rain falling softly", "bed", "rain_*"],
   ["rain falls on the tent", "bed", "rain_*"], ["wind howling around the cabin", "bed", "wind"],
@@ -38,9 +40,8 @@ const CASES = [
   ["a cat purring softly, close", "bed", "gen"], ["old radiator hissing and ticking", "bed", "gen"],
   ["kids playing in a park", "bed", "gen"], ["typewriter clacking", "bed", "gen"],
   ["train passing over a bridge", "bed", "gen"], ["crackling vinyl record", "bed", "gen"],
-  ["seagulls calling", "event", "gen"], ["ambient sound", "bed", "gen"], ["dripping faucet", "event", "gen"],
-  ["people talking loudly in a bar, no music", "bed", "gen"], ["steady electric fan hum", "bed", "gen"],
-  ["espresso machine steaming milk", "bed", "gen"],
+  ["ambient sound", "bed", "gen"], ["dripping faucet", "event", "gen"],
+  ["people talking loudly in a bar, no music", "bed", "gen"],
 ];
 
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
