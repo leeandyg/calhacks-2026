@@ -42,3 +42,4 @@ Each was converted to mono and loudness-normalized; recorded loops were also tri
 | `espresso` | [coffee machine.wav](https://freesound.org/people/katiosz/sounds/455395/) | katiosz | CC0 |
 | `fan` | [Desk Fan.wav](https://freesound.org/people/MWsfx/sounds/573692/) | MWsfx | CC0 |
 | `seagull_call` | [Seagulls_short.wav](https://freesound.org/people/Lydmakeren/sounds/510917/) | Lydmakeren | CC0 |
+| `alarm_clock` | [Digital alarm clock sound](https://www.youtube.com/watch?v=F30q6fMGV3s) | unknown (YouTube upload) | Unverified (YouTube) |

@@ -517,5 +517,20 @@
     ],
     "kind": "event",
     "license": "CC0"
+  },
+  {
+    "id": "alarm_clock",
+    "file": "alarm_clock.mp3",
+    "tags": [
+      "alarm clock",
+      "alarm",
+      "beeping",
+      "digital",
+      "wake up",
+      "bedroom",
+      "morning"
+    ],
+    "kind": "event",
+    "license": "Unverified (YouTube)"
   }
 ]

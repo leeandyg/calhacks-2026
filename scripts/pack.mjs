@@ -66,6 +66,7 @@ const TAGS = {
   chair_creak: ["chair", "creak", "wood", "indoor", "furniture"],
   distant_siren: ["siren", "ambulance", "police", "emergency", "city", "urban", "distant", "street"],
   seagull_call: ["seagull", "gull", "bird", "call", "beach", "ocean", "sea", "coast"],
+  alarm_clock: ["alarm clock", "alarm", "beeping", "digital", "wake up", "bedroom", "morning"],
 };
 
 // Seconds into the recording: beds loop from [start]; events keep [start, length], fading out.
