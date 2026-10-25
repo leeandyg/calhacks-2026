@@ -6,7 +6,14 @@ import { capturedDemos, loadCapturedDemo } from './capturedDemos.js';
 import { convex } from './convex.js';
 import { Scene } from './scene.js';
 
-export type SavedPlace = { label: string; load: () => Promise<Scene> };
+export type SavedPlace = { label: string; task?: string; load: () => Promise<Scene> };
+
+// Built-in personalization for the demo: saying you're about to code or read opens that task's room,
+// with no Convex, Moss or model call. "I want to code" → Cyberpunk City; "I want to read" → Beach.
+const TASK_PLACES = [
+  { task: 'coding', demo: 'cyberpunk' },
+  { task: 'reading', demo: 'beach' },
+] as const;
 
 // The user's saved places stay current through a live Convex query, so matching a prompt never waits
 // on the network. Before the private session signs in (or without Convex) there are none; demos still match.
@@ -26,6 +33,7 @@ export async function findSavedPlace(prompt: string): Promise<SavedPlace | undef
   const client = convex;
   const room = savedRooms().find(room => asksOnlyFor(prompt, room.name));
   if (client && room) return { label: room.name, load: async () => Scene.parse((await client.query(api.savedScenes.load, { id: room._id })).scene) };
-  const demo = capturedDemos.find(demo => asksOnlyFor(prompt, demo.label));
-  return demo && { label: demo.label, load: () => loadCapturedDemo(demo.id) };
+  const usual = TASK_PLACES.find(place => asksOnlyFor(prompt, place.task));
+  const demo = capturedDemos.find(demo => usual ? demo.id === usual.demo : asksOnlyFor(prompt, demo.label));
+  return demo && { label: demo.label, task: usual?.task, load: () => loadCapturedDemo(demo.id) };
 }
