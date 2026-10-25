@@ -22,6 +22,13 @@ describe('first-ready world assembly', () => {
     expect(useSceneStore.getState().scene.objects[0]).toMatchObject({ position: moved.position, muted: true, volume: 0.15 });
     expect(useSceneStore.getState().scene.room.terrain?.[0][0]).toBe(0.5);
   });
+  it('does not overwrite a different room loaded while a branch was running', () => {
+    applyManagedPartial(part(true), 'objects', true);
+    useSceneStore.getState().setScene(starter);
+    const loaded = useSceneStore.getState().scene;
+    expect(() => applyManagedPartial(part(false), 'environment', false)).toThrow(/room changed/);
+    expect(useSceneStore.getState().scene).toBe(loaded);
+  });
   it('shows an empty painted environment first and keeps it when sources arrive', () => {
     applyManagedPartial(part(false), 'environment', true);
     expect(useSceneStore.getState().scene.objects).toEqual([]);

@@ -111,3 +111,38 @@ describe('managed world integration', () => {
     await expect(agent.api('/sessions')).rejects.toThrow('Claude rejected');
   });
 });
+
+describe('validated first-ready branches', () => {
+  it.each(['environment', 'objects'] as const)('loads only the %s branch with a stable final world id', async part => {
+    const output = world();
+    const catalog = files();
+    catalog[0].filename = `${turn}_${part}.json`;
+    if (part === 'environment') {
+      output.response.scene.objects = [];
+      output.sprites = []; output.sounds = [];
+      output.environment.textures.floor.file = `${turn}_environment_floor.png`;
+      catalog[1].filename = `${turn}_environment_floor.png`;
+    } else {
+      const sources = { ...output, environment: undefined };
+      sources.sprites[0].file = `${turn}_objects_tree.png`;
+      sources.sounds[0].file = `${turn}_objects_wind.wav`;
+      catalog[2].filename = `${turn}_objects_tree.png`; catalog[3].filename = `${turn}_objects_wind.wav`;
+      const agent = fixture(sources, catalog);
+      const result = await agent.result(await run(agent), null, part);
+      expect(result?.assets.envId).toBe(`agent-${session}-${turn}`);
+      expect(result?.assets.sprites).toHaveLength(1);
+      expect(result?.assets.environment).toBeUndefined();
+      return;
+    }
+    const agent = fixture(output, catalog);
+    const result = await agent.result(await run(agent), null, part);
+    expect(result?.assets.envId).toBe(`agent-${session}-${turn}`);
+    expect(result?.response.kind === 'create' && result.response.scene.objects).toEqual([]);
+    expect(result?.assets.environment).toBeDefined();
+  });
+  it('rejects a mixed environment branch rather than exposing its source list', async () => {
+    const catalog = files(); catalog[0].filename = `${turn}_environment.json`;
+    const agent = fixture(world(), catalog);
+    await expect(agent.result(await run(agent), null, 'environment')).rejects.toThrow(/environment branch/);
+  });
+});

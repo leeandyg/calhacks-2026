@@ -110,6 +110,7 @@ export function applyManagedPartial(result: ManagedResult, part: WorldPart, firs
   if (result.response.kind !== 'create') throw new Error('A creation branch must create a scene.');
   const store = useSceneStore.getState();
   const incoming = result.response.scene;
+  if (!first && store.scene.room.art !== incoming.room.art) throw new Error('Your room changed while the agent was working.');
   const scene = first ? incoming : part === 'environment'
     ? { ...store.scene, room: incoming.room }
     : { ...incoming, room: store.scene.room, listener: store.scene.listener };
