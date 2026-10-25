@@ -90,7 +90,7 @@ For a rectangle use, for example, `mode: "Rectangle", columns: 10, rows: 6, wall
 
 Every non-structural model must correspond to one canonical `scene.objects` entry with a unique ID and sound description. Supported renderers: `rain`, `fan`, `birds`, `speaker`. Use recognizable source geometry and essential supports only. The default rain window occupies 2×3 wall modules on the west (left visible) wall, matching the tall, narrow reference window. No chairs, tables, rugs, shelves, plants, lamps, pictures, avatars, rings, floating markers or permanent labels. On pointer hover, outline the visible source silhouette on the shared pixel grid and show its canonical sound label above it; generated sprites retain their transparent cutout. Hover feedback is view-only and disappears on leave, room replacement or rotation.
 
-Sources retain the shared contract: `id`, `model`, metadata `label`, `sound`, `kind`, `position`, `volume`, `muted`, `wall`, `scale`, and event intervals when needed. All sources remain under the room's source group, independently movable to any of the four walls.
+Sources retain the shared contract: `id`, `model`, metadata `label`, `sound`, `kind`, `position`, `volume`, `muted`, `wall`, `scale`, and event intervals when needed. All sources remain under the room's source group, independently movable to any of the four walls. Display short, direct source names in hover labels ("Ventilation unit", not "Ventilation unit on north wall"); keep existing canonical labels and audio descriptions intact.
 
 ## 5. Grid-snapped placement
 

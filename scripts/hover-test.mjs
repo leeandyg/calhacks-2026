@@ -15,6 +15,12 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 const inspect = () => page.evaluate(() => window.__pixelRoom());
+const expectedNames = {
+  'rain-1': 'Rain window', 'fan-1': 'Fan', 'birds-1': 'Birds',
+  'demo-cafe-source-1': 'Café window', 'demo-cafe-source-2': 'Espresso machine',
+  'demo-cafe-source-3': 'Cup and saucer', 'demo-beach-source-1': 'Ocean surf',
+  'demo-cyberpunk-source-2': 'Ventilation unit',
+};
 const leave = async () => {
   await page.mouse.move(4, 4);
   await page.waitForFunction(() => window.__pixelRoom().hovered === null);
@@ -28,7 +34,7 @@ async function hover(id) {
   for (const point of points) {
     await page.mouse.move(...point);
     if ((await inspect()).hovered === id) {
-      await expect(page.getByRole('tooltip')).toHaveText(state.scene.objects.find(object => object.id === id).label);
+      await expect(page.getByRole('tooltip')).toHaveText(expectedNames[id] ?? state.scene.objects.find(object => object.id === id).label);
       const label = await page.getByRole('tooltip').boundingBox();
       assert.ok(label.y + label.height < point[1], 'sound name sits above the item');
       return point;
@@ -63,11 +69,11 @@ try {
   let point = await hover('fan-1');
   await page.mouse.click(...point);
   assert.equal((await inspect()).scene.objects.find(object => object.id === 'fan-1').muted, false);
-  await expect(page.getByRole('tooltip')).toHaveText('Gentle fan');
+  await expect(page.getByRole('tooltip')).toHaveText('Fan');
   await page.mouse.move(...point); await page.mouse.down();
   await page.mouse.move(point[0] + 55, point[1] + 20, { steps: 8 });
   assert.equal((await inspect()).dragging, 'fan-1');
-  await expect(page.getByRole('tooltip')).toHaveText('Gentle fan');
+  await expect(page.getByRole('tooltip')).toHaveText('Fan');
   await page.mouse.up();
   assert.equal((await inspect()).dragging, null);
   assert.equal((await inspect()).scene.objects.find(object => object.id === 'fan-1').muted, false, 'drag does not toggle mute');
@@ -87,6 +93,12 @@ try {
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await hover((await inspect()).objects[0].id);
+  await page.getByRole('button', { name: 'Cyberpunk city', exact: true }).click();
+  await page.waitForFunction(() => window.sceneStore.getState().scene.room.art === 'demo-cyberpunk' && !window.__spawnBusy);
+  const cyberpunk = (await inspect()).scene;
+  await hover('demo-cyberpunk-source-2');
+  await expect(page.getByRole('tooltip')).toHaveText('Ventilation unit');
+  assert.deepEqual((await inspect()).scene, cyberpunk, 'shortening a name preserves the full saved scene');
   await page.getByRole('button', { name: 'Beach', exact: true }).click();
   await page.waitForFunction(() => window.sceneStore.getState().scene.room.art === 'demo-beach' && !window.__spawnBusy);
   await expect(page.getByRole('tooltip')).toHaveCount(0);

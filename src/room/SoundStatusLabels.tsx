@@ -5,6 +5,7 @@ import { useSoundStatus } from '../audio/generated.js';
 import { useSceneStore } from '../scene/store.js';
 import { spriteKey, useArtStore } from '../art/store.js';
 import { useRoomStore } from './useRoomStore.js';
+import { soundName } from './soundName.js';
 
 // Show the hovered sound's name and any pending generation status above its prop.
 // The labels are DOM, drawn over the pixel canvas; a tracker inside the canvas moves each one to
@@ -30,7 +31,7 @@ function SoundStatusLayer({ layer }: { layer: RefObject<HTMLDivElement | null> }
       const failed = !painting && status[object.sound.assetId!] === 'failed';
       const pending = painting || status[object.sound.assetId!] === 'generating';
       return <div key={object.id} data-sound-id={object.id} role={object.id === hovered ? 'tooltip' : undefined} className={`sound-status${object.id === hovered ? ' sound-name' : ''}${failed ? ' sound-status-failed' : ''}`}>
-        {object.label}{failed ? ' · using the closest sound' : pending ? ' · generating…' : ''}
+        {soundName(object.label)}{failed ? ' · using the closest sound' : pending ? ' · generating…' : ''}
       </div>;
     })}
   </div>;
