@@ -125,7 +125,9 @@ Set manifest.turn=${turn}. In every file field use only the generated file's bas
     }
     throw new AgentError('This session contains too many files. Create a new environment.');
   }
-  assetUrl(token: string, file: File): string { return `/api/world?${new URLSearchParams({ action: 'asset', token, file: file.id })}`; }
+  // Tag the URL with the backend that issued this run (worker has a baseUrl, cloud does not) so the
+  // browser's direct asset fetch resolves to the same mode in api/world.ts.
+  assetUrl(token: string, file: File): string { return `/api/world?${new URLSearchParams({ action: 'asset', token, file: file.id, mode: this.settings.baseUrl ? 'local' : 'cloud' })}`; }
   async result(token: string, context: Scene | null, part?: 'environment' | 'objects') {
     const run = this.verify(token);
     if (hashScene(context) !== run.context) throw new AgentError('The scene context does not match this generation.', 409);

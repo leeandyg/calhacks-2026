@@ -1,5 +1,6 @@
 import { SceneResponse, type Scene } from "../scene/scene.js";
 import { currentAgentSession, followManagedRun } from './managedClient.js';
+import { AGENT_MODE } from './mode.js';
 import type { ManagedResult } from './world.js';
 import type { WorldPart } from './managedClient.js';
 import type { ManagedAssets } from './world.js';
@@ -60,7 +61,7 @@ async function ask(prompt: string, scene: Scene | null, engine: Engine, progress
     res = await fetch("/api/scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(engine === 'gemini' ? { prompt, scene, engine } : { prompt, scene, sessionToken: scene ? currentAgentSession() : undefined }),
+      body: JSON.stringify(engine === 'gemini' ? { prompt, scene, engine } : { prompt, scene, mode: AGENT_MODE, sessionToken: scene ? currentAgentSession() : undefined }),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
     });
   } catch {
@@ -77,7 +78,7 @@ async function ask(prompt: string, scene: Scene | null, engine: Engine, progress
   signal?.throwIfAborted();
   if (json?.kind === 'managed' && typeof json.token === 'string' && engine === 'agent') {
     try {
-      const result = await followManagedRun(json.token, scene, progress, signal, CLAUDE_BUDGET_MS, partial);
+      const result = await followManagedRun(json.token, scene, progress, signal, CLAUDE_BUDGET_MS, partial, AGENT_MODE);
       return { ...result.response, managed: result.assets };
     } catch (error) {
       signal?.throwIfAborted();

@@ -1,4 +1,4 @@
-import { agentError, agentSettings } from './world.js';
+import { agentError, agentMode, agentSettings } from './world.js';
 import { ManagedAgent } from '../server/managedAgent.js';
 import { GoogleGenAI, type Interactions } from "@google/genai";
 import { z } from "zod";
@@ -146,9 +146,10 @@ export async function sceneResponse(request: Request, preferenceContext?: unknow
     }
   }
 
-  // Keep the browser's existing explicit Gemini fallback request.
+  // The browser asks for Gemini by name when the agent failed (src/ai/client.ts). Otherwise
+  // ?mode=local|cloud picks the agent backend (default cloud on the client); absent means a legacy caller.
   let managed;
-  try { managed = raw?.engine === "gemini" ? undefined : agentSettings(); } catch (error) { return agentError(error); }
+  try { managed = raw?.engine === "gemini" ? undefined : agentSettings(agentMode(typeof raw?.mode === 'string' ? raw.mode : undefined)); } catch (error) { return agentError(error); }
   if (managed) {
     try {
       const previousToken = typeof raw?.sessionToken === 'string' ? raw.sessionToken : undefined;

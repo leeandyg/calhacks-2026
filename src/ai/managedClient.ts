@@ -6,6 +6,7 @@ import { loadPaintImage } from '../art/images.js';
 import { api } from '../../convex/_generated/api.js';
 import { convex } from '../scene/convex.js';
 import { useSceneStore } from '../scene/store.js';
+import type { AgentMode } from './mode.js';
 
 const RESTORE_TIMEOUT_MS = 10_000;
 
@@ -13,7 +14,7 @@ let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
 
 /** One durable managed run can span many short API/SSE connections. */
-export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, signal?: AbortSignal, budgetMs = 12 * 60 * 1000, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<ManagedResult> {
+export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, signal?: AbortSignal, budgetMs = 12 * 60 * 1000, partial?: (result: ManagedResult, part: WorldPart) => void, mode: AgentMode = 'cloud'): Promise<ManagedResult> {
   const deadline = Date.now() + budgetMs;
   const seen = new Set<string>();
   const ready = new Set<WorldPart>();
@@ -21,14 +22,14 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   while (!complete && Date.now() < deadline) {
     signal?.throwIfAborted();
     try {
-      const res = await fetch(`/api/world?${new URLSearchParams({ action: 'stream', token })}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(55_000)]) : AbortSignal.timeout(55_000) });
+      const res = await fetch(`/api/world?${new URLSearchParams({ action: 'stream', token, mode })}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(55_000)]) : AbortSignal.timeout(55_000) });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => null))?.error ?? 'Claude could not connect.');
       for await (const value of sse(res.body)) {
         const event = JSON.parse(value);
         if (event.type === 'error') throw new AgentRunError(event.error ?? 'Claude could not finish this environment.');
         if (event.type === 'ready' && (event.part === 'environment' || event.part === 'objects') && !ready.has(event.part)) {
           if (partial) {
-            const result = await readManagedResult(token, scene, event.part, signal);
+            const result = await readManagedResult(token, scene, event.part, signal, mode);
             partial(result, event.part);
             sessionToken = token;
           }
@@ -51,17 +52,17 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   }
   if (!complete) throw new Error('Claude is taking too long to finish this environment. Please try again.');
   progress?.('Loading your environment, artwork and sounds…');
-  const result = await readManagedResult(token, scene, undefined, signal);
+  const result = await readManagedResult(token, scene, undefined, signal, mode);
   sessionToken = token;
   return result;
 }
 
 export type WorldPart = 'environment' | 'objects';
-async function readManagedResult(token: string, scene: Scene | null, part?: WorldPart, signal?: AbortSignal): Promise<ManagedResult> {
+async function readManagedResult(token: string, scene: Scene | null, part?: WorldPart, signal?: AbortSignal, mode: AgentMode = 'cloud'): Promise<ManagedResult> {
   // Published output files may arrive just after the end-turn event.
   for (let attempt = 0; attempt < 16; attempt++) {
     signal?.throwIfAborted();
-    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene, ...(part ? { part } : {}) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25_000)]) : AbortSignal.timeout(25_000) });
+    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene, mode, ...(part ? { part } : {}) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25_000)]) : AbortSignal.timeout(25_000) });
     if (res.status === 202) { await abortable(new Promise(resolve => setTimeout(resolve, 2000)), signal); continue; }
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? 'The generated environment could not be loaded.');
