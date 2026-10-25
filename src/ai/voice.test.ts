@@ -69,6 +69,13 @@ async function capture(automatic = false, token = `owner-${++owner}`) {
 }
 
 describe("voice turn lifecycle", () => {
+  it('keeps room audio at its saved level while waiting for a wake phrase', async () => {
+    const abort = new AbortController(); aborts.push(abort);
+    const session = await startVoice(`standby-${++owner}`, abort.signal, vi.fn(), vi.fn(), undefined, { automatic: true, duck: false });
+    sessions.push(session); await flush();
+    expect(soundscapeGain()).toBe(1);
+    session.cancel(); expect(tracks[0].stopped).toBe(true);
+  });
   it("refreshes expired access and never reuses it across identities", async () => {
     const token = `owner-${++owner}`;
     await prepareVoice(token); await vi.advanceTimersByTimeAsync(46000); await prepareVoice(token);

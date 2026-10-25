@@ -46,6 +46,7 @@ Read and follow [LAYOUT.md](LAYOUT.md) before changing the room, source objects,
 
 - Keep view rotation separate from canonical source positions. Room rotation is manual only, through the arrows; no edge-triggered, delayed, or automatic turns.
 - No shadows and no decorative non-source objects. Every model is one sound object.
+- Optional floating voice controls share the original scene/controller through a portal. Hey agent listening is opt-in cloud transcription with visible mic state and explicit stop controls; unaddressed speech never reaches the room agent.
 - Integer Square/Rectangle grid counts with independent wall height; walls and floor share the fixed `SLAB_THICKNESS`. Plain rooms are gray and unmarked; forest has sparse seeded dirt/moss pixels that fade with their walls.
 - Pixelate the whole room on one shared pixel grid with the pxl palette, antialiasing off. Keep pixel rendering in `src/room/RoomScene.tsx`; root `index.html` -> `src/main.tsx` -> `src/App.tsx` is the only entry. Never substitute the static `art/` export for the interactive room.
 - Source windows keep one complete corner segment at each wall end, including after room resize and scaling.

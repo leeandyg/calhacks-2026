@@ -31,6 +31,7 @@
     "test:captured": "node scripts/captured-demo-test.mjs",
     "test:hover": "node scripts/hover-test.mjs",
     "test:added-source": "node scripts/added-source-test.mjs",
+    "test:background-voice": "node scripts/background-voice-test.mjs",
     "art:build": "node scripts/pixel-room.mjs build",
     "art:lint": "node scripts/pixel-room.mjs lint",
     "art:verify": "node scripts/pixel-room.mjs verify",

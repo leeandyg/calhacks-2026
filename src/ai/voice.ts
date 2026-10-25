@@ -25,7 +25,7 @@ export async function prepareVoice(token: string) {
 }
 
 export type VoiceSession = { stop: () => void; cancel: () => void };
-export type VoiceOptions = { automatic?: boolean; onPartial?: (text: string) => void };
+export type VoiceOptions = { automatic?: boolean; onPartial?: (text: string) => void; duck?: boolean };
 export async function startVoice(token: string, signal: AbortSignal,
   onTranscript: (text: string) => void, onError: (error: string) => void,
   onStopped?: () => void, options: VoiceOptions = {}): Promise<VoiceSession> {
@@ -136,7 +136,7 @@ export async function startVoice(token: string, signal: AbortSignal,
       if (bufferedBytes > 128_000) return fail("Voice connection is taking too long. Please try again.");
       buffered.push(data); sendBuffered();
     };
-    releaseDuck = duckSoundscape();
+    if (options.duck !== false) releaseDuck = duckSoundscape();
     source.connect(processor); processor.connect(context.destination); // Worklet outputs silence.
     captureTimer = setTimeout(stop, 30_000);
     return { stop, cancel };
