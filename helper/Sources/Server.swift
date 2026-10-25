@@ -47,8 +47,10 @@ final class Server {
   static func isAllowed(origin: String) -> Bool {
     guard let url = URL(string: origin), let host = url.host else { return false }
     if url.scheme == "http" && (host == "localhost" || host == "127.0.0.1") { return true }
-    // Production and Vercel previews
-    return url.scheme == "https" && host.hasPrefix("calhacks-2026") && host.hasSuffix(".vercel.app")
+    guard url.scheme == "https" else { return false }
+    // The roomto.study domain, production and Vercel previews
+    if host == "roomto.study" || host.hasSuffix(".roomto.study") { return true }
+    return host.hasPrefix("calhacks-2026") && host.hasSuffix(".vercel.app")
   }
 
   func start() {
