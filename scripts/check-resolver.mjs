@@ -59,6 +59,12 @@ try {
   const second = resolveSound("rain on the roof", "bed", manifest, taken);
   if (taken.has(second)) failures.push(`second rain bed reused ${second}`);
 
+  // The agent's brief (server/managedAgent.ts) promises that a query starting with a library sound's
+  // first three tags plays that sound.
+  for (const entry of manifest) {
+    const got = resolveSound(entry.tags.slice(0, 3).join(", "), entry.kind, manifest);
+    if (got !== entry.id) failures.push(`library tags "${entry.tags.slice(0, 3).join(", ")}" resolve to ${got}, not ${entry.id}`);
+  }
   // Library first: the Claude agent's chirp sound is used only where the pack has no good match.
   const chirp = "managed:file_test:bed:a sound";
   const choices = [
@@ -75,7 +81,7 @@ try {
     console.error(failures.map((f) => `FAIL ${f}`).join("\n"));
     process.exitCode = 1;
   } else {
-    console.log(`Passed ${CASES.length + 1 + choices.length} resolver checks against ${manifest.length} pack sounds.`);
+    console.log(`Passed ${CASES.length + 1 + choices.length + manifest.length} resolver checks against ${manifest.length} pack sounds.`);
   }
 } finally {
   await server.close();
