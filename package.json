@@ -45,7 +45,8 @@
     "test:managed": "node scripts/managed-browser-test.mjs",
     "check:managed": "node scripts/check-managed-live.mjs",
     "test:props": "node scripts/prop-placement-test.mjs",
-    "test:parallel": "node scripts/parallel-world-test.mjs"
+    "test:parallel": "node scripts/parallel-world-test.mjs",
+    "test:task-memory": "node scripts/task-memory-test.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
