@@ -1,0 +1,207 @@
+{
+  "room": {
+    "preset": "cafe",
+    "grid": {
+      "mode": "Square",
+      "columns": 10,
+      "rows": 10,
+      "wallHeight": 7
+    },
+    "openings": [],
+    "reverb": "small-room",
+    "art": "demo-cafe",
+    "terrain": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "listener": {
+    "position": [
+      0,
+      1.6,
+      0
+    ],
+    "yaw": 0
+  },
+  "objects": [
+    {
+      "id": "demo-cafe-source-1",
+      "label": "Rain on window glass",
+      "sound": {
+        "query": "rain, window, glass, steady, indoor, cozy, cafe",
+        "assetId": "managed:demo-cafe-1:bed:rain, window, glass, steady, indoor, cozy, cafe"
+      },
+      "position": [
+        -1,
+        3.5,
+        -4.775
+      ],
+      "volume": 0.65,
+      "model": "rain",
+      "muted": false,
+      "wall": "north",
+      "scale": 1,
+      "kind": "bed"
+    },
+    {
+      "id": "demo-cafe-source-2",
+      "label": "Espresso machine",
+      "sound": {
+        "query": "Espresso machine steam wand releasing a continuous gentle airy hiss, natural cafe equipment recording, no voices",
+        "assetId": "managed:demo-cafe-2:bed:Espresso machine steam wand releasing a continuous gentle airy hiss, natural cafe equipment recording, no voices"
+      },
+      "position": [
+        2,
+        1,
+        -2
+      ],
+      "volume": 0.4,
+      "model": "speaker",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "bed"
+    },
+    {
+      "id": "demo-cafe-source-3",
+      "label": "Porcelain cup and saucer",
+      "sound": {
+        "query": "cup, clink, ceramic, mug, cafe, dishes",
+        "assetId": "managed:demo-cafe-3:event:cup, clink, ceramic, mug, cafe, dishes"
+      },
+      "position": [
+        -3,
+        1,
+        1.5
+      ],
+      "volume": 0.25,
+      "model": "speaker",
+      "muted": false,
+      "wall": null,
+      "scale": 2,
+      "kind": "event",
+      "intervalSec": [
+        12,
+        25
+      ]
+    }
+  ]
+}

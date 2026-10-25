@@ -130,9 +130,9 @@ try {
   assert.equal((await source('fan-1')).muted, true, 'moving a muted object preserves mute');
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
-  assert.equal(await page.getByRole('button').count(), 3);
+  assert.equal(await page.getByRole('button').count(), 6);
   await page.getByRole('status').waitFor({ state: 'detached' });
-  assert.equal((await page.locator('body').innerText()).trim(), 'Head tracking');
+  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), 'Head tracking Rainy café Beach Cyberpunk city');
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');
   console.log('PASS: touch tap mute/unmute, muted dragging, minimal mobile UI, no shadows and no browser errors');

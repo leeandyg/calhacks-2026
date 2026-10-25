@@ -1,0 +1,207 @@
+{
+  "room": {
+    "preset": "forest",
+    "grid": {
+      "mode": "Square",
+      "columns": 10,
+      "rows": 10,
+      "wallHeight": 7
+    },
+    "openings": [],
+    "reverb": "outdoor",
+    "art": "demo-beach",
+    "terrain": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "listener": {
+    "position": [
+      0,
+      1.6,
+      0
+    ],
+    "yaw": 0
+  },
+  "objects": [
+    {
+      "id": "demo-beach-source-1",
+      "label": "Gentle ocean surf",
+      "sound": {
+        "query": "ocean, waves, sea, beach, surf",
+        "assetId": "managed:demo-beach-1:bed:ocean, waves, sea, beach, surf"
+      },
+      "position": [
+        -1,
+        1,
+        -2
+      ],
+      "volume": 0.55,
+      "model": "speaker",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "bed"
+    },
+    {
+      "id": "demo-beach-source-2",
+      "label": "Sea breeze in palm",
+      "sound": {
+        "query": "wind, trees, leaves, rustling, forest, breeze, outdoor",
+        "assetId": "managed:demo-beach-2:bed:wind, trees, leaves, rustling, forest, breeze, outdoor"
+      },
+      "position": [
+        2.5,
+        1,
+        1.5
+      ],
+      "volume": 0.4,
+      "model": "fan",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "bed"
+    },
+    {
+      "id": "demo-beach-source-3",
+      "label": "Seagull on driftwood",
+      "sound": {
+        "query": "One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording",
+        "assetId": "managed:demo-beach-3:event:One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording"
+      },
+      "position": [
+        -3,
+        1,
+        2
+      ],
+      "volume": 0.25,
+      "model": "birds",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "event",
+      "intervalSec": [
+        15,
+        30
+      ]
+    }
+  ]
+}

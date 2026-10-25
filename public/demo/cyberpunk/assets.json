@@ -1,0 +1,250 @@
+{
+  "envId": "demo-cyberpunk",
+  "environment": {
+    "concept": "Cyberpunk city street at night: wet asphalt reflecting violet and cyan neon, a sidewalk border, and four facades of lit windows, storefronts, neon tubes and cable runs painted onto the fixed wall slabs.",
+    "shell": "#5b5180",
+    "colors": [
+      "#0b0716",
+      "#170f2e",
+      "#241744",
+      "#33225c",
+      "#463075",
+      "#5e4292",
+      "#7d5cb0",
+      "#9c86c8",
+      "#7a2fd0",
+      "#b86bff",
+      "#41f2ff",
+      "#1aa6b8",
+      "#0f5f72",
+      "#ffcf7a",
+      "#ff9a4a",
+      "#c4612e",
+      "#ff5fd2",
+      "#2a2350",
+      "#1c1734",
+      "#3b3262",
+      "#5b5180",
+      "#4b4272",
+      "#6a5a94"
+    ],
+    "openAir": false,
+    "terrain": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "textures": {
+      "floor": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 160,
+        "url": "/demo/cyberpunk/assets/floor.png"
+      },
+      "north": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/cyberpunk/assets/north.png"
+      },
+      "east": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/cyberpunk/assets/east.png"
+      },
+      "south": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/cyberpunk/assets/south.png"
+      },
+      "west": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/cyberpunk/assets/west.png"
+      }
+    }
+  },
+  "sprites": [
+    {
+      "frames": 8,
+      "fps": 8,
+      "w": 48,
+      "h": 20,
+      "url": "/demo/cyberpunk/assets/source-1.png",
+      "objectId": "demo-cyberpunk-source-1",
+      "label": "Rain on wet pavement puddle",
+      "query": "rain, roof, patter, wet pavement, street, night",
+      "wall": null
+    },
+    {
+      "frames": 4,
+      "fps": 12,
+      "w": 40,
+      "h": 40,
+      "url": "/demo/cyberpunk/assets/source-2.png",
+      "objectId": "demo-cyberpunk-source-2",
+      "label": "Ventilation unit on north wall",
+      "query": "air conditioner, hum, hvac, ventilation unit drone",
+      "wall": "north"
+    },
+    {
+      "frames": 6,
+      "fps": 10,
+      "w": 48,
+      "h": 22,
+      "url": "/demo/cyberpunk/assets/source-3.png",
+      "objectId": "demo-cyberpunk-source-3",
+      "label": "Hovering electric vehicle flyby",
+      "query": "One electric vehicle passing with a smooth low motor whirr and air whoosh, plausible futuristic hover vehicle, natural mechanical sound, no music",
+      "wall": null
+    }
+  ],
+  "sounds": [
+    {
+      "objectId": "demo-cyberpunk-source-1",
+      "query": "rain, roof, patter, wet pavement, street, night",
+      "kind": "bed",
+      "fileId": "demo-cyberpunk-1",
+      "url": "/demo/cyberpunk/assets/sound-1.mp3"
+    },
+    {
+      "objectId": "demo-cyberpunk-source-2",
+      "query": "air conditioner, hum, hvac, ventilation unit drone",
+      "kind": "bed",
+      "fileId": "demo-cyberpunk-2",
+      "url": "/demo/cyberpunk/assets/sound-2.mp3"
+    },
+    {
+      "objectId": "demo-cyberpunk-source-3",
+      "query": "One electric vehicle passing with a smooth low motor whirr and air whoosh, plausible futuristic hover vehicle, natural mechanical sound, no music",
+      "kind": "event",
+      "fileId": "demo-cyberpunk-3",
+      "url": "/demo/cyberpunk/assets/sound-3.mp3"
+    }
+  ]
+}

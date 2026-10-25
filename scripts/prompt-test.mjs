@@ -23,7 +23,7 @@ try {
   assert.equal(await page.locator('input[type=text]').count(), 1);
   assert.equal(await page.locator('textarea').count(), 0);
   const left = page.getByRole('button', { name: 'Rotate Left', exact: true });
-  assert.equal(await page.getByRole('button').count(), 1);
+  assert.equal(await page.getByRole('button').count(), 4);
   assert.equal(await page.locator('canvas, .room-rotation, .overlay').count(), 0);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
@@ -70,7 +70,7 @@ try {
   await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
   assert.equal(await rotate.innerText(), '');
   assert.equal(await left.innerText(), '');
-  assert.equal(await page.getByRole('button').count(), 3);
+  assert.equal(await page.getByRole('button').count(), 6);
   assert.equal(await input.inputValue(), '');
   assert.equal(requests[1].prompt, 'A quiet forest room');
   assert.equal(requests[1].scene, null, 'the first room has no dummy scene context');
@@ -147,7 +147,7 @@ try {
     assert.equal(layout.overflow, false);
     await page.screenshot({ path: `test-results/prompt-${viewport.width}.png` });
   }
-  // No preset or demo controls; ?demo replays saved responses without AI requests.
+  // The three captured choices need no extra selectors; ?demo also retains saved prompt replay.
   assert.equal(await page.locator('select, input[type=checkbox]:not(.head-tracking input)').count(), 0);
   await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
   assert.equal(await page.locator('canvas').count(), 0,'demo also starts empty');

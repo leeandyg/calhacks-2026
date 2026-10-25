@@ -12,6 +12,7 @@ import { applyOp, useSceneStore } from '../scene/store.js';
 import { paintEnvironment, paintSprites } from '../art/client.js';
 import { installManagedAssets } from '../ai/managedClient.js';
 import { resumeAudio } from '../audio/context.js';
+import { capturedDemos, loadCapturedDemo, type CapturedDemoId } from '../scene/capturedDemos.js';
 
 type Status = { tone: 'busy' | 'notice' | 'error'; text: string };
 const NOTICE_MS = 8000;
@@ -30,6 +31,7 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
   const lastCommand = useRef<{ prompt: string; change?: CommandChange } | undefined>(undefined);
   const lastAttempt = useRef('');
   const busy = status?.tone === 'busy';
+  useEffect(() => { void Promise.allSettled(capturedDemos.map(demo => loadCapturedDemo(demo.id))); }, []);
   useEffect(() => {
     if (status?.tone !== 'notice') return;
     const timer = setTimeout(() => setStatus(undefined), NOTICE_MS);
@@ -154,6 +156,27 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
     event.preventDefault();
     void submitPrompt(value).catch(() => {});
   };
+  const selectDemo = async (id: CapturedDemoId) => {
+    if (working.current) return;
+    working.current = true;
+    lastAttempt.current = '';
+    void resumeAudio().catch(error => console.warn('Audio could not be enabled.', error));
+    setStatus({ tone: 'busy', text: 'Loading demo room…' });
+    const before = useSceneStore.getState().scene;
+    try {
+      const scene = await loadCapturedDemo(id);
+      const store = useSceneStore.getState();
+      if (sceneFingerprint(store.scene) !== sceneFingerprint(before))
+        throw new Error('Your room changed while loading. Choose the demo again to replace it.');
+      const result = store.setScene(scene);
+      if (!result.ok) throw new Error(result.error);
+      lastCommand.current = undefined;
+      setValue(''); setRefresh(value => value + 1); onSceneReady();
+      setStatus({ tone: 'notice', text: `${capturedDemos.find(demo => demo.id === id)!.label} · 3 sounds ready.` });
+    } catch (error) {
+      setStatus({ tone: 'error', text: error instanceof Error ? error.message : 'The demo room could not be loaded.' });
+    } finally { working.current = false; }
+  };
   return <>
     <div className="prompt-tools">
     {status?.text && <p className={`prompt-status prompt-status-${status.tone}`} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
@@ -170,5 +193,9 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
         </button>
       </form>
     </BorderBeam>
+    <div className="demo-rooms" role="group" aria-label="Preloaded demo rooms">
+      {capturedDemos.map(demo => <button key={demo.id} type="button" disabled={busy}
+        onClick={() => { void selectDemo(demo.id); }}>{demo.label}</button>)}
+    </div>
   </>;
 }
