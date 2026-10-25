@@ -147,7 +147,7 @@
       "label": "Rain on wet pavement puddle",
       "sound": {
         "query": "rain, roof, patter, wet pavement, street, night",
-        "assetId": "managed:demo-cyberpunk-1:bed:rain, roof, patter, wet pavement, street, night"
+        "assetId": "rain_roof"
       },
       "position": [
         -1.5,
@@ -166,7 +166,7 @@
       "label": "Ventilation unit on north wall",
       "sound": {
         "query": "air conditioner, hum, hvac, ventilation unit drone",
-        "assetId": "managed:demo-cyberpunk-2:bed:air conditioner, hum, hvac, ventilation unit drone"
+        "assetId": "ac_hum"
       },
       "position": [
         2,

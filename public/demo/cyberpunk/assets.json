@@ -226,20 +226,6 @@
   ],
   "sounds": [
     {
-      "objectId": "demo-cyberpunk-source-1",
-      "query": "rain, roof, patter, wet pavement, street, night",
-      "kind": "bed",
-      "fileId": "demo-cyberpunk-1",
-      "url": "/demo/cyberpunk/assets/sound-1.mp3"
-    },
-    {
-      "objectId": "demo-cyberpunk-source-2",
-      "query": "air conditioner, hum, hvac, ventilation unit drone",
-      "kind": "bed",
-      "fileId": "demo-cyberpunk-2",
-      "url": "/demo/cyberpunk/assets/sound-2.mp3"
-    },
-    {
       "objectId": "demo-cyberpunk-source-3",
       "query": "One electric vehicle passing with a smooth low motor whirr and air whoosh, plausible futuristic hover vehicle, natural mechanical sound, no music",
       "kind": "event",

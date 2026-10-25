@@ -17,8 +17,8 @@
     },
     {
       "objectId": "demo-beach-source-3",
-      "provider": "ElevenLabs",
-      "note": "Reviewed physical-source description; natural recording."
+      "libraryId": "seagull_call",
+      "license": "CC0"
     }
   ],
   "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo.",
@@ -26,16 +26,13 @@
   "backgroundPrompt": "Paint ONE continuous, horizontally wrapping tropical coastline panorama and its sandy floor in polished pixel art.\nDefine ONLY a sprite named '_panorama' at 640x112 and a sprite named 'floor' at 160x160.\nOur trusted exporter stamps consecutive 160px slices into north, east, south, west wall textures.\nAll four views belong to one place, time of day and palette; do not design independent panels.\nUse the SAME perfectly level ocean horizon at y=60 across the entire 640px width.\nSky occupies y=0..59, turquoise ocean y=60..93, a thin pale foam edge near y=94,\nand warm sand y=96..111. All four corners must wrap seamlessly, including x=639 to x=0.\nSky: soft blue upper sky warming to peach/cream near the horizon, a few elegant connected clouds,\none small warm sun around x=70,y=34, soft atmospheric distance. Ocean: muted teal depth bands,\nsubtle irregular horizontal wavelets and restrained highlights, no giant alternating rainbow stripes.\nKeep the far coastline minimal, low and coherent. Broad clean shapes, deliberate fine detail,\n3-4 shades per material, sparse texture, no noisy dithering or confetti. A convincing calm beach.\nThe floor is pale warm sand with subtle wind ripples; its outermost 2px match the panorama's bottom\n2px uniformly so every wall meets the same sand. No separate shoreline on only one floor edge.\nNo palms, gulls, props, signage, boats, objects, text or cast shadows: existing source icons remain.\nUse a cohesive palette compatible with the original turquoise water, beige palm trunk, green fronds\nand ivory gull. Shell is a readable warm sand midtone. Fully opaque surfaces, flat ground.\nReuse pxl parts and a few short shape loops, not per-pixel drawing loops. The renderer supports\na 640px INTERNAL part; only the five small output slices are exported. Do not create wall outputs.",
   "backgroundArtwork": "Gemini/pxl: one continuous panorama",
   "preserved": {
-    "sceneSha256": "56ababfa515585cc187aac48946a9e245510beb6f138c90f28b4ad4a8f09e04f",
+    "sceneSha256": "af036be0432a44043e3a3b30611bc6d509796442e2ca59d23c643aab6d058fc9",
     "spritesSha256": "2b35c7ec8e6f9dceff59ef857eb04b3c7dc2d299bd2166de5cc6f8645e787dcb",
-    "soundsSha256": "bcc0c62cfca2bae679255a7b761147fd83f36c1cb6635644d7e895b033efc5f6",
+    "soundsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "files": {
       "source-1.png": "088bd0fb0c60d3a2223bb0971c4afe06ac0b82c68c7f5393b571f0949d2688aa",
       "source-2.png": "716667529b6ce71c8b72a631567df6a5f8c9ebbc85087a71e0833031d50a802c",
-      "source-3.png": "fd9128aafb12b8abd7f512fe00c97f2fb7f69ca9bc7f0108056ed40d612416ed",
-      "sound-1.mp3": "3708401b5e76ec5af3d1f9c13f29ff5264c569850e5079b6fae0ed524c526e58",
-      "sound-2.mp3": "a7afb40826355572a294d2c7f02e7b43068f1ab570c6cf500b7604c304f714a1",
-      "sound-3.mp3": "767703ec8f117306912d03e1216a818fa70195dbcbde5457002e6f13dc20c144"
+      "source-3.png": "fd9128aafb12b8abd7f512fe00c97f2fb7f69ca9bc7f0108056ed40d612416ed"
     }
   },
   "panorama": {

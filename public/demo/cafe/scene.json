@@ -25,7 +25,7 @@
       "label": "Rain-streaked cafe window",
       "sound": {
         "query": "Steady natural rainfall pattering against the glass of a large closed cafe window, delicate individual droplets and soft water texture, clean physical recording, no people",
-        "assetId": "managed:demo-cafe-1:bed:Steady natural rainfall pattering against the glass of a large closed cafe window, delicate individual droplets and soft water texture, clean physical recording, no people"
+        "assetId": "rain_window"
       },
       "position": [
         0,
@@ -44,7 +44,7 @@
       "label": "Chrome espresso machine",
       "sound": {
         "query": "A cafe espresso machine steam wand releasing a continuous airy steam hiss with subtle boiler texture, authentic coffee equipment recording, no voices",
-        "assetId": "managed:demo-cafe-2:bed:A cafe espresso machine steam wand releasing a continuous airy steam hiss with subtle boiler texture, authentic coffee equipment recording, no voices"
+        "assetId": "espresso"
       },
       "position": [
         2,
@@ -63,7 +63,7 @@
       "label": "Porcelain cup and saucer",
       "sound": {
         "query": "One porcelain espresso cup gently set onto its ceramic saucer, a clear delicate clink with natural short decay, isolated single occurrence",
-        "assetId": "managed:demo-cafe-3:event:One porcelain espresso cup gently set onto its ceramic saucer, a clear delicate clink with natural short decay, isolated single occurrence"
+        "assetId": "cup_clink"
       },
       "position": [
         -3.5,

@@ -373,12 +373,32 @@ function loadBuffer(ctx: AudioContext, assetId: string | undefined): Promise<Aud
   return buffer;
 }
 
-async function loadPackSound(ctx: AudioContext, assetId: string) {
+// Library files fetched before they play, by assetId: demo rooms warm theirs (capturedDemos.ts).
+const packFiles = new Map<string, Promise<ArrayBuffer>>();
+
+/** Downloads a library sound ahead of time, so choosing a demo room plays it without waiting. */
+export function preloadPackSound(assetId: string): Promise<ArrayBuffer> {
+  let file = packFiles.get(assetId);
+  if (!file) {
+    file = fetchPackFile(assetId).catch((error) => { packFiles.delete(assetId); throw error; });
+    packFiles.set(assetId, file);
+  }
+  return file;
+}
+
+async function fetchPackFile(assetId: string) {
   const entry = (await loadManifest()).get(assetId);
   if (!entry) throw new Error(`no manifest entry "${assetId}"`);
   const res = await fetch(`/sounds/${entry.file}`);
   if (!res.ok) throw new Error(`Sound file failed: ${res.status}`);
-  return ctx.decodeAudioData(await res.arrayBuffer());
+  return res.arrayBuffer();
+}
+
+async function loadPackSound(ctx: AudioContext, assetId: string) {
+  // The decoded buffer is cached in `buffers`, so a warmed file is used once and let go.
+  const file = packFiles.get(assetId) ?? fetchPackFile(assetId);
+  packFiles.delete(assetId);
+  return ctx.decodeAudioData(await file);
 }
 
 /**

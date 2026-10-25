@@ -7,18 +7,18 @@
   "sounds": [
     {
       "objectId": "demo-cafe-source-1",
-      "provider": "ElevenLabs",
-      "note": "Fresh recording for the fully regenerated cafe."
+      "libraryId": "rain_window",
+      "license": "CC0"
     },
     {
       "objectId": "demo-cafe-source-2",
-      "provider": "ElevenLabs",
-      "note": "Fresh recording for the fully regenerated cafe."
+      "libraryId": "espresso",
+      "license": "CC0"
     },
     {
       "objectId": "demo-cafe-source-3",
-      "provider": "ElevenLabs",
-      "note": "Fresh recording for the fully regenerated cafe."
+      "libraryId": "cup_clink",
+      "license": "CC0"
     }
   ],
   "reviewNotes": "Fully regenerated cafe, including all environment surfaces, all source icons and all three audio recordings. Two continuous beds and one quieter randomly spaced event."

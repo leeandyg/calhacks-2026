@@ -166,7 +166,7 @@
       "label": "Bamboo grove",
       "sound": {
         "query": "wind, trees, leaves, rustling, forest, breeze, bamboo",
-        "assetId": "managed:demo-zen-2:bed:wind, trees, leaves, rustling, forest, breeze, bamboo"
+        "assetId": "wind_trees"
       },
       "position": [
         2,
