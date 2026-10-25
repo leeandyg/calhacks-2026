@@ -260,6 +260,7 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | `src/ai/`, `api/scene.ts` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
 | `api/sound.ts` | `GET /api/sound`: ElevenLabs generation for sounds the pack lacks | @leeandyg |
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
+| `helper/` | Optional macOS helper that brings other apps' audio (Spotify) into the room; see [helper/README.md](helper/README.md) | @leeandyg |
 
 `api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
 
