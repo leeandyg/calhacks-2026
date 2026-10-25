@@ -241,6 +241,10 @@ button cancels listening or processing. Keep the original soundscape tab open.
 
 Enable **Hey agent** in either window to keep listening while you work elsewhere.
 Say **“Hey agent, mute rain”** in one sentence, or **“Hey agent”** followed by your command.
+The ready cue and **Listening for your command…** mean the same microphone and connection
+remain open for your next sentence; the wake phrase alone arms listening. The accepted
+command appears in **Heard** and then enters processing. Use an explicit remember command
+or Save room when you want to persist a preference or room.
 This is an opt-in Cartesia transcription gate, not an offline wake-word model: the mic
 stays active and audio uses Cartesia transcription while enabled. Other speech is
 discarded before the room agent and is not shown as a command. Listening pauses during

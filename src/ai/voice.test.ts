@@ -69,6 +69,34 @@ async function capture(automatic = false, token = `owner-${++owner}`) {
 }
 
 describe("voice turn lifecycle", () => {
+  it('keeps the same microphone and socket through ignored and wake-only turns', async () => {
+    const abort = new AbortController(); aborts.push(abort);
+    const transcript = vi.fn(), error = vi.fn();
+    let armed = false;
+    const session = await startVoice(`wake-owner-${++owner}`, abort.signal, transcript, error, undefined, {
+      automatic: true, duck: false,
+      acceptTurn: text => {
+        if (text === 'Hey agent') { armed = true; return false; }
+        return armed && text.trim().length > 0;
+      },
+    });
+    sessions.push(session); await flush();
+    const socket = sockets.at(-1)!;
+    socket.event('turn.end', { transcript: 'Background conversation' });
+    socket.event('turn.end', { transcript: 'Hey agent' });
+    await vi.advanceTimersByTimeAsync(31_000);
+    expect(socket.readyState).toBe(Socket.OPEN);
+    expect(getMic).toHaveBeenCalledTimes(1);
+    expect(tracks[0].stopped).toBe(false);
+    expect(transcript).not.toHaveBeenCalled();
+    socket.event('turn.start');
+    socket.event('turn.end', { transcript: '' });
+    expect(transcript).not.toHaveBeenCalled();
+    socket.event('turn.end', { transcript: 'Mute rain' });
+    expect(transcript).toHaveBeenCalledExactlyOnceWith('Mute rain');
+    expect(tracks[0].stopped).toBe(true);
+    expect(error).not.toHaveBeenCalled();
+  });
   it('keeps room audio at its saved level while waiting for a wake phrase', async () => {
     const abort = new AbortController(); aborts.push(abort);
     const session = await startVoice(`standby-${++owner}`, abort.signal, vi.fn(), vi.fn(), undefined, { automatic: true, duck: false });
