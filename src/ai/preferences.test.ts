@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cafe } from '../scene/fixtures.js';
-import { savedRoomFor, type Preference } from './preferences.js';
+import { asksOnlyFor, savedRoomFor, type Preference } from './preferences.js';
 
 const saved = (task: string, timeBucket: Preference['timeBucket'], updatedAt = 1): Preference =>
   ({ _id: `${task}-${timeBucket}`, task, timeBucket, timezone: 'America/Los_Angeles', summary: 'Beach', scene: cafe, updatedAt });
@@ -28,5 +28,20 @@ describe('loading a saved room without the world agent', () => {
     expect(savedRoomFor('coding', [coding, any, morning], '', 'morning')).toBe(morning);
     expect(savedRoomFor('coding', [coding, any], '', 'morning')).toBe(any);
     expect(savedRoomFor('coding', [coding, newer], '', 'morning')).toBe(newer);
+  });
+});
+
+describe('opening a saved environment by name', () => {
+  it('matches a prompt that names the room and nothing else', () => {
+    for (const prompt of ['cyberpunk city', 'Cyberpunk City.', 'a cyberpunk city', 'take me to the cyberpunk city', 'I want the cyberpunk city again'])
+      expect(asksOnlyFor(prompt, 'Cyberpunk city'), prompt).toBe(true);
+    for (const prompt of ['rainy cafe', 'Rainy café', 'the rainy cafe please'])
+      expect(asksOnlyFor(prompt, 'Rainy café'), prompt).toBe(true);
+    expect(asksOnlyFor('my study cave', 'My Study Cave')).toBe(true);
+  });
+  it('generates anything that adds to or only partly names it', () => {
+    for (const prompt of ['a cyberpunk city at dawn with flying cars', 'cyberpunk', 'city', 'a sunny cafe', 'cafe'])
+      expect(asksOnlyFor(prompt, prompt.includes('cafe') ? 'Rainy café' : 'Cyberpunk city'), prompt).toBe(false);
+    expect(asksOnlyFor('make the rain quieter in the rainy cafe', 'Rainy café')).toBe(false);
   });
 });

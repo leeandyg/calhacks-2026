@@ -52,7 +52,7 @@ export const USUAL_REQUEST = /\b(?:usual|remembered|saved setup)\b/i;
 const FILLER = new Set(`a an the i i'm im am is it it's its me my our we us let let's lets ok okay hey agent please now just
   some time to for go going gonna want wanna do doing start starting begin set up setup get ready switch load open bring back
   put on give use with mode session sessions room environment space place vibe this that in at during morning afternoon
-  evening night tonight today`.split(/\s+/));
+  evening night tonight today take show visit enter head there into inside somewhere like would i'd id love again`.split(/\s+/));
 const ALIASES: Record<string, string> = { program: "cod" };
 
 function stem(word: string) {
@@ -61,8 +61,14 @@ function stem(word: string) {
   return ALIASES[stemmed] ?? stemmed;
 }
 function keywords(text: string) {
-  return new Set(text.toLowerCase().replace(/’/g, "'").split(/[^a-z']+/)
+  return new Set(text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/’/g, "'").split(/[^a-z']+/)
     .filter((word) => word && !FILLER.has(word)).map((word) => stem(word.replace(/'/g, ""))));
+}
+
+/** True when the prompt names this saved room and asks for nothing else ("take me to the rainy cafe"). */
+export function asksOnlyFor(prompt: string, name: string) {
+  const words = keywords(prompt), wanted = keywords(name);
+  return wanted.size > 0 && [...wanted].every((word) => words.has(word)) && [...words].every((word) => wanted.has(word));
 }
 
 /** The saved preference a prompt asks to load, preferring the current time of day without requiring it. */
