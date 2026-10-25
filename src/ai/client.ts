@@ -4,7 +4,8 @@ import type { ManagedAssets } from './world.js';
 
 // Browser side of POST /api/scene. Keys stay on the server; this only sends the prompt and scene.
 
-export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void): Promise<SceneResponse & { notice?: string; managed?: ManagedAssets }> {
+export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, signal?: AbortSignal): Promise<SceneResponse & { notice?: string; managed?: ManagedAssets }> {
+  signal?.throwIfAborted();
   if (demoMode) {
     const { offlineResponse } = await import("./offline.js");
     const saved = offlineResponse(prompt, scene);
@@ -18,9 +19,10 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, sessionToken: scene ? currentAgentSession() : undefined }),
-      signal: AbortSignal.timeout(15_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
     });
   } catch {
+    signal?.throwIfAborted();
     throw new Error("Could not reach the scene agent. Your room was kept unchanged. Please try again.");
   }
   if (!res.ok) {
@@ -29,7 +31,7 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
   }
   const json = await res.json().catch(() => null);
   if (json?.kind === 'managed' && typeof json.token === 'string') {
-    const result = await followManagedRun(json.token, scene, progress);
+    const result = await followManagedRun(json.token, scene, progress, signal);
     return { ...result.response, managed: result.assets };
   }
   try {

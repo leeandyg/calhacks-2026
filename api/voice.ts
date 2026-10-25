@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       method: "POST", headers: { Authorization: `Bearer ${key}`, "Cartesia-Version": version, "Content-Type": "application/json" },
       body: JSON.stringify(parsed.data.action === "token" ? { grants: { stt: true }, expires_in: 60 }
         : { model_id: "sonic-3.6", transcript: parsed.data.text, voice: { id: voiceId },
-          output_format: { container: "wav", encoding: "pcm_s16le", sample_rate: 24000 } }),
+          output_format: { container: "raw", encoding: "pcm_s16le", sample_rate: 24000 } }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) return privateJson({ error: "Cartesia could not complete this request. Type your command or try again." }, response.status === 429 ? 429 : 502);
@@ -33,6 +33,6 @@ export async function POST(request: Request) {
       if (typeof body.token !== "string") throw new Error("Missing token");
       return privateJson({ token: body.token, version });
     }
-    return new Response(response.body, { headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store" } });
+    return new Response(response.body, { headers: { "Content-Type": "audio/pcm", "Cache-Control": "no-store", "X-Audio-Sample-Rate": "24000" } });
   } catch { return privateJson({ error: "Voice service timed out or is unavailable. You can still type commands." }, 503); }
 }

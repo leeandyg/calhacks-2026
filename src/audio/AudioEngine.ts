@@ -5,6 +5,7 @@ import type { Listener, Scene, SoundObject } from "../scene/scene.js";
 import { useHeadPose } from "../sensors/headPose.js";
 import { useSceneStore } from "../scene/store.js";
 import { getAudioContext } from "./context.js";
+import { subscribeDucking } from "./ducking.js";
 import { addMeter, removeMeter } from "./levels.js";
 import { elevenLabsEnabled, isGenerated, loadGenerated, parseGeneratedAssetId } from "./generated.js";
 import { liveSource, startLiveAudio } from "./live.js";
@@ -33,14 +34,20 @@ const MUTE_FADE_SEC = 0.25; // muting or unmuting fades instead of cutting
 export class AudioEngine {
   private voices = new Map<string, Voice>();
   private master: GainNode;
+  private output: GainNode;
+  private unsubscribeDucking: () => void;
   private reverb: Reverb;
   private unsubscribe?: () => void;
   private unsubscribeHead?: () => void;
 
   constructor(private ctx: AudioContext) {
     this.master = ctx.createGain();
-    this.master.connect(ctx.destination);
-    this.reverb = new Reverb(ctx, ctx.destination);
+    this.output = ctx.createGain();
+    this.master.connect(this.output).connect(ctx.destination);
+    this.reverb = new Reverb(ctx, this.output);
+    this.unsubscribeDucking = subscribeDucking((gain) => {
+      this.output.gain.setTargetAtTime(gain, ctx.currentTime, gain < 1 ? 0.035 : 0.12);
+    });
   }
 
   start() {
@@ -55,10 +62,12 @@ export class AudioEngine {
   stop() {
     this.unsubscribe?.();
     this.unsubscribeHead?.();
+    this.unsubscribeDucking();
     for (const voice of this.voices.values()) voice.dispose();
     this.voices.clear();
     this.master.disconnect();
     this.reverb.disconnect();
+    this.output.disconnect();
   }
 
   private sync(scene: Scene, prev: Scene | undefined) {
