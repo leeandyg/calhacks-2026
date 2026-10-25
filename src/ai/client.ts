@@ -1,5 +1,6 @@
 import { SceneResponse, type Scene, type SceneRequest } from "../scene/scene.js";
 import { currentAgentSession, followManagedRun } from './managedClient.js';
+import { AGENT_MODE } from './mode.js';
 import type { ManagedResult } from './world.js';
 import type { WorldPart } from './managedClient.js';
 import type { ManagedAssets } from './world.js';
@@ -19,7 +20,7 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
     res = await fetch("/api/scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, sessionToken: scene ? currentAgentSession() : undefined }),
+      body: JSON.stringify({ ...body, mode: AGENT_MODE, sessionToken: scene ? currentAgentSession() : undefined }),
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
@@ -31,7 +32,7 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
   }
   const json = await res.json().catch(() => null);
   if (json?.kind === 'managed' && typeof json.token === 'string') {
-    const result = await followManagedRun(json.token, scene, progress, undefined, partial);
+    const result = await followManagedRun(json.token, scene, progress, undefined, partial, AGENT_MODE);
     return { ...result.response, managed: result.assets };
   }
   try {

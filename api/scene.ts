@@ -1,4 +1,4 @@
-import { agentError, agentSettings } from './world.js';
+import { agentError, agentMode, agentSettings } from './world.js';
 import { ManagedAgent } from '../server/managedAgent.js';
 import { GoogleGenAI, type Interactions } from "@google/genai";
 import { z } from "zod";
@@ -117,8 +117,9 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // ?mode=local|cloud picks the backend (default cloud on the client); absent here means a legacy caller.
   let managed;
-  try { managed = agentSettings(); } catch (error) { return agentError(error); }
+  try { managed = agentSettings(agentMode(typeof raw?.mode === 'string' ? raw.mode : undefined)); } catch (error) { return agentError(error); }
   if (managed) {
     try {
       const previousToken = typeof raw?.sessionToken === 'string' ? raw.sessionToken : undefined;

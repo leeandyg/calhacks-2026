@@ -34,6 +34,12 @@ pack sound. Restart the dev server after changing `.env`. On Vercel, add the sam
 variables to the deployment's environment and redeploy.
 Node.js 24 is recommended; on Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
+The browser chooses the world agent with a `?mode` query param (default `cloud`): `?mode=cloud`
+uses the Claude Managed Agents backend (`ANTHROPIC_API_KEY`), and `?mode=local` uses the
+self-hosted worker (`WORLD_AGENT_URL`/`WORLD_AGENT_API_KEY`). The chosen backend must be
+configured or the request returns a clear 503; neither mode silently falls back to the other.
+Most contributors stay on `?mode=cloud` and need no Docker or local worker.
+
 `POST /api/scene` sends the prompt and current scene to `gemini-3.8-flash`, which calls
 `create_scene` or `edit_scene`. The endpoint validates tool arguments with Zod,
 clamps positions to room bounds, and retries invalid output once. Transient provider

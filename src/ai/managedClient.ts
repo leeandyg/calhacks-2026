@@ -4,26 +4,27 @@ import { useArtStore, addEnvironment, setSprite, spriteKey } from '../art/store.
 import { registerManagedSound } from '../audio/managed.js';
 import { useSceneStore } from '../scene/store.js';
 import { loadPaintImage } from '../art/images.js';
+import type { AgentMode } from './mode.js';
 
 let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
 
 /** One durable managed run can span many short API/SSE connections. */
-export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, budgetMs = 12 * 60 * 1000, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<ManagedResult> {
+export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, budgetMs = 12 * 60 * 1000, partial?: (result: ManagedResult, part: WorldPart) => void, mode: AgentMode = 'cloud'): Promise<ManagedResult> {
   const deadline = Date.now() + budgetMs;
   const seen = new Set<string>();
   const ready = new Set<WorldPart>();
   let complete = false, failures = 0;
   while (!complete && Date.now() < deadline) {
     try {
-      const res = await fetch(`/api/world?${new URLSearchParams({ action: 'stream', token })}`, { signal: AbortSignal.timeout(55_000) });
+      const res = await fetch(`/api/world?${new URLSearchParams({ action: 'stream', token, mode })}`, { signal: AbortSignal.timeout(55_000) });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => null))?.error ?? 'Claude could not connect.');
       for await (const value of sse(res.body)) {
         const event = JSON.parse(value);
         if (event.type === 'error') throw new AgentRunError(event.error ?? 'Claude could not finish this environment.');
         if (event.type === 'ready' && (event.part === 'environment' || event.part === 'objects') && !ready.has(event.part)) {
           if (partial) {
-            const result = await readManagedResult(token, scene, event.part);
+            const result = await readManagedResult(token, scene, event.part, mode);
             partial(result, event.part);
             sessionToken = token;
           }
@@ -45,16 +46,16 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   }
   if (!complete) throw new Error('Claude is taking too long to finish this environment. Please try again.');
   progress?.('Loading your environment, artwork and sounds…');
-  const result = await readManagedResult(token, scene);
+  const result = await readManagedResult(token, scene, undefined, mode);
   sessionToken = token;
   return result;
 }
 
 export type WorldPart = 'environment' | 'objects';
-async function readManagedResult(token: string, scene: Scene | null, part?: WorldPart): Promise<ManagedResult> {
+async function readManagedResult(token: string, scene: Scene | null, part?: WorldPart, mode: AgentMode = 'cloud'): Promise<ManagedResult> {
   // Published output files may arrive just after the end-turn event.
   for (let attempt = 0; attempt < 16; attempt++) {
-    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene, ...(part ? { part } : {}) }), signal: AbortSignal.timeout(25_000) });
+    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene, mode, ...(part ? { part } : {}) }), signal: AbortSignal.timeout(25_000) });
     if (res.status === 202) { await new Promise(resolve => setTimeout(resolve, 2000)); continue; }
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? 'The generated environment could not be loaded.');
