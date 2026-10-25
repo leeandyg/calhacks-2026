@@ -318,7 +318,7 @@ distinct pxl paintings for the floor and each wall. An NDJSON stream delivers th
 as it finishes. The interactive room displays the terrain and paintings before a second scene pass
 places the physical sound sources in that environment. `/api/sprite` paints each source, while a
 portal and a “generating…” label hold its position; the finished prop emerges through that portal.
-Follow-up edits preserve the environment. Only explicit `?demo` mode uses preset rooms and props; live failures preserve the current scene.
+Follow-up edits preserve the environment. `?demo` replays preset rooms and recorded edits with no AI requests. A live prompt always ends in a playable room (#110): if the Claude agent errors, can't be reached or runs past 5 minutes (`CLAUDE_BUDGET_MS` in `src/ai/client.ts`), Gemini builds the standard room ("The world builder was unavailable…"); if Gemini fails too, the offline preset or recorded edit loads, labeled "Offline: …". A prompt with no offline recording keeps the room unchanged. Bad requests (4xx other than 429) stay errors.
 
 The art agents receive the pinned [pxl skill and reference](https://github.com/uilianks/pxl)
 (MIT), render their code, and get errors, lint coordinates and a PNG preview for up to two further

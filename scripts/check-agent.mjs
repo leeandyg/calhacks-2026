@@ -40,11 +40,22 @@ try {
     await assert.rejects(agent.requestAgent("remember this for coding", room, context, true), /live connection/);
     await assert.rejects(agent.requestAgent("forget my coding preference", room), /Connect/);
   });
-  await check("an agent outage never replays a dummy preset or recorded edit", async () => {
-    globalThis.fetch = async () => Response.json({ error: "Service down" }, { status: 503 });
-    await assert.rejects(agent.requestAgent("make it rainier", room, context), /kept unchanged/);
-    await assert.rejects(agent.requestAgent("forest", null, context), /kept unchanged/);
+  await check("an agent outage falls back to Gemini, then to an offline room that says so", async () => {
+    const bodies = [];
+    globalThis.fetch = async (url, options) => {
+      if (url === "/api/scene") bodies.push(JSON.parse(options.body));
+      return Response.json({ error: "Service down" }, { status: 503 });
+    };
+    const rain = await agent.requestAgent("make it rainier", room, context);
+    assert.equal(rain.response.kind, "edit"); assert.match(rain.notice, /^Offline:/);
+    assert.equal(bodies.at(-1).engine, "gemini", "Gemini is asked by name before going offline");
+    const forest = await agent.requestAgent("forest", null, context);
+    assert.equal(forest.response.kind, "create"); assert.match(forest.notice, /^Offline:/);
     assert.deepEqual(room.objects[0].position, [1.4, 1.2, -1.7]);
+    globalThis.fetch = async (url) => url === "/api/agent" ? Response.json({ error: "Service down" }, { status: 503 })
+      : Response.json({ kind: "edit", ops: [{ op: "set_volume", id: room.objects[0].id, volume: 0.7 }] });
+    const gemini = await agent.requestAgent("make it rainier", room, context);
+    assert.equal(gemini.response.ops[0].volume, 0.7); assert.match(gemini.notice, /Gemini built a simpler room/);
   });
   await check("unavailable memory authentication leaves live typed commands usable", async () => {
     const paths = [];
@@ -72,11 +83,16 @@ try {
     assert.deepEqual(result.recalled, ["coding (morning)"]); assert.ok(updates.includes("Painting…"));
     assert.ok(paths.some(path => path.startsWith("/api/world?"))); assert.ok(!paths.includes("/api/scene"));
   });
-  await check("a failed started managed turn keeps the room and reports its error", async () => {
-    globalThis.fetch = async (url) => url === "/api/agent"
-      ? Response.json({ kind: "managed", token: "safe-capability" }, { status: 202 })
-      : new Response('data: {"type":"error","error":"Generated output invalid"}\n\n');
-    await assert.rejects(agent.requestAgent("make it rainier", room, context), /Generated output invalid/);
+  await check("a failed started managed turn falls back to Gemini for the same room", async () => {
+    let gemini;
+    globalThis.fetch = async (url, options) => {
+      if (url === "/api/agent") return Response.json({ kind: "managed", token: "safe-capability" }, { status: 202 });
+      if (url === "/api/scene") { gemini = JSON.parse(options.body); return Response.json({ kind: "edit", ops: [{ op: "set_volume", id: room.objects[0].id, volume: 0.6 }] }); }
+      return new Response('data: {"type":"error","error":"Generated output invalid"}\n\n');
+    };
+    const result = await agent.requestAgent("make it rainier", room, context);
+    assert.equal(gemini.engine, "gemini"); assert.deepEqual(gemini.scene, room);
+    assert.equal(result.response.ops[0].volume, 0.6); assert.match(result.notice, /Gemini built a simpler room/);
   });
 
   process.env.MOSS_PROJECT_ID = "test-project"; process.env.MOSS_PROJECT_KEY = "test-key";

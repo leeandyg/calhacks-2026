@@ -79,30 +79,72 @@ try {
     await assert.rejects(requestScene("something without a saved response", scene, true), /kept unchanged/);
     assert.deepEqual(scene, before);
   });
-  await check("a live outage never loads a dummy room or recorded edit", async () => {
+  // Live failures: the agent, then Gemini by name, then an offline room whose notice says so (#110).
+  const sceneCalls = [];
+  const failing = (fail) => async (url, options) => {
+    if (url === "/api/scene") sceneCalls.push(JSON.parse(options.body));
+    return fail();
+  };
+  await check("a network outage tries Gemini, then loads a saved room labeled Offline", async () => {
     const scene = structuredClone(presets[0].scene), before = structuredClone(scene);
-    for (const current of [null, scene]) await assert.rejects(requestScene("forest study space", current), /kept unchanged/);
+    globalThis.fetch = failing(() => { throw new Error("Network disconnected"); });
+    for (const current of [null, scene]) {
+      sceneCalls.length = 0;
+      const result = await requestScene("forest study space", current);
+      assert.equal(result.kind, "create"); playable(result.scene);
+      assert.match(result.notice, /^Offline:/);
+      assert.deepEqual(sceneCalls.map((body) => body.engine), [undefined, "gemini"]);
+    }
     assert.deepEqual(scene, before);
   });
-  for (const status of [429, 502, 503, 504]) await check(`HTTP ${status} preserves the live room`, async () => {
-    globalThis.fetch = async () => Response.json({ error: "Unavailable" }, { status });
-    const scene = structuredClone(presets[0].scene), before = structuredClone(scene);
-    await assert.rejects(requestScene("make it rainier", scene), /kept unchanged/);
-    assert.deepEqual(scene, before);
+  for (const status of [429, 502, 503, 504]) await check(`HTTP ${status} tries Gemini, then replays the recorded rain edit`, async () => {
+    globalThis.fetch = failing(() => Response.json({ error: "Unavailable" }, { status }));
+    sceneCalls.length = 0;
+    const scene = structuredClone(presets[0].scene);
+    const result = await requestScene("make it rainier", scene);
+    assert.equal(result.kind, "edit");
+    assert.deepEqual(result.ops.reduce(applyOp, scene).objects.map((object) => object.position), scene.objects.map((object) => object.position));
+    assert.match(result.notice, /^Offline:/);
+    assert.equal(sceneCalls.length, 2); assert.equal(sceneCalls[1].engine, "gemini");
   });
-  await check("timeouts and invalid live responses never load fixtures", async () => {
-    for (const fetch of [
-      async () => { throw new DOMException("Timed out", "TimeoutError"); },
-      async () => new Response("not JSON", { status: 200 }),
-      async () => Response.json({ invalid: true }),
+  await check("timeouts, malformed JSON and invalid output fall back to Gemini, then offline", async () => {
+    for (const fail of [
+      () => { throw new DOMException("Timed out", "TimeoutError"); },
+      () => new Response("not JSON", { status: 200 }),
+      () => Response.json({ invalid: true }),
     ]) {
-      globalThis.fetch = fetch;
-      await assert.rejects(requestScene("bedroom", null), /kept unchanged/);
+      globalThis.fetch = failing(fail);
+      const result = await requestScene("bedroom", null);
+      playable(result.scene); assert.match(result.notice, /^Offline:/);
     }
   });
+  await check("a Claude world that fails mid-run is rebuilt by Gemini, with a notice", async () => {
+    const live = structuredClone(presets[0].scene);
+    sceneCalls.length = 0;
+    globalThis.fetch = async (url, options) => {
+      if (url === "/api/scene") {
+        const body = JSON.parse(options.body); sceneCalls.push(body);
+        return body.engine === "gemini" ? Response.json({ kind: "create", scene: live }) : Response.json({ kind: "managed", token: "test-run" }, { status: 202 });
+      }
+      return new Response('data: {"type":"error","error":"Claude could not finish this world."}\n\n');
+    };
+    const result = await requestScene("a misty forest", null);
+    assert.equal(result.kind, "create"); assert.equal(result.managed, undefined);
+    assert.match(result.notice, /Gemini built a simpler room/);
+    assert.deepEqual(sceneCalls.map((body) => body.engine), [undefined, "gemini"]);
+  });
+  await check("a Claude start failure (502) is answered by Gemini", async () => {
+    const live = { kind: "edit", ops: [{ op: "set_volume", id: presets[0].scene.objects[0].id, volume: 0.3 }] };
+    globalThis.fetch = async (_url, options) => JSON.parse(options.body).engine === "gemini"
+      ? Response.json(live) : Response.json({ error: "Claude could not complete this request." }, { status: 502 });
+    const result = await requestScene("make the rain quieter", presets[0].scene);
+    assert.deepEqual(result.ops, live.ops); assert.match(result.notice, /Gemini/);
+  });
   await check("bad requests surface an error without a fallback", async () => {
-    globalThis.fetch = async () => Response.json({ error: "Invalid request" }, { status: 400 });
-    await assert.rejects(requestScene("cafe", presets[0].scene), /400/);
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return Response.json({ error: "Invalid request" }, { status: 400 }); };
+    await assert.rejects(requestScene("cafe", presets[0].scene), /400.*kept unchanged/);
+    assert.equal(calls, 1, "no Gemini retry or offline room for the app's own bad request");
   });
   await check("healthy API responses retain the existing scene response contract", async () => {
     const live = { kind: "edit", ops: [{ op: "set_volume", id: "rain-1", volume: 0.2 }] };

@@ -21,7 +21,9 @@ const scene={room:{preset:'forest',grid,openings:[],reverb:'outdoor',art:'agent-
 ]};
 const url=file=>`/api/world?action=asset&token=test-run-1&file=${file}`;
 const result={response:{kind:'create',scene},assets:{envId:'agent-test',environment:{concept:'A forest clearing',shell:'#324d35',colors:['#324d35','#91a56c','#72503b','#4b372d','#ff55cc'],openAir:true,terrain,textures:{floor:{url:url('floor'),w:64,h:64,frames:1,fps:10},north:{url:url('wall'),w:64,h:64,frames:1,fps:10},west:{url:url('wall'),w:64,h:64,frames:1,fps:10}}},sprites:scene.objects.map(o=>({objectId:o.id,label:o.label,query:o.sound.query,wall:o.wall,url:url('strip'),w:8,h:8,frames:4,fps:10})),sounds:scene.objects.map(o=>({objectId:o.id,query:o.sound.query,kind:o.kind,fileId:`file_${o.id}`,url:url(o.id)}))}};
-await page.route('**/api/scene',route=>{const body=route.request().postDataJSON();requests.push(body);return route.fulfill({status:202,json:{kind:'managed',token:`test-run-${requests.length}`}})});
+const geminiRequests=[];
+// Like the real server: engine 'gemini' (the browser's fallback, #110) skips Claude; here Gemini is down too.
+await page.route('**/api/scene',route=>{const body=route.request().postDataJSON();if(body.engine==='gemini'){geminiRequests.push(body);return route.fulfill({status:503,json:{error:'Gemini unavailable'}})}requests.push(body);return route.fulfill({status:202,json:{kind:'managed',token:`test-run-${requests.length}`}})});
 await page.route('**/api/environment',route=>{legacyCalls++;return route.fulfill({json:{}})});
 await page.route('**/api/sprite',route=>{legacyCalls++;return route.fulfill({json:{}})});
 await page.route('**/api/world*',async route=>{
@@ -104,7 +106,9 @@ try{
  const after=await page.evaluate(()=>window.__pixelRoom().scene.objects.find(o=>o.id==='oak'));
  assert.deepEqual(after.position,before.position);assert.equal(after.muted,true);assert.equal(requests[1].sessionToken,'test-run-1');
  await page.getByLabel('Prompt',{exact:true}).fill('A failing edit');await page.getByRole('button',{name:'Send',exact:true}).click();
- await page.getByRole('alert').filter({hasText:'could not finish'}).waitFor();
+ // Claude fails, then Gemini, then the offline demo has no recording for this edit: the room is kept.
+ await page.getByRole('alert').filter({hasText:'kept unchanged'}).waitFor();
+ assert.equal(geminiRequests.length,1,'Gemini is tried once before going offline');
  assert.equal(await page.getByLabel('Prompt',{exact:true}).inputValue(),'A failing edit');
  assert.deepEqual(await page.evaluate(()=>window.__pixelRoom().scene.objects.find(o=>o.id==='oak')),after);
  for(let i=0;i<30&&loadedAudio.length<2;i++)await page.waitForTimeout(200);

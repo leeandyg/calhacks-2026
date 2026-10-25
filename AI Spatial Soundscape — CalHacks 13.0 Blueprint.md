@@ -165,8 +165,8 @@ its model/tools. Gemini and offline/demo paths remain available. See README for 
 
 **First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
 The canonical store initially contains only the fixed structure and listener, with no fixture
-objects, artwork, terrain or session. The first request sends `scene: null`. Live failures keep
-the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden during creation or errors, then reveal
+objects, artwork, terrain or session. The first request sends `scene: null`. Live failures fall back
+in steps (#110): Claude, then Gemini (the standard room), then the offline preset or recorded edit, each labeled in the notice; `?demo` replays recorded scenes with no AI requests. Keep the room hidden during creation or errors, then reveal
 it with its rotation arrows and move the prompt below it after successful creation. Prompt
 submission supplies the audio gesture; the engine starts when the created room is revealed.
 
@@ -400,7 +400,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 | Risk | Fallback |
 | --- | --- |
 | Venue Wi-Fi dies | The pack works offline, and generated sounds fall back to the closest pack sound. Play the demo prompts once before judging so their generated sounds are cached (in Convex once the sound cache is built, which warms every machine; until then only the browser that played them); keep a "demo mode" with recorded agent responses |
-| Agent returns bad JSON or is slow | Validate with zod, retry once, fall back to 6 preset scenes; stream objects in as they arrive |
+| Agent returns bad JSON or is slow | Validate with zod; if the Claude agent errors or runs past 5 minutes, Gemini builds the standard room; if that fails, the offline preset or recorded edit loads, labeled "Offline" (#110). Pre-generate the demo worlds: live Claude worlds take minutes |
 | Moss memory or voice service is unavailable | Keep typed commands and local presets usable. Label exact task/time recall from Convex as a fallback; unknown usual setups leave the room unchanged |
 | Spatial effect feels weak to judges | Exaggerate distances, use mono sources, open with a sound moving hard left to right |
 | Head tracking jitters | Smooth with a lerp or One Euro filter; add a recenter button |

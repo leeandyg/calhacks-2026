@@ -100,17 +100,20 @@ try {
   assert.equal(soundRequests, 0, 'live generation is off by default');
   assert.equal(await page.locator('.sound-status').count(), 0);
   await page.evaluate(() => window.__pixelRoomEdit([{ op: 'remove', id: 'cat-1' }]));
-  // Live failures preserve the generated room rather than silently loading a preset.
-  const beforeFailure = await scene();
+  // A live outage tries Gemini by name, then loads the offline room with a notice that says so (#110).
   reply = Object.assign(route => route.fulfill({ status: 503, json: { error: 'Scene generation unavailable' } }), { outage: true });
+  const sentBeforeOutage = requests.length;
   await input.fill('cabin'); await send.click();
-  await page.getByRole('alert').filter({ hasText: 'kept unchanged' }).waitFor();
-  assert.deepEqual(await scene(), beforeFailure);
-  assert.equal(await input.inputValue(), 'cabin');
+  await page.getByRole('status').filter({ hasText: 'Offline:' }).waitFor();
+  assert.deepEqual(requests.slice(sentBeforeOutage).map(body => body.engine), [undefined, 'gemini']);
+  const offlineRoom = await scene();
+  assert.equal(offlineRoom.room.preset, 'cabin', 'the offline Cabin preset');
+  assert.equal(await input.inputValue(), '');
+  // A prompt the offline demo has no recording for keeps the room and stays editable.
   await input.fill('paint the walls blue'); await send.click();
   await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'false');
-  assert.match(await page.getByRole('alert').innerText(), /kept unchanged/);
-  assert.deepEqual(await scene(), beforeFailure);
+  assert.match(await page.getByRole('alert').innerText(), /^Offline:.*kept unchanged/);
+  assert.deepEqual(await scene(), offlineRoom);
   assert.equal(await input.inputValue(), 'paint the walls blue', 'a failed prompt stays editable');
   await page.waitForFunction(() => !window.__spawnBusy);
   const before = await page.evaluate(() => window.__pixelRoom().orientation);
