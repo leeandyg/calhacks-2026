@@ -38,7 +38,7 @@ try {
   }
 
   await server.listen();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}), headless: true });
   const page = await browser.newPage();
   await page.goto(`${server.resolvedUrls.local[0]}audio-check`);
   const checks = await page.evaluate(async () => {
