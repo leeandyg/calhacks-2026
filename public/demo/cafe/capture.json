@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "label": "Rainy café",
+  "prompt": "Capture a beautifully detailed cozy cafe in the rain, with warm amber lighting, dark walnut floor, brick and plaster cafe walls, large rain-streaked windows and rich coherent pixel art. EXACTLY THREE sound objects: rain pattering against a glass window (bed), a working espresso machine with steady steam hiss (bed), and a porcelain cup and saucer clinking once (event, random gaps 12-25 seconds). Give every sound its recognizable animated physical source sprite. No speech or music. Only these three objects; no decorative freestanding objects. Preserve the normal full room dimensions. Use restrained detailed material shading, readable silhouettes and a cohesive palette.",
+  "capturedAt": "2026-10-25T02:41:04.319Z",
+  "artwork": "Claude/pxl",
+  "sounds": [
+    {
+      "objectId": "demo-cafe-source-1",
+      "libraryId": "rain_window",
+      "license": "Generated (ElevenLabs)"
+    },
+    {
+      "objectId": "demo-cafe-source-2",
+      "provider": "ElevenLabs",
+      "note": "Reviewed physical-source description; natural recording."
+    },
+    {
+      "objectId": "demo-cafe-source-3",
+      "libraryId": "cup_clink",
+      "license": "Generated (ElevenLabs)"
+    }
+  ],
+  "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo."
+}

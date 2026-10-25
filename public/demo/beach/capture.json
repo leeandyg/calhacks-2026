@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "label": "Beach",
+  "prompt": "Capture a beautiful tranquil tropical beach at golden hour in rich coherent pixel art. Paint the sandy floor with a shallow turquoise water edge, and the fixed walls as a continuous ocean horizon and warm sky. EXACTLY THREE sound objects: gently breaking ocean surf (bed, a small animated waterline pool), sea breeze rustling a palm (bed, a recognizable palm tree), and a seagull calling once (event, gull perched on driftwood, random gaps 15-30 seconds). No speech or music. Only these three objects; no decorative freestanding objects. Preserve the normal full room dimensions. Use restrained detailed material shading, readable silhouettes and a cohesive palette.",
+  "capturedAt": "2026-10-25T02:40:26.811Z",
+  "artwork": "Claude/pxl",
+  "sounds": [
+    {
+      "objectId": "demo-beach-source-1",
+      "libraryId": "ocean",
+      "license": "CC0"
+    },
+    {
+      "objectId": "demo-beach-source-2",
+      "libraryId": "wind_trees",
+      "license": "CC0"
+    },
+    {
+      "objectId": "demo-beach-source-3",
+      "provider": "ElevenLabs",
+      "note": "Reviewed physical-source description; natural recording."
+    }
+  ],
+  "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo."
+}

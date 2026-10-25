@@ -128,6 +128,12 @@ Disable renderer/light/mesh shadows. The explicitly requested BorderBeam glow is
 
 ## 10. Prompt controls
 
+The three captured demo choices (Rainy café, Beach, Cyberpunk city) sit in one compact row below
+the prompt. Before the first room, position the row independently so the prompt stays centered.
+After selection, retain the row for quick switching. Load the entire local scene and its assets
+before revealing it; warming bundles must never populate the canonical scene or play audio.
+These three explicit demo choices are the exception to the no-preset-controls rule above.
+
 A fresh page shows only the prompt, centered horizontally and vertically. Keep it centered during creation and after an error; progress/error text sits above it without shifting the pill. Do not mount the room canvas, audio engine or rotation arrows until the first creation succeeds. Submit with `scene: null` for the first request and unlock audio from that user gesture. After successful environment painting and source placement, reveal the room and arrows and move the same prompt below it. Generated source portals may continue their existing reveal after the room appears. `?demo` follows the same empty start and creates its room on the first supported prompt.
 
 The app includes exactly two plain arrow icons flanking the room and exactly one `BorderBeam size="md" colorVariant="colorful" strength={0.7} theme="dark"` prompt. Use system sans-serif and light text #e8e8f0. The prompt is a 76px-high pill, width min(640px,92vw), background #15151f, radius 999px, padding 16px 6px 16px 20px, gap 8px. Its controlled `input type="text"` is single-line with aria-label Prompt, 15px font, and placeholder Generate anything... in #7a7a90. Never use a textarea. The Send button is a 44px circle with white-to-light-gray gradient and an inline 18px upward-arrow SVG, stroke width 2.5. Disable it for blank/whitespace-only input (opacity .45); enabled hover moves up 1px. Form submission by Enter or click trims the value and sends it with the current scene to `POST /api/scene` through `src/ai/client.ts`; a successful reply updates the scene store and clears the input. One small status line above the prompt reports progress, fallback notices and errors; a failed prompt stays in the input. BorderBeam is the only new dependency for this UI; do not add icon or animation packages. Keep the room above both controls at desktop/mobile/landscape sizes.

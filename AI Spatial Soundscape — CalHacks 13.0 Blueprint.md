@@ -70,6 +70,13 @@ The room is a floor plane with an isometric orthographic camera. Each sound obje
 
 ### 4. The AI that builds and edits the room
 
+**Captured demo rooms:** bundle a rainy café, beach and cyberpunk city in `public/demo/`, each
+with exactly three sounds (two continuous beds and one randomly spaced event), its validated
+scene, painted floor/four walls, source sprites and compressed audio. Three explicit choices
+load these pre-generated rooms without provider calls. Reuse the normal scene store, dragging,
+spatial playback and live voice/AI edits. Local asset preloading must not change the active room.
+Provider capabilities remain in ignored capture scratch files, never in the public bundles.
+
 - Give Gemini two tools: `create_scene(scene)` and `edit_scene(ops)`, where ops are add, remove, move, set\_volume and set\_room.
 - Always send the current scene JSON with the user's prompt. "Make the rain quieter" then becomes an edit, and the user's manual drags survive.
 - Put placement rules in the system prompt: steady broadband sounds (rain, fan, brown noise) wide and close to mask outside noise; intermittent sounds far and quiet; no intelligible speech, which distracts most.

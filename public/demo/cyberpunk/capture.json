@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "label": "Cyberpunk city",
+  "prompt": "Capture a beautiful atmospheric cyberpunk city street at night in rich coherent pixel art: violet and cyan neon, wet pavement reflections, detailed architecture painted into the fixed wall surfaces, warm windows, readable midtone slab edges. EXACTLY THREE sound objects: rain pattering on wet street pavement (bed, an animated puddle), a ventilation unit humming (bed, a recognizable industrial vent), and a futuristic electric vehicle passing once (event, a small hovering vehicle, random gaps 12-25 seconds). No speech, sirens or music. Only these three objects; no decorative freestanding objects. Preserve the normal full room dimensions. Use restrained detailed material shading, readable silhouettes and a cohesive palette.",
+  "capturedAt": "2026-10-25T02:41:08.101Z",
+  "artwork": "Claude/pxl",
+  "sounds": [
+    {
+      "objectId": "demo-cyberpunk-source-1",
+      "libraryId": "rain_roof",
+      "license": "CC0"
+    },
+    {
+      "objectId": "demo-cyberpunk-source-2",
+      "libraryId": "ac_hum",
+      "license": "CC0"
+    },
+    {
+      "objectId": "demo-cyberpunk-source-3",
+      "provider": "ElevenLabs",
+      "note": "Reviewed physical-source description; natural recording."
+    }
+  ],
+  "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo."
+}

@@ -1,0 +1,249 @@
+{
+  "envId": "demo-beach",
+  "environment": {
+    "concept": "Tranquil tropical beach at golden hour: warm lilac-to-amber sky, a continuous turquoise ocean horizon on all four walls, a sandy floor with a shallow turquoise water edge and foam line at the north side, a swaying coconut palm, and a gull perched on driftwood. Sand is granular and wind-rippled; the sea is banded for depth.",
+    "shell": "#8c7360",
+    "colors": [
+      "#7a6aa0",
+      "#b96a86",
+      "#e0786e",
+      "#f5a77a",
+      "#ffd58a",
+      "#fff1c4",
+      "#15566b",
+      "#1f7f8f",
+      "#36b1b4",
+      "#6fd6c8",
+      "#c9f2ea",
+      "#f6d9a0",
+      "#e8bf7e",
+      "#c9975c",
+      "#9c6e44",
+      "#4f8a4f",
+      "#2c5e3d",
+      "#b98a5e",
+      "#7d5638",
+      "#fbf7ef",
+      "#c9ccd8",
+      "#f2b53a"
+    ],
+    "openAir": false,
+    "terrain": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "textures": {
+      "floor": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 160,
+        "url": "/demo/beach/assets/floor.png"
+      },
+      "north": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/beach/assets/north.png"
+      },
+      "east": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/beach/assets/east.png"
+      },
+      "south": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/beach/assets/south.png"
+      },
+      "west": {
+        "frames": 1,
+        "fps": 10,
+        "w": 160,
+        "h": 112,
+        "url": "/demo/beach/assets/west.png"
+      }
+    }
+  },
+  "sprites": [
+    {
+      "frames": 6,
+      "fps": 5,
+      "w": 48,
+      "h": 16,
+      "url": "/demo/beach/assets/source-1.png",
+      "objectId": "demo-beach-source-1",
+      "label": "Gentle ocean surf",
+      "query": "ocean, waves, sea, beach, surf",
+      "wall": null
+    },
+    {
+      "frames": 4,
+      "fps": 4,
+      "w": 64,
+      "h": 96,
+      "url": "/demo/beach/assets/source-2.png",
+      "objectId": "demo-beach-source-2",
+      "label": "Sea breeze in palm",
+      "query": "wind, trees, leaves, rustling, forest, breeze, outdoor",
+      "wall": null
+    },
+    {
+      "frames": 2,
+      "fps": 2,
+      "w": 40,
+      "h": 28,
+      "url": "/demo/beach/assets/source-3.png",
+      "objectId": "demo-beach-source-3",
+      "label": "Seagull on driftwood",
+      "query": "One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording",
+      "wall": null
+    }
+  ],
+  "sounds": [
+    {
+      "objectId": "demo-beach-source-1",
+      "query": "ocean, waves, sea, beach, surf",
+      "kind": "bed",
+      "fileId": "demo-beach-1",
+      "url": "/demo/beach/assets/sound-1.mp3"
+    },
+    {
+      "objectId": "demo-beach-source-2",
+      "query": "wind, trees, leaves, rustling, forest, breeze, outdoor",
+      "kind": "bed",
+      "fileId": "demo-beach-2",
+      "url": "/demo/beach/assets/sound-2.mp3"
+    },
+    {
+      "objectId": "demo-beach-source-3",
+      "query": "One seagull calling naturally with a short gull cry and natural decay, isolated wildlife recording",
+      "kind": "event",
+      "fileId": "demo-beach-3",
+      "url": "/demo/beach/assets/sound-3.mp3"
+    }
+  ]
+}

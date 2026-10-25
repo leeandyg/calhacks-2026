@@ -44,6 +44,11 @@ canvas { display: block; touch-action: none; }
   width: 100%;
   margin: 0;
 }
+.demo-rooms { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; pointer-events: auto; }
+.demo-rooms button { border: 1px solid #343c47; border-radius: 16px; padding: 6px 12px; background: #18212b; color: #cbd3de; font: inherit; font-size: 12px; cursor: pointer; }
+.demo-rooms button:hover:not(:disabled), .demo-rooms button:focus-visible { border-color: #97b8c4; color: #fff; }
+.demo-rooms button:disabled { opacity: .5; cursor: default; }
+.room-controls-centered .demo-rooms { position: absolute; top: 100%; width: 100%; }
 .rotate-room {
   display: inline-flex;
   align-items: center;
