@@ -6,6 +6,15 @@ Reference views: [Image 1](docs/references/room-view-1.png) and [Image 2](docs/r
 
 The requested optional floating voice controller (#139) is a portal from the existing app into a small Picture-in-Picture window (or popup fallback), never a separate frontend or scene. Main voice controls may expose Float controls and an opt-in Hey agent toggle. Both windows share listening state, transcript and stop controls.
 
+The floating controller is branded **roomto.study** and opens at 300 × 240. Keep its microphone action,
+recording indicator, Hey agent switch, Stop voice and Close controls visible without scrolling. Use one
+fixed message area with a two-line visual clamp; the main controller retains the full transcript and
+errors. The popup inherits the app base URL and loads the cached bundled pixel font from font data,
+avoiding stalled font loading in a blank popup. Apply the
+active environment's validated art palette to the page, UI surfaces and an already-open floating window,
+using dark tints for legible text. New Place restores the existing grey defaults (#11171e page, #202936
+panels); this is view state and adds no fields to scene JSON.
+
 Open directly into the empty fixed room, with the prompt below it and Templates plus Saved places
 in the left sidebar. There is no welcome page or flow-state heading. Saved places has a name field,
 an explicit Save place action, named Load buttons and New Place to clear back to the empty shell.
@@ -159,7 +168,7 @@ These four explicit demo choices are the exception to the no-preset-controls rul
 
 A fresh page opens the fixed, empty shell with the bottom prompt, rotation arrows, Templates, Saved places, Assets and Settings. Do not paint art, spawn sources, show the bear or play sounds before a room is created or loaded. On the first submission, show the Libraries.dev img-fx pixels-organic mosaic on the floor and two visible walls. This effect is view-only and stops when the first validated branch and its images are ready. A first-request failure keeps the empty shell and editable bottom prompt visible. Send `scene: null` for the first creation; prompt submission, demo selection or clicking a named Load button supplies the audio gesture. Audio and the bear start with a validated room. Later failures preserve the current world. New Place clears the canonical content and returns to the same empty shell. `?demo` follows the same empty start.
 
-The app includes exactly two plain arrow icons flanking the room and exactly one `BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0}` prompt. Controls follow an 8-bit style: bundled Pixelify Sans throughout interface text, square cards and switches, two-pixel bevel borders, block SVG icons and square slider thumbs. Keep light text #e8e8f0, slate panels #202936 and lavender accents. No new animation or icon dependencies, soft shadows or page effects. Hover brightens a button; a press moves it down 2px immediately. Keep visible keyboard focus, disabled states and a red active microphone. On narrow sidebars, wrap source actions beneath their sprite/volume row so every control remains reachable.
+The app includes exactly two plain arrow icons flanking the room and exactly one `BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0}` prompt. Controls follow an 8-bit style: bundled Pixelify Sans throughout interface text, square cards and switches, two-pixel bevel borders, block SVG icons and square slider thumbs. Keep light text #e8e8f0 and slate/lavender defaults; tint the UI from the active environment as described above. No new animation or icon dependencies, soft shadows or page effects. Hover brightens a button; a press moves it down 2px immediately. Keep visible keyboard focus, disabled states and a red active microphone. On narrow sidebars, wrap source actions beneath their sprite/volume row so every control remains reachable.
 
 The prompt is 74px high, width min(640px,92vw), radius 0, padding 14px and gap 10px (12px/8px on narrow screens). Its controlled `input type="text"` is single-line with aria-label Prompt, 22px pixel font (18px narrow) and placeholder Generate anything... in #a1adc2. Never use a textarea. The Send button is a 44px square with a filled pixel upward arrow. Disable it for blank/whitespace-only input (opacity .45). Form submission by Enter or click trims the value and sends it with the current scene to `POST /api/scene` through `src/ai/client.ts`; a successful reply updates the scene store and clears the input. One small status line above the prompt reports progress, fallback notices and errors; a failed prompt stays in the input. BorderBeam and img-fx (the first-room surface loader) are the approved UI effect dependencies. Keep the room above both controls at desktop/mobile/landscape sizes.
 

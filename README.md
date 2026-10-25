@@ -236,10 +236,13 @@ within the active tab; there is no system-wide keyboard shortcut.
 Allow the site's microphone permission when you first use it. No raw recordings
 are saved. Ink-2 streaming transcription feeds the same command path as typed input.
 
-For homework, click **Float controls** to open a small voice controller. On supported
+For homework, click **Float controls** to open the compact **roomto.study** microphone controller
+(300 × 240, without scrolling). Its background follows the current environment, with the existing
+grey colors for an empty room. Long messages stay in a fixed two-line area; the main panel retains
+the full transcript and errors. On supported
 desktop browsers it stays above other windows; otherwise it opens as a normal separate
 window. Its **Talk to agent** button ends a command automatically, and its **Stop voice**
-button cancels listening or processing. Keep the original soundscape tab open.
+button cancels listening or processing. Keep the original roomto.study tab open.
 
 Enable **Hey agent** in either window to keep listening while you work elsewhere.
 Say **“Hey agent, mute rain”** in one sentence, or **“Hey agent”** followed by your command.

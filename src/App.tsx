@@ -7,8 +7,10 @@ import { RotationArrows } from './ui/RotationArrows.js';
 import { AssetsPanel } from './ui/AssetsPanel.js';
 import { SettingsPanel } from './ui/SettingsPanel.js';
 import { PlacesPanel } from './ui/PlacesPanel.js';
+import { useEnvironmentTheme } from './ui/environmentTheme.js';
 
 export default function App() {
+  useEnvironmentTheme(document.documentElement);
   const [sidebarPlacesTarget, setSidebarPlacesTarget] = useState<HTMLDivElement | null>(null);
   const [templatesTarget, setTemplatesTarget] = useState<HTMLDivElement | null>(null);
   const [voiceControlsTarget, setVoiceControlsTarget] = useState<HTMLDivElement | null>(null);

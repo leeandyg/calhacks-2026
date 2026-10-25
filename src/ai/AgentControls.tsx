@@ -260,6 +260,8 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
     : voice === 'understanding' ? 'Understanding your command…' : voice === 'updating' ? 'Updating your room…'
     : voice === 'speaking' ? 'Speaking · start a new turn to interrupt' : voice === 'done' ? 'Done · microphone off'
     : availability.configured ? '' : 'Voice needs a Cartesia API key. Typed commands still work.';
+  const micOn = voice === 'listening';
+  const floatingMessage = error || (idle ? notice || voiceStatus : voiceStatus || notice) || (heard ? `Heard: ${heard}` : 'Click the microphone to talk.');
   const wakeToggle = <label className="switch-row"><span className="switch-label">Hey agent</span><span className="switch"><input type="checkbox" role="switch" checked={wake} disabled={!wake && (locked || !token || !availability.configured)} onChange={event => toggleWake(event.target.checked)}/><span className="switch-track"><span className="switch-knob"/></span></span></label>;
   const microphone = <button type="button" className={portals ? 'prompt-mic' : undefined} aria-label={voiceLabel}
     title={voiceLabel} aria-pressed={voice === "listening"} aria-keyshortcuts="Control+Shift+Space"
@@ -274,21 +276,27 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
         spokenRef.current = event.target.checked; setSpoken(event.target.checked); if (!event.target.checked) reply.current?.abort();
       }} /><span className="switch-track"><span className="switch-knob"/></span></span></label>}
       {wakeToggle}
-      <button type="button" className="voice-float" onClick={() => { void openFloating().catch(error => setError(error instanceof Error ? error.message : 'The floating window could not open.')); }}>Float controls</button>
+      <button type="button" className="voice-float" onClick={() => { void openFloating().catch(error => setError(error instanceof Error ? error.message : 'The floating window could not open.')); }}><PixelIcon name="mic"/><span>Float controls</span></button>
       {voiceStatus && <span className="voice-status" role={idle ? undefined : "status"}>{voiceStatus}</span>}
     </div>
     {wake && <p>Microphone stays on for “Hey agent”. Audio is transcribed by Cartesia while enabled. Turn it off to stop listening.</p>}
     {floating && <FloatingVoice window={floating}>
-      <button type="button" disabled={idle && (locked || !token || !availability.configured)} onClick={() => {
-        if (idle) void begin(true); else activate();
-      }}>{voiceLabel}</button>
-      <button type="button" onClick={stopVoice}>Stop voice</button>
-      {voiceStatus && <p role="status">{voiceStatus}</p>}
-      {wakeToggle}
-      <p>{wake ? 'Mic stays on. Cartesia transcribes audio to detect the phrase.' : 'Mic is off between commands.'}</p>
-      {heard && <p className="voice-transcript">Heard: {heard}</p>}
-      {notice && <p role="status">{notice}</p>}
-      {error && <p role="alert">{error}</p>}
+      <div className="floating-microphone">
+        <button type="button" className="floating-mic" aria-label={voiceLabel} title={voiceLabel} aria-pressed={micOn}
+          disabled={idle && (locked || !token || !availability.configured)} onPointerEnter={warm} onFocus={warm} onClick={() => {
+            if (idle) void begin(true); else activate();
+          }}><PixelIcon name="mic" size={40}/></button>
+        <div className="floating-mic-copy">
+          <span className="floating-mic-label">{voiceLabel}</span>
+          <span className="floating-mic-state" data-recording={micOn}><span aria-hidden="true"/>{micOn ? 'Microphone on' : 'Microphone off'}</span>
+        </div>
+      </div>
+      <div className="floating-message"><p className="floating-status" role={error ? 'alert' : 'status'} title={floatingMessage}>{floatingMessage}</p></div>
+      <div className="floating-voice-footer">
+        <div className="floating-wake">{wakeToggle}</div>
+        <button type="button" className="floating-stop" disabled={idle && !wake} onClick={stopVoice}><PixelIcon name="stop" size={12}/><span>Stop voice</span></button>
+      </div>
+      <p className="floating-privacy">{wake ? 'Cartesia transcription is on.' : 'Microphone is off between commands.'}</p>
     </FloatingVoice>}
     {heard && <div className="voice-transcript">
       {editing ? <form onSubmit={(event) => {

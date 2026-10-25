@@ -136,7 +136,10 @@ try {
   await page.waitForFunction(() => window.voiceWindow?.document.querySelector('[aria-label="Floating voice controls"]'));
   const floating = context.pages().find(candidate => candidate !== page && candidate !== homework);
   assert.ok(floating, 'a real floating browser window opens');
-  await floating.setViewportSize({ width: 360, height: 300 });
+  await floating.setViewportSize({ width: 300, height: 240 });
+  await expect(floating.getByRole('heading', { name: 'roomto.study', exact: true })).toBeVisible();
+  assert.equal(await floating.locator('.floating-mic svg').count(), 1);
+  assert.ok(await floating.evaluate(() => document.body.scrollHeight <= innerHeight && document.documentElement.scrollHeight <= innerHeight), 'floating controls fit without scrolling');
   await expect(floating.getByLabel('Hey agent', { exact: true })).toBeChecked();
   await floating.screenshot({ path: 'test-results/floating-voice.png' });
   await floating.getByRole('button', { name: 'Stop voice', exact: true }).click();
@@ -180,8 +183,9 @@ try {
   await page.waitForFunction(() => window.voiceWindow?.document.querySelector('[aria-label="Floating voice controls"]'));
   const popup = context.pages().find(candidate => candidate !== page && candidate !== homework);
   assert.ok(popup);
-  await popup.setViewportSize({ width: 360, height: 300 });
-  await expect(popup.getByText('This window stays separate. Keep it beside your homework.', { exact: true })).toBeVisible();
+  await popup.setViewportSize({ width: 300, height: 240 });
+  await expect(popup.getByRole('heading', { name: 'roomto.study', exact: true })).toBeVisible();
+  assert.equal(await popup.locator('.floating-mic svg').count(), 1);
   await popup.getByRole('button', { name: 'Close controls', exact: true }).click();
   await page.bringToFront();
   await page.evaluate(() => { window.open = () => null; });

@@ -74,6 +74,12 @@ A persistent pixel-art Berkeley golden bear wearing the supplied silver/black he
 
 **Frontend (#176):** the prompt, sidebars and floating voice window use square 8-bit controls, block icons, bevel borders, square switches/slider thumbs and locally bundled Pixelify Sans throughout. Open directly into the empty fixed shell with the prompt below it, without a welcome page, artwork, sources, sounds or bear. Templates and a named Saved places panel are available immediately. Save explicitly under a name, load an existing save, or use New Place to clear the room. Hide the idle voice-shortcut hint while retaining active voice status; see LAYOUT for responsive and keyboard states.
 
+The product is branded **roomto.study**. Its shared floating microphone controller opens at 300 × 240
+with no page scrolling: microphone/recording state, Hey agent, Stop and Close remain visible while long
+messages use a fixed area. Main and floating UI backgrounds follow the current environment's art palette,
+with the existing grey defaults for an empty room. This uses browser art metadata and does not change
+the scene contract or restart the voice session when colors change.
+
 ### 4. The AI that builds and edits the room
 
 **Captured demo rooms:** bundle a rainy café, beach, cyberpunk city and Zen garden in `public/demo/`, each
