@@ -1,23 +1,33 @@
 # AI Spatial Soundscape
 
-CalHacks 13.0 project. Describe a place, and an agent builds a 3D room of spatial sound sources you can hear (binaural, over headphones) and drag around. The agent keeps the room tuned while you work.
+CalHacks 13.0 project. Describe a place, and Claude builds it as a pixel-art room whose props are spatial sound sources. You hear each one from where it sits (binaural, over headphones), drag it to move its sound, and change the room by typing or talking. Wear headphones.
 
 Live: https://calhacks-2026.vercel.app
 
 See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Blueprint.md) for the plan, scene contract, and team split.
 
+## What it does
+
+- **Prompt to world.** A Claude managed agent paints the room (floor, four walls and a sprite for each sound source) with pxl, and composes chirp sounds only where the 38-sound library has no match. If Claude is unavailable, Gemini builds a simpler room; if Gemini is too, an offline room loads. Each fallback is labeled.
+- **Spatial audio.** Web Audio with one HRTF panner per source, room reverb, continuous beds and randomly spaced events. Drag a prop and its sound moves; click it to mute; the Assets panel sets volume, hides or deletes a source.
+- **Head tracking.** The webcam (MediaPipe, in the browser) turns your ears, so sounds stay where they are when you turn your head. The rotation arrows turn only the view.
+- **Edits keep your changes.** "Make it rainier" changes the rain; your drags and mutes survive.
+- **Voice and memory.** Cartesia push-to-talk and an opt-in "Hey agent"; Moss recalls "my usual coding setup".
+- **Saved rooms.** Convex keeps named rooms, and every Claude world's art and sounds, across reloads.
+- **Your music in the room.** The macOS Room Helper brings Spotify (or any app) in as a live source you can drag.
+- **Four captured demo rooms** (Rainy café, Beach, Cyberpunk city, Zen garden) load instantly with no provider calls.
+
 ## Stack
 
-- Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room visually with the arrows (audio stays fixed), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
-- Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
-- AI: self-hosted Node.js Claude Agent SDK worker for pxl/chirp worlds; Claude Managed Agents remains a rollback option; the existing Gemini fallback is preserved
+- Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room visually with the arrows (audio stays fixed), and type into the prompt bar. The Berkeley bear in the middle is you.
+- Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store), webcam head tracking (MediaPipe), and an optional Swift Room Helper for other apps' audio
+- AI: Claude Managed Agents build pxl/chirp worlds in Anthropic's sandbox (`?mode=cloud`, the default and the live site); an optional self-hosted Claude Agent SDK worker runs the same protocol (`?mode=local`); Gemini is the fallback. Cartesia for voice, Moss for preference memory, Convex for storage
 
 ## Setup
 
 ```sh
 npm install
 cp .env.example .env   # PowerShell: Copy-Item .env.example .env
-docker compose -f compose.agent.yaml up -d --build  # after setting keys below
 npm run dev            # http://localhost:5173, serves api/ too
 npm run build          # typecheck + production build
 npm test               # scene store, layout and room unit tests (vitest)
@@ -26,11 +36,13 @@ npm test               # scene store, layout and room unit tests (vitest)
 Browser tests need the dev server running (set `TEST_URL` if it isn't on :5173; `PLAYWRIGHT_CHANNEL=chrome`
 uses installed Chrome): `npm run test:browser`, `test:frontend`, `test:window` and `test:prompt`.
 
-For the self-hosted world director, follow the setup below. For the Gemini-only path, clear
-`WORLD_AGENT_URL`, leave `ANTHROPIC_API_KEY` empty, then create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
-`GEMINI_API_KEY` in `.env`. For sounds the pack doesn't have, also set `ELEVENLABS_API_KEY`
-(a key restricted to Sound Effects is enough); without it those sounds fall back to the closest
-pack sound. Restart the dev server after changing `.env`. On Vercel, add the same environment
+The default `?mode=cloud` needs only `ANTHROPIC_API_KEY` in `.env` (the managed agent and its
+environment default to the team's; `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` override them).
+Create a key in [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` for
+the Gemini fallback. Without an Anthropic key, prompts fall back to Gemini's simpler room (no paintings); without either
+key, to the offline rooms. Sounds the library lacks play the closest library sound; live ElevenLabs generation
+stays off unless `VITE_ELEVENLABS_SOUNDS=on` and `ELEVENLABS_API_KEY` are set (a key restricted to
+Sound Effects is enough). Restart the dev server after changing `.env`. On Vercel, add the same environment
 variables to the deployment's environment and redeploy.
 Node.js 24 is recommended; on Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
@@ -40,7 +52,7 @@ self-hosted worker (`WORLD_AGENT_URL`/`WORLD_AGENT_API_KEY`). The chosen backend
 configured or the request returns a clear 503; neither mode silently falls back to the other.
 Most contributors stay on `?mode=cloud` and need no Docker or local worker.
 
-`POST /api/scene` sends the prompt and current scene to `gemini-3.8-flash`, which calls
+On the Gemini path (the fallback, or no Anthropic key), `POST /api/scene` sends the prompt and current scene to `gemini-3.8-flash`, which calls
 `create_scene` or `edit_scene`. The endpoint validates tool arguments with Zod,
 clamps positions to room bounds, and retries invalid output once. Transient provider
 and connection errors get up to two retries with increasing delays (about 1s, then
@@ -57,8 +69,8 @@ each followed by "make it rainier" after a manual move. It checks placement defa
 speech restrictions, and preservation of existing positions and unrelated objects.
 
 The agent only supplies `sound.query`. Valid live scenes and additions go into the
-scene store without an `assetId`; the active resolver fills it with a pack sound or
-a `gen:` ID for ElevenLabs. Existing resolved objects keep their assets during edits.
+scene store without an `assetId`; the active resolver fills it with a library sound, the
+Claude agent's chirp file (`managed:`) or a `gen:` ID (see **Sounds on command**). Existing resolved objects keep their assets during edits.
 Six local presets (Rainy café, Bedroom, Forest, Library, Cabin, Coast) are available only in
 explicit `?demo` mode. Live requests never load a preset or recorded edit on failure. The app
 starts with an empty canonical scene and a centered prompt; errors keep it empty, or preserve
@@ -132,7 +144,7 @@ Wear headphones. The spatial effect depends on them.
 
 ## Head tracking (webcam)
 
-Tick **Head tracking** in the demo controls and allow the camera. MediaPipe Face Landmarker runs in the
+Tick **Head tracking** below the prompt (it appears once a room is open) and allow the camera. MediaPipe Face Landmarker runs in the
 browser (frames never leave it; the model and wasm load from a CDN the first time), and turning your
 head turns your ears: the sounds stay where they are in the room. The direction you face when it
 starts is straight ahead; **Recenter** resets that. If your face is lost (turned away, out of frame),
@@ -295,13 +307,15 @@ persistence and filtered reload, then deletes its isolated test index.
 
 ## Sound pack
 
-`public/sounds/` holds the sound pack: 30 s seamless mono loops (beds), short one-shots (events), `manifest.json` and `CREDITS.md`. To rebuild it (needs ffmpeg and `FREESOUND_API_KEY` in `.env`):
+`public/sounds/` holds the sound pack: 38 sounds, 24 of them 30 s seamless mono loops (beds) and 14 short one-shots (events), plus `manifest.json` and `CREDITS.md`. Most are hand-picked Freesound recordings; `CREDITS.md` lists each source and license (`thunder_distant` is CC BY-NC). To rebuild it (needs ffmpeg and `FREESOUND_API_KEY` in `.env`):
 
 ```sh
 npm run sounds:fetch   # downloads 3 candidates per sound into assets/raw/<sound>/ (gitignored)
 # listen and delete the candidates you don't want; keep one per folder
 npm run sounds:pack    # builds public/sounds/ + manifest.json + CREDITS.md
 ```
+
+A full `sounds:pack` needs every sound's raw file in `assets/raw/`, and nobody has all of them (`wind` and `wind_trees` came from another machine). Rebuild one sound at a time by slug instead: `npm run sounds:pack -- <sound>`.
 
 Add a sound by adding it to `SOUNDS` in `scripts/fetch-freesound.mjs` and `TAGS` in `scripts/pack.mjs`. Tags are what the resolver matches the agent's descriptions against.
 
@@ -346,22 +360,37 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 | Path | What | Owner |
 | --- | --- | --- |
 | `src/scene/` | Scene schema (`scene.ts`), store with `setScene` / `applyOps` (`store.ts`), grid placement rules (`layout.ts`), presets and fixtures | @OakleySun |
-| `src/scene/SavedRooms.tsx`, `convex/` | Named scene save/load and anonymous session ownership | @OakleySun |
+| `src/scene/SavedRooms.tsx`, `convex/savedScenes.ts`, `convex/auth.ts` | Named scene save/load and anonymous session ownership | @OakleySun |
+| `convex/agentWorlds.ts` | Kept Claude worlds: art and chirp sounds copied into Convex storage | @leeandyg |
 | `src/audio/` | Store-driven audio engine, AudioContext, sound manifest, resolver (`resolve.ts`), generated sounds (`generated.ts`) | @leeandyg |
 | `src/sensors/` | Head pose store (`headPose.ts`); webcam head tracking with MediaPipe (`webcamHeadTracking.ts`, `headYaw.ts`) | @leeandyg |
-| `src/room/` | Pixel room view, view-only camera/rotation store (`useRoomStore.ts`), "generating…" labels (see [LAYOUT.md](LAYOUT.md)) | @coinleftt |
-| `src/ui/` | Prompt-first creation flow, prompt bar and rotation arrows | @coinleftt |
-| `src/ai/`, `api/scene.ts` | Browser client and server endpoint for `POST /api/scene` | @OakleySun |
-| `api/sound.ts` | `GET /api/sound`: ElevenLabs generation for sounds the pack lacks | @leeandyg |
+| `src/room/` | Pixel room view, Berkeley bear avatar, view-only camera/rotation/hidden-source store (`useRoomStore.ts`) (see [LAYOUT.md](LAYOUT.md)) | @coinleftt |
+| `src/ui/` | Prompt-first creation flow, prompt bar, captured demo choices, rotation arrows, Assets panel | @coinleftt |
+| `src/ai/`, `api/scene.ts` | Browser client (`?mode`, Claude → Gemini → offline fallback) and the Gemini scene endpoint | @OakleySun |
+| `src/ai/managedClient.ts`, `api/world.ts`, `server/managedAgent.ts`, `AGENT_CONFIG.yaml` | Claude world director: sessions, progress stream, results, signed asset proxy, the agent's system prompt | @coinleftt |
+| `worker/`, `compose.agent.yaml` | Self-hosted Agent SDK worker for `?mode=local` | @coinleftt |
+| `src/art/`, `api/environment.ts`, `api/sprite.ts`, `server/artAgent.ts`, `server/pxl*` | Browser art store; Gemini pxl paintings rendered in QuickJS/WASM | @coinleftt |
+| `api/agent.ts`, `api/voice.ts`, `convex/preferences.ts`, `src/ai/voice.ts`, `src/ai/AgentControls.tsx` | Voice (Cartesia) and Moss preference memory | @OakleySun |
+| `public/demo/`, `src/scene/capturedDemos.ts` | The four captured demo rooms | @OakleySun |
+| `api/sound.ts`, `convex/sounds.ts` | ElevenLabs generation for sounds the library lacks (off unless `VITE_ELEVENLABS_SOUNDS=on`) | @leeandyg |
 | `public/sounds/` | Sound pack + `manifest.json` | @leeandyg |
 | `helper/` | Optional macOS helper that brings other apps' audio (Spotify) into the room; see [helper/README.md](helper/README.md) | @leeandyg |
 
 `api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
 
-## Self-hosted world director (#114)
+## Claude world director (#86, #114)
 
-The agent loop and all pxl/chirp builds run in a persistent **Node.js 24 + Claude Agent SDK**
-Docker worker on your machine/server. Claude model inference still uses Anthropic's API;
+The live site and `?mode=cloud` (the default) use **Claude Managed Agents**: `api/world.ts` and
+`server/managedAgent.ts` start a session on the configured agent (`AGENT_CONFIG.yaml` holds its system
+prompt), and the agent paints pxl art and composes chirp audio in Anthropic's sandbox. The app only
+needs `ANTHROPIC_API_KEY`; nothing runs on your machine. A new world takes a few minutes, so
+pre-generate demo worlds and **Save room** each one.
+
+### Optional: self-hosted worker (`?mode=local`)
+
+Only the local-agent owner (@coinleftt) runs this; everyone else stays on `?mode=cloud` and needs
+no Docker. With `?mode=local`, the agent loop and all pxl/chirp builds run in a persistent
+**Node.js 24 + Claude Agent SDK** Docker worker on your machine/server. Claude model inference still uses Anthropic's API;
 self-hosting here moves execution and generated files off Managed Agents, not model inference.
 The same model and low effort setting are retained. Toolkit installs are baked into the image,
 so each turn can read their references and build immediately.
@@ -407,11 +436,14 @@ browser consume compiled PNG strips/audio through the existing validated, signed
 The renderer, terrain, fixed slabs/corners, animation timing, manual edits, HRTF audio and
 resolver ownership of sound IDs are unchanged.
 
-To roll back to Managed Agents (#86), clear `WORLD_AGENT_URL` and configure
-`ANTHROPIC_API_KEY`, `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` on the app server.
-Clear both the worker URL and Anthropic key to use Gemini. Restart/redeploy after changing
+To use Managed Agents again, drop `?mode=local` (or pass `?mode=cloud`). Each mode returns a 503
+when its backend isn't configured and never falls back to the other. Requests with no mode (tests,
+direct API callers) prefer the worker when `WORLD_AGENT_URL` is set, then the managed agent; clear
+both the worker URL and the Anthropic key to use Gemini. Restart/redeploy after changing
 configuration. The worker never switches providers; the app retains its existing fallback behavior and notices.
 Tokens created by a different runtime/key cannot be reused; create a new world after switching.
+
+### Session protocol (both modes)
 
 `POST /api/scene` starts a session or sends a follow-up event and returns a signed session token.
 Authenticated voice/memory turns through `POST /api/agent` use the same flow, passing recalled
@@ -434,14 +466,18 @@ delete the ignored run file to request a fresh end-to-end generation. This check
 both artwork and audio; progress remains visible. The runtime asset bindings live in the current
 page, matching the app's existing painted-art lifecycle.
 
-## Live environment art (#76)
+## Gemini environment art (#76)
 
 The page starts with only a centered prompt, including in `?demo`. The first request sends no
 current scene. While creation runs, progress stays above that prompt. Successful creation reveals
 the room and rotation arrows and moves the prompt below the room; errors leave the centered
 prompt editable. Submitting the prompt unlocks audio, so no Enter-room overlay is needed.
 
-Live creation first drafts the soundscape through `/api/scene`, then calls `POST /api/environment`.
+Since `?mode` (#144) the browser names a backend on every request, so in the app Gemini only stands
+in for Claude, with a notice, and builds the standard room without paintings. `/api/sprite` still
+paints sources that a Gemini or offline edit adds to a painted room (#137). The full environment
+pipeline below runs only when `/api/scene` answers with Gemini and no notice (a request with no mode
+and no world agent configured): live creation first drafts the soundscape through `/api/scene`, then calls `POST /api/environment`.
 Gemini reasons about the place, its materials, light and ground height, then five painters generate
 distinct pxl paintings for the floor and each wall. An NDJSON stream delivers the plan and each PNG
 as it finishes. The interactive room displays the terrain and paintings before a second scene pass
