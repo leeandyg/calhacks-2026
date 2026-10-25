@@ -1,8 +1,13 @@
 import type { Scene, SoundObject } from '../scene/scene.js';
 import { ManagedResult, type ManagedAssets } from './world.js';
-import { addEnvironment, setSprite, spriteKey } from '../art/store.js';
+import { addEnvironment, setSprite, spriteKey, useArtStore } from '../art/store.js';
 import { registerManagedSound } from '../audio/managed.js';
 import { loadPaintImage } from '../art/images.js';
+import { api } from '../../convex/_generated/api.js';
+import { convex } from '../scene/convex.js';
+import { useSceneStore } from '../scene/store.js';
+
+const RESTORE_TIMEOUT_MS = 10_000;
 
 let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
@@ -47,11 +52,39 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
       ...result.assets.sprites.map(image => loadPaintImage(image.url)),
     ]);
     sessionToken = token;
+    keepWorld(result.assets);
     return result;
   }
   throw new Error('Claude finished, but its generated files are not available yet. Please try again.');
 }
 class AgentRunError extends Error {}
+
+/** Copies a fresh world into Convex (convex/agentWorlds.ts), so a reload or a saved room can reopen it (#112). */
+function keepWorld(assets: ManagedAssets) {
+  if (!convex) return;
+  convex.action(api.agentWorlds.save, { envId: assets.envId, assets })
+    .catch(error => console.warn('world: could not keep this world in Convex', error));
+}
+
+/**
+ * Reinstalls a kept world's art and sounds when the scene names an agent world this page doesn't have:
+ * after a reload, a saved room or a remembered "usual setup" (#112). Returns a function that stops it.
+ */
+export function startWorldRestore(): () => void {
+  const asked = new Set<string>();
+  const check = () => {
+    const envId = useSceneStore.getState().scene.room.art;
+    if (!convex || !envId?.startsWith('agent-') || asked.has(envId) || useArtStore.getState().envs[envId]) return;
+    asked.add(envId);
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timed out')), RESTORE_TIMEOUT_MS));
+    Promise.race([convex.query(api.agentWorlds.world, { envId }), timeout]).then(assets => {
+      const scene = useSceneStore.getState().scene;
+      if (assets && scene.room.art === envId && !useArtStore.getState().envs[envId]) installManagedAssets(assets, scene);
+    }).catch(error => console.warn('world: could not restore this world from Convex', error));
+  };
+  check();
+  return useSceneStore.subscribe(check);
+}
 export function installManagedAssets(assets: ManagedAssets, scene: Scene) {
   const { environment, envId } = assets;
   if (environment) {

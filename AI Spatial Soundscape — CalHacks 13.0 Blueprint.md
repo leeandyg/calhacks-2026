@@ -300,7 +300,15 @@ For the Convex track. Convex sits **next to** the current app, not under it: the
 - `src/audio/generated.ts` loads the returned URL; decoding, loudness and the pack fallback don't change. `ELEVENLABS_API_KEY` is set in the Convex deployment.
 - Result: each sound is generated once for every user, device and deployment, and a saved room's `gen:` sounds reopen instantly with no credits. Later, the resolver could match descriptions against stored sounds as well as the pack, so the library grows with use.
 
-**Still needed for both:** a cloud Convex project and production deployment (#54). #52 runs on a local deployment.
+**Kept Claude worlds (A, @leeandyg, #112)**
+
+- **Why:** a Claude world's art and chirp sounds sit in Anthropic's session storage for 24 hours, and only the page that made them knows them, so a reload, a saved room or a Moss "usual setup" lost them. Demo worlds can now be generated in advance and reopened.
+- Two tables: `agentFiles` (each generated file stored once, by its Anthropic file id) and `agentWorlds` (one manifest per world, `room.art`, with kept URLs, merged across edits).
+- The browser calls the `save` action right after a world arrives. Convex fetches each file from the production site's `/api/world` proxy with the world's signed token, so no secret is needed, and it accepts a world id only for that token's session.
+- Reopening: a scene naming an `agent-…` world the page lacks reinstalls it from `world`; a `managed:` sound the page lacks plays from `file`, or the closest library sound.
+- With ElevenLabs off by default (#103), the `sounds` table above is used only when `VITE_ELEVENLABS_SOUNDS=on`.
+
+**Deployment:** the cloud project `calhacks-2026` and its production deployment are live (#54, #82); production builds deploy `convex/` automatically.
 
 **Conventions that change** (in #53, the first PR that puts a key in `convex/`)
 

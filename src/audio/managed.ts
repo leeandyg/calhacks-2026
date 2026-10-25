@@ -1,5 +1,9 @@
+import { api } from '../../convex/_generated/api.js';
+import { convex } from '../scene/convex.js';
 import type { Scene, SoundObject } from '../scene/scene.js';
 import { normalize } from './generated.js';
+
+const KEPT_TIMEOUT_MS = 10_000;
 
 type GeneratedSound = { objectId: string; query: string; kind: Exclude<SoundObject['kind'], 'live'>; fileId: string; url: string };
 const bindings = new Map<string, string>();
@@ -25,9 +29,17 @@ export function parseManagedAssetId(id: string): { kind: Exclude<SoundObject['ki
   return { kind: kind === 'event' ? 'event' : 'bed', query: query.join(':') };
 }
 export async function loadManagedSound(ctx: AudioContext, id: string): Promise<AudioBuffer> {
-  const sound = sounds.get(id);
-  if (!sound) throw new Error('This generated sound is no longer available in this page.');
-  const response = await fetch(sound.url, { signal: AbortSignal.timeout(25_000) });
+  const url = sounds.get(id)?.url ?? await keptSoundUrl(id);
+  if (!url) throw new Error('This generated sound is no longer available.');
+  const response = await fetch(url, { signal: AbortSignal.timeout(25_000) });
   if (!response.ok) throw new Error('The generated sound could not be downloaded.');
-  return normalize(await ctx.decodeAudioData(await response.arrayBuffer()), sound.kind);
+  return normalize(await ctx.decodeAudioData(await response.arrayBuffer()), parseManagedAssetId(id).kind);
+}
+
+/** A sound this page doesn't have (a reload, a saved room): its copy kept in Convex, if any (#112). */
+async function keptSoundUrl(id: string): Promise<string | null> {
+  if (!convex) return null;
+  const fileId = id.slice(PREFIX.length).split(':')[0];
+  const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), KEPT_TIMEOUT_MS));
+  return Promise.race([convex.query(api.agentWorlds.file, { fileId }), timeout]);
 }

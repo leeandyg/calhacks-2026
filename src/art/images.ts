@@ -10,6 +10,7 @@ export function loadPaintImage(url: string): Promise<HTMLImageElement> {
   if (existing) return existing;
   const loading = new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
+    image.crossOrigin = 'anonymous'; // kept worlds load from Convex storage (#112); WebGL needs CORS images
     const fail = () => { loads.delete(url); reject(new Error('A generated image could not be loaded.')); };
     image.onerror = fail;
     image.onload = async () => {

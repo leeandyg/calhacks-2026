@@ -124,6 +124,15 @@ persist across refreshes in browser storage; clearing that storage or using anot
 browser starts a new library. Save/load stores scene data, while sound files keep
 using the existing pack, generation and cache paths.
 
+**Claude worlds are kept too** (`convex/agentWorlds.ts`, #112). A Claude world's paintings, sprites and chirp
+sounds live in Anthropic's session storage for 24 hours, and only the page that created them knows them. So
+right after a world arrives, the browser asks Convex to copy every file into Convex file storage (once per
+file) and keep one manifest per world (`room.art`), merging later edits. Reopening a scene that names an
+`agent-…` world the page doesn't have (after a reload, **Load room**, or Moss's "usual setup") reinstalls it
+from Convex, and a `managed:` sound the page doesn't know plays from its kept copy; without Convex it plays the
+closest library sound. No key is involved: Convex fetches the files from the production site's own
+`/api/world` proxy with the world's signed token, and accepts a world id only for that token's session.
+
 Listing and saving never change the playing scene. A delayed load is discarded if
 the room changes while it is in flight. Missing configuration or a disconnected
 Convex deployment leaves local presets, AI prompts and playback available.
