@@ -1,40 +1,40 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { createInstance, destroyInstance, PRESETS } from 'img-fx';
 import { CanvasTexture, NearestFilter, SRGBColorSpace } from 'three';
 import type { RoomConfig } from './types.js';
 
-/** The ImageGeneration shader, mapped onto real room surfaces instead of DOM cards. */
+const SHADES = ['#777b83', '#868b94', '#969aa3', '#a3a7af'];
+
+/** A small CPU-painted mosaic; the room remains the only WebGL renderer. */
 export function GenerationSurfaces({ config }: { config: RoomConfig }) {
   const [texture, setTexture] = useState<CanvasTexture>();
-  const source = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const canvas = document.createElement('canvas');
-    const instance = createInstance({ canvas, cssWidth: 320, cssHeight: 320,
-      preset: PRESETS['pixels-organic'].modes.dark });
-    source.current = canvas;
-    // img-fx sizes its output on the first frame (and for display DPR). Keep the
-    // GPU texture dimensions fixed, and composite its translucent mosaic over gray.
-    const buffer = document.createElement('canvas');
-    buffer.width = buffer.height = 320;
-    const map = new CanvasTexture(buffer);
+    canvas.width = canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (!context) return; // The plain shell is still usable without the decoration.
+    context.fillStyle = '#969aa3';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const map = new CanvasTexture(canvas);
     map.minFilter = map.magFilter = NearestFilter;
     map.generateMipmaps = false;
     map.colorSpace = SRGBColorSpace;
     setTexture(map);
-    return () => { source.current = null; destroyInstance(instance); map.dispose(); };
+    return () => map.dispose();
   }, []);
-  // img-fx paints at 10 fps; upload on that same cadence to the shared pixel renderer.
+  // No second GPU canvas or GPU-to-CPU readback while an AI request is pending.
   useFrame(({ clock }) => {
-    if (!texture || !source.current) return;
-    const tick = Math.floor(clock.elapsedTime * 10);
+    if (!texture) return;
+    const tick = Math.floor(clock.elapsedTime * 4);
     if (texture.userData.tick !== tick) {
-      const buffer = texture.image as HTMLCanvasElement;
-      const context = buffer.getContext('2d')!;
-      context.fillStyle = PRESETS['pixels-organic'].modes.dark.cardBg;
-      context.fillRect(0, 0, buffer.width, buffer.height);
-      context.imageSmoothingEnabled = false;
-      context.drawImage(source.current, 0, 0, buffer.width, buffer.height);
+      const canvas = texture.image as HTMLCanvasElement;
+      const context = canvas.getContext('2d')!;
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const seed = Math.imul(x + 1, 73856093) ^ Math.imul(y + 1, 19349663);
+        const phase = (seed >>> 0) % 12;
+        context.fillStyle = SHADES[Math.floor((tick + phase) / 3) % SHADES.length];
+        context.fillRect(x * 4, y * 4, 4, 4);
+      }
       texture.needsUpdate = true;
       texture.userData.tick = tick;
     }

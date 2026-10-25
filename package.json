@@ -45,7 +45,8 @@
     "test:managed": "node scripts/managed-browser-test.mjs",
     "check:managed": "node scripts/check-managed-live.mjs",
     "test:props": "node scripts/prop-placement-test.mjs",
-    "test:parallel": "node scripts/parallel-world-test.mjs"
+    "test:parallel": "node scripts/parallel-world-test.mjs",
+    "test:loading": "node scripts/generation-loading-test.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
@@ -58,7 +59,6 @@
     "convex": "^1.48.0",
     "@tailwindcss/vite": "^4.1.14",
     "border-beam": "^1.4.1",
-    "img-fx": "^0.5.1",
     "pxl-pixelart": "github:uilianks/pxl#a012fc78b92e5deff27e56bba563f22895c3916c",
     "quickjs-emscripten": "^0.32.0",
     "react": "^19.3.1",
