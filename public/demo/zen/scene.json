@@ -1,0 +1,207 @@
+{
+  "room": {
+    "preset": "forest",
+    "grid": {
+      "mode": "Square",
+      "columns": 10,
+      "rows": 10,
+      "wallHeight": 7
+    },
+    "openings": [],
+    "reverb": "outdoor",
+    "art": "demo-zen",
+    "terrain": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "listener": {
+    "position": [
+      0,
+      1.6,
+      0
+    ],
+    "yaw": 0
+  },
+  "objects": [
+    {
+      "id": "demo-zen-source-1",
+      "label": "Stone water basin",
+      "sound": {
+        "query": "Small Japanese bamboo spout continuously trickling water into a stone tsukubai basin, delicate clear droplets and gentle water flow, authentic garden water recording",
+        "assetId": "managed:demo-zen-1:bed:Small Japanese bamboo spout continuously trickling water into a stone tsukubai basin, delicate clear droplets and gentle water flow, authentic garden water recording"
+      },
+      "position": [
+        -2,
+        1,
+        1
+      ],
+      "volume": 0.45,
+      "model": "speaker",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "bed"
+    },
+    {
+      "id": "demo-zen-source-2",
+      "label": "Bamboo grove",
+      "sound": {
+        "query": "wind, trees, leaves, rustling, forest, breeze, bamboo",
+        "assetId": "managed:demo-zen-2:bed:wind, trees, leaves, rustling, forest, breeze, bamboo"
+      },
+      "position": [
+        2,
+        1,
+        -1
+      ],
+      "volume": 0.5,
+      "model": "speaker",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "bed"
+    },
+    {
+      "id": "demo-zen-source-3",
+      "label": "Bamboo shishi-odoshi",
+      "sound": {
+        "query": "One hollow bamboo shishi odoshi deer scarer gently striking its stone stop, a natural woody bamboo clack with a short decay, isolated single occurrence",
+        "assetId": "managed:demo-zen-3:event:One hollow bamboo shishi odoshi deer scarer gently striking its stone stop, a natural woody bamboo clack with a short decay, isolated single occurrence"
+      },
+      "position": [
+        -4,
+        1,
+        -4
+      ],
+      "volume": 0.22,
+      "model": "speaker",
+      "muted": false,
+      "wall": null,
+      "scale": 1,
+      "kind": "event",
+      "intervalSec": [
+        15,
+        30
+      ]
+    }
+  ]
+}

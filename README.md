@@ -60,8 +60,8 @@ resolved normally and do not trigger offline replay.
 
 ## Offline demo
 
-Three fully captured rooms are available from the buttons below the prompt: **Rainy café**,
-**Beach**, and **Cyberpunk city**. Each has exactly three sounds (two beds and one random event),
+Four fully captured rooms are available from the buttons below the prompt: **Rainy café**,
+**Beach**, **Cyberpunk city**, and **Zen garden**. Each has exactly three sounds (two beds and one random event),
 pixel artwork, and fixed starting placements. Complete bundles live in `public/demo/<id>/`:
 `scene.json`, `assets.json`, capture/provenance notes, PNGs and compressed MP3s. Assets warm on page
 load; selecting a room loads local files without generation calls or a Convex dependency.
@@ -70,11 +70,16 @@ The room remains interactive. Normal typed/voice AI follow-ups use the configure
 that does not depend on hosting connectivity.
 
 To capture a missing bundle, configure the existing managed-generation credentials, install ffmpeg (or set
-`FFMPEG_PATH`), and run `node scripts/capture-demo.mjs cafe beach cyberpunk`. The script resumes
+`FFMPEG_PATH`), and run `node scripts/capture-demo.mjs cafe beach cyberpunk zen`. The script resumes
 completed sessions from ignored `.convex/demo-capture/`, preserves existing reviewed bundles, and writes portable assets to
 `public/demo/`; provider tokens stay in the ignored directory. Keep the captured files in Git
 so teammates and deployments use the same rooms. `npm run test:captured` checks local loading,
 room switching, artwork and audio without generation calls.
+
+Use `node scripts/capture-demo.mjs --staging cafe zen` to recapture rooms into ignored
+`.convex/demo-staging/public/demo/` while keeping the current bundles available. Review the staged
+scene, sound mix and artwork before copying it into `public/demo/`. The refreshed beach records
+hashes of its preserved scene, source icons and sound files/bindings; `test:captured` verifies them.
 
 Run `npm run dev` locally before disconnecting from the internet, open
 http://localhost:5173/?demo and submit a preset or recorded prompt. The app and sound pack are served

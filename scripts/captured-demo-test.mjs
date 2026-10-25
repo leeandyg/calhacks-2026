@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, stat } from 'node:fs/promises';
 import { chromium, expect } from '@playwright/test';
 import { createServer } from 'vite';
+import { createHash } from 'node:crypto';
 
 // Real bundled media and real Web Audio; no AI or cloud requests.
 process.env.VITE_CONVEX_URL = '';
@@ -30,11 +31,20 @@ await page.addInitScript(() => {
 });
 try {
   await mkdir('test-results', { recursive: true });
-  const rooms = [['cafe', 'Rainy café'], ['beach', 'Beach'], ['cyberpunk', 'Cyberpunk city']];
+  const rooms = [['cafe', 'Rainy café'], ['beach', 'Beach'], ['cyberpunk', 'Cyberpunk city'], ['zen', 'Zen garden']];
   for (const [id] of rooms) {
     const root = `public/demo/${id}`;
     const scene = JSON.parse(await readFile(`${root}/scene.json`, 'utf8'));
     const assets = JSON.parse(await readFile(`${root}/assets.json`, 'utf8'));
+    const capture = JSON.parse(await readFile(`${root}/capture.json`, 'utf8'));
+    if (capture.preserved) {
+      const hash = value => createHash('sha256').update(value).digest('hex');
+      assert.equal(hash(await readFile(`${root}/scene.json`)), capture.preserved.sceneSha256, 'background repaint preserves the exact scene');
+      assert.equal(hash(JSON.stringify(assets.sprites)), capture.preserved.spritesSha256, 'source icon metadata stays unchanged');
+      assert.equal(hash(JSON.stringify(assets.sounds)), capture.preserved.soundsSha256, 'sound bindings stay unchanged');
+      for (const [file, digest] of Object.entries(capture.preserved.files))
+        assert.equal(hash(await readFile(`${root}/assets/${file}`)), digest, `background repaint preserves ${file}`);
+    }
     assert.equal(scene.objects.length, 3);
     assert.equal(scene.objects.filter(object => object.kind === 'bed').length, 2);
     assert.equal(scene.objects.filter(object => object.kind === 'event').length, 1);
@@ -50,7 +60,7 @@ try {
   }
   await page.goto(origin);
   assert.equal(await page.locator('canvas').count(), 0);
-  await expect(page.getByRole('group', { name: 'Preloaded demo rooms' }).getByRole('button')).toHaveCount(3);
+  await expect(page.getByRole('group', { name: 'Preloaded demo rooms' }).getByRole('button')).toHaveCount(4);
   for (const [id, label] of rooms) {
     const start = Date.now();
     await page.getByRole('button', { name: label, exact: true }).click();

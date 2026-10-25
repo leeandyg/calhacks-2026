@@ -8,6 +8,7 @@ export const capturedDemos = [
   { id: 'cafe', label: 'Rainy café' },
   { id: 'beach', label: 'Beach' },
   { id: 'cyberpunk', label: 'Cyberpunk city' },
+  { id: 'zen', label: 'Zen garden' },
 ] as const;
 export type CapturedDemoId = typeof capturedDemos[number]['id'];
 const loaded = new Map<CapturedDemoId, Promise<Scene>>();

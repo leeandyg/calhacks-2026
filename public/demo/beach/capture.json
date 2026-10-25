@@ -21,5 +21,21 @@
       "note": "Reviewed physical-source description; natural recording."
     }
   ],
-  "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo."
+  "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo.",
+  "backgroundUpdatedAt": "2026-10-25T03:38:44.274Z",
+  "backgroundPrompt": "Repaint a beautiful realistic tropical beach in crisp refined pixel art: broad blue-turquoise ocean, a LOW consistent distant horizon (lower third of the wall), warm soft golden-hour sky with a few shaped clouds and distant rocky headlands, subtle wave foam and water highlights. Keep the walls architectural flat elevations, not giant concentric rainbow stripes. Paint flat pale warm sand on the floor with gentle ripples and a small turquoise water edge near north. Terrain MUST be entirely 0, retain the existing flat floor. Keep muted teal/sand/coral/gold colors compatible with the existing palm and seagull icons. No palm, gull, waves prop, trees, furniture, text or separate decorative objects painted onto surfaces; the three existing sound icons stay separate. Material shading and clean coherent shapes, no random noisy speckle.",
+  "backgroundArtwork": "Gemini/pxl",
+  "preserved": {
+    "sceneSha256": "56ababfa515585cc187aac48946a9e245510beb6f138c90f28b4ad4a8f09e04f",
+    "spritesSha256": "2b35c7ec8e6f9dceff59ef857eb04b3c7dc2d299bd2166de5cc6f8645e787dcb",
+    "soundsSha256": "bcc0c62cfca2bae679255a7b761147fd83f36c1cb6635644d7e895b033efc5f6",
+    "files": {
+      "source-1.png": "088bd0fb0c60d3a2223bb0971c4afe06ac0b82c68c7f5393b571f0949d2688aa",
+      "source-2.png": "716667529b6ce71c8b72a631567df6a5f8c9ebbc85087a71e0833031d50a802c",
+      "source-3.png": "fd9128aafb12b8abd7f512fe00c97f2fb7f69ca9bc7f0108056ed40d612416ed",
+      "sound-1.mp3": "3708401b5e76ec5af3d1f9c13f29ff5264c569850e5079b6fae0ed524c526e58",
+      "sound-2.mp3": "a7afb40826355572a294d2c7f02e7b43068f1ab570c6cf500b7604c304f714a1",
+      "sound-3.mp3": "767703ec8f117306912d03e1216a818fa70195dbcbde5457002e6f13dc20c144"
+    }
+  }
 }

@@ -29,9 +29,9 @@ export function parseManagedAssetId(id: string): { kind: Exclude<SoundObject['ki
   const [, kind = 'bed', ...query] = id.slice(PREFIX.length).split(':');
   return { kind: kind === 'event' ? 'event' : 'bed', query: query.join(':') };
 }
-/** The nine bundled demo clips can be fetched before the user selects a room. */
+/** Bundled demo clips can be fetched before the user selects a room. */
 export function preloadDemoSound(url: string): Promise<ArrayBuffer> {
-  if (!/^\/demo\/(cafe|beach|cyberpunk)\/assets\/[a-zA-Z0-9_-]+\.mp3$/.test(url))
+  if (!/^\/demo\/(cafe|beach|cyberpunk|zen)\/assets\/[a-zA-Z0-9_-]+\.mp3$/.test(url))
     return Promise.reject(new Error('Unknown demo sound.'));
   let loading = demoAudio.get(url);
   if (!loading) {
