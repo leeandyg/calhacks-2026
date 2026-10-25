@@ -1,5 +1,7 @@
 import { SceneResponse, type Scene } from "../scene/scene.js";
 import { currentAgentSession, followManagedRun } from './managedClient.js';
+import type { ManagedResult } from './world.js';
+import type { WorldPart } from './managedClient.js';
 import type { ManagedAssets } from './world.js';
 
 // Browser side of POST /api/scene. Keys stay on the server; this only sends the prompt and scene.
@@ -22,12 +24,13 @@ class Unavailable extends Error {}
 
 const OFFLINE = 'Offline: the scene AI is unavailable.';
 
-export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, engine: Engine = 'agent'): Promise<SceneReply> {
+export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, engine: Engine = 'agent', partial?: (result: ManagedResult, part: WorldPart) => void): Promise<SceneReply> {
   if (demoMode) return localResponse(prompt, scene, 'Demo mode.');
+  let published = false;
   try {
-    return await ask(prompt, scene, engine, progress);
+    return await ask(prompt, scene, engine, progress, partial ? (result, part) => { partial(result, part); published = true; } : undefined);
   } catch (error) {
-    if (!(error instanceof Unavailable)) throw error;
+    if (published || !(error instanceof Unavailable)) throw error;
     console.warn('scene: falling back', error);
     return engine === 'agent' ? fallbackScene(prompt, scene, progress) : localResponse(prompt, scene, OFFLINE);
   }
@@ -46,7 +49,7 @@ export async function fallbackScene(prompt: string, scene: Scene | null, progres
   }
 }
 
-async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void): Promise<SceneReply> {
+async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<SceneReply> {
   let res: Response;
   try {
     res = await fetch("/api/scene", {
@@ -67,7 +70,7 @@ async function ask(prompt: string, scene: Scene | null, engine: Engine, progress
   const json = await res.json().catch(() => null);
   if (json?.kind === 'managed' && typeof json.token === 'string' && engine === 'agent') {
     try {
-      const result = await followManagedRun(json.token, scene, progress, CLAUDE_BUDGET_MS);
+      const result = await followManagedRun(json.token, scene, progress, CLAUDE_BUDGET_MS, partial);
       return { ...result.response, managed: result.assets };
     } catch (error) {
       throw new Unavailable(error instanceof Error ? error.message : 'Claude could not finish this world.');
