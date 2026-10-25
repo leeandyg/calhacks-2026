@@ -44,3 +44,37 @@ export function exactPreferences(preferences: Preference[], task: string, timeBu
     .sort((a, b) => Number(b.timeBucket === timeBucket) - Number(a.timeBucket === timeBucket) || b.updatedAt - a.updatedAt)
     .slice(0, 3);
 }
+
+// Recalling a saved room needs no model: a prompt that names a saved task and asks for nothing else
+// ("coding", "I'm coding") or asks for the usual setup ("my usual coding environment") loads it as saved.
+export const RECALL_WORDS = /\b(?:usual|normal|regular|saved|remembered|preset|favou?rite)\b/i;
+export const USUAL_REQUEST = /\b(?:usual|remembered|saved setup)\b/i;
+const FILLER = new Set(`a an the i i'm im am is it it's its me my our we us let let's lets ok okay hey agent please now just
+  some time to for go going gonna want wanna do doing start starting begin set up setup get ready switch load open bring back
+  put on give use with mode session sessions room environment space place vibe this that in at during morning afternoon
+  evening night tonight today`.split(/\s+/));
+const ALIASES: Record<string, string> = { program: "cod" };
+
+function stem(word: string) {
+  const stemmed = (word.length > 5 ? word.replace(/ing$/, "") : word)
+    .replace(/ies$/, "y").replace(/([^aeiou])\1$/, "$1").replace(/e$/, "");
+  return ALIASES[stemmed] ?? stemmed;
+}
+function keywords(text: string) {
+  return new Set(text.toLowerCase().replace(/’/g, "'").split(/[^a-z']+/)
+    .filter((word) => word && !FILLER.has(word)).map((word) => stem(word.replace(/'/g, ""))));
+}
+
+/** The saved preference a prompt asks to load, preferring the current time of day without requiring it. */
+export function savedRoomFor(prompt: string, preferences: Preference[], task: string, timeBucket: TimeBucket) {
+  const words = keywords(prompt), recall = RECALL_WORDS.test(prompt), selected = task.trim().toLowerCase();
+  const rank = (item: Preference) => item.timeBucket === timeBucket ? 2 : item.timeBucket === "any" ? 1 : 0;
+  return preferences.flatMap((item) => {
+    const taskWords = keywords(item.task);
+    const named = taskWords.size > 0 && [...taskWords].every((word) => words.has(word));
+    // "Use my usual setup" in the memory panel names its task in the Task field.
+    if (!named && !(recall && item.task.toLowerCase() === selected)) return [];
+    const asksForMore = [...words].some((word) => !taskWords.has(word));
+    return recall || !asksForMore ? [{ item, size: taskWords.size }] : [];
+  }).sort((a, b) => b.size - a.size || rank(b.item) - rank(a.item) || b.item.updatedAt - a.item.updatedAt)[0]?.item;
+}

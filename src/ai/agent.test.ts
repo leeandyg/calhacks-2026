@@ -45,3 +45,12 @@ it.each([undefined, { token: "test", task: "coding", timeBucket: "morning" as co
     expect(fetchMock).toHaveBeenCalledTimes(2);
   },
 );
+it("applies a restored saved room as a create without starting a world run", async () => {
+  const scene = { ...cafe, room: { ...cafe.room, art: "demo-beach" } };
+  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ kind: "create", restored: true, scene,
+    notice: "Loaded your saved coding room.", recalled: ["coding (night)"] }))));
+  const reply = await requestAgent("coding", cafe, { token: "test", task: "", timeBucket: "auto", turns: [] });
+  expect(reply).toMatchObject({ restored: true, notice: "Loaded your saved coding room.", response: { kind: "create" } });
+  expect(reply.response?.kind === "create" && reply.response.scene.room.art).toBe("demo-beach");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

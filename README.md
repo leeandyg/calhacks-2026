@@ -275,7 +275,7 @@ development project; this does not require a new production deployment.
 Under **Environment memory**, choose a task and a local time bucket. Tune the room,
 optionally describe what you like, and click **Remember this room**. Saving the same
 task/time replaces the preference, so you can teach it a correction. Click **Use my
-usual setup** to generate an environment from those preferences, and **Forget** to
+usual setup** to load the room saved for that task, and **Forget** to
 remove a memory. **Current local time** uses the browser's timezone; explicit
 morning/evening choices are useful when testing the demo.
 
@@ -286,13 +286,23 @@ preference notes; they do not edit the room. Manual changes become lasting prefe
 only when you explicitly remember the result. The automatic mic-noise/Pomodoro
 agent (#20) and automatic feedback suggestions remain separate work.
 
+**Loading a saved room needs no model** (`savedRoomFor` in `src/ai/preferences.ts`). If a request
+names a saved task and asks for nothing else ("coding", "I'm coding") or asks for the usual setup
+("set up my usual coding environment", "load my saved coding room"), `/api/agent` returns that room
+exactly as it was remembered, within a second, and the browser reinstalls its art and sounds (kept
+Claude worlds from Convex, captured rooms from their bundles). The current time of day is preferred
+but not required, so a room saved at night still loads in the morning. Task words match loosely
+("code", "coding" and "programming" are the same task). A usual-setup request whose task matches no
+saved room by name uses Moss to load the closest one. Anything else ("rainy cafe for coding", "make
+the rain quieter") still goes to the world agent, with the matching preferences as context.
+
 Convex stores the user's preference records; Moss reconciles a per-user persistent
 index and searches it alongside a temporary index of recent spoken commands. A
 fresh Convex check excludes deleted or superseded search results. During a Moss
 outage, exact task/time matches still work and the UI labels semantic recall as
-unavailable. If scene AI is down, an explicit request for a usual setup can restore
-its exact task/time snapshot; unrelated edits never use that replacement fallback.
-Requests for an unknown “usual setup” keep the room unchanged. Ordinary
+unavailable. Saved rooms load without the scene AI, so they work when it is down;
+unrelated edits never replace the room. Requests for an unknown “usual setup” keep
+the room unchanged. Ordinary
 typed prompts and local presets continue if memory or voice cannot connect. Offline
 demo mode makes no voice or memory calls. Delayed scene replacements are discarded
 if the room changed while they were running. Safe edits use the latest scene,
