@@ -94,7 +94,8 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: 
         const response = initialResponse;
         if (!hasScene && response.kind !== 'create') throw new Error('Describe a place to create your first room.');
         if (response.managed && !partialApplied) installManagedAssets(response.managed, response.kind === 'create' ? response.scene : useSceneStore.getState().scene);
-        if (response.kind === 'create' && !response.managed && !DEMO_MODE && !response.notice) {
+        // A restored saved room is complete; only a fresh standard room gets painted here.
+        if (response.kind === 'create' && !response.managed && !DEMO_MODE && !response.notice && !reply.restored) {
           setStatus({ tone: 'busy', text: 'Imagining the ground and surroundings…' });
           try {
             const { env, painted } = await paintEnvironment(prompt, response.scene);
