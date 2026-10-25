@@ -10,14 +10,14 @@ See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluepr
 
 - Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room with the arrows (your ears turn with it), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
 - Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
-- AI: Claude Managed Agents for pxl/chirp worlds when configured; Gemini 3.8 Flash remains the fallback backend when no Anthropic key is set
+- AI: self-hosted Node.js Claude Agent SDK worker for pxl/chirp worlds; Claude Managed Agents and Gemini remain explicit fallback configurations
 
 ## Setup
 
 ```sh
 npm install
 cp .env.example .env   # PowerShell: Copy-Item .env.example .env
-npm run check:gemini   # after adding GEMINI_API_KEY to .env
+docker compose -f compose.agent.yaml up -d --build  # after setting keys below
 npm run dev            # http://localhost:5173, serves api/ too
 npm run build          # typecheck + production build
 npm test               # scene store, layout and room unit tests (vitest)
@@ -26,7 +26,8 @@ npm test               # scene store, layout and room unit tests (vitest)
 Browser tests need the dev server running (set `TEST_URL` if it isn't on :5173; `PLAYWRIGHT_CHANNEL=chrome`
 uses installed Chrome): `npm run test:browser`, `test:frontend`, `test:window` and `test:prompt`.
 
-Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
+For the self-hosted world director, follow the setup below. For the Gemini-only path, clear
+`WORLD_AGENT_URL`, leave `ANTHROPIC_API_KEY` empty, then create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
 `GEMINI_API_KEY` in `.env`. For sounds the pack doesn't have, also set `ELEVENLABS_API_KEY`
 (a key restricted to Sound Effects is enough); without it those sounds fall back to the closest
 pack sound. Restart the dev server after changing `.env`. On Vercel, add the same environment
@@ -275,23 +276,47 @@ Run `npm run check:resolver` to see which descriptions use a pack sound and whic
 
 `api/*.ts` files export `POST` or `GET(request: Request): Response`. They run as Vercel functions in production and through a Vite middleware in dev. API keys are read there from `process.env`, never in `src/`.
 
-## Claude Managed Agent (#86)
+## Self-hosted world director (#114)
 
-Set `ANTHROPIC_API_KEY`, `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` in the server's
-`.env` (or deployment environment), then restart the dev server. The supplied IDs are in
-`.env.example`. With this key configured, the prompt uses the **AI Pixel World Director** managed
-agent instead of the Gemini scene/art pipeline. `?demo` stays offline. No provider key reaches
-frontend code, HTML, client requests or generated assets.
+The agent loop and all pxl/chirp builds run in a persistent **Node.js 24 + Claude Agent SDK**
+Docker worker on your machine/server. Claude model inference still uses Anthropic's API;
+self-hosting here moves execution and generated files off Managed Agents, not model inference.
+The same model and low effort setting are retained. Toolkit installs are baked into the image,
+so each turn can read their references and build immediately.
 
-`AGENT_CONFIG.yaml` records the supplied architecture. Each new session uses that file's system
-instructions; the managed agent resource owns its model and tool configuration (currently
-Claude Opus 5.5, low effort, with the built-in agent toolset). The agent reads the actual pxl and
-chirp skills, writes and builds code inside Anthropic's sandbox, and publishes PNG strips, audio
-and a validated scene manifest. Generated JavaScript is never executed by this app's backend or
-browser. The existing room/terrain, manual rotation, drag/mute behavior, portals and HRTF audio
-engine consume the compiled results. Every theme retains the fixed 10×10×7 shell, 0.42-block slabs and complete flush corners.
-Generated artwork paints its real surfaces; legacy `openAir` metadata cannot hide the walls. Sprite/environment strips animate in the room's pixel
-pass; event-source animation plays with its audio and mute freezes source motion.
+1. Copy `.env.example` to `.env` if needed. Set `ANTHROPIC_API_KEY` for inference.
+2. Generate a separate worker secret with `openssl rand -hex 32` and set it as
+   `WORLD_AGENT_API_KEY`. Keep it stable: it also signs the app's 24-hour session tokens.
+3. Keep `WORLD_AGENT_URL=http://127.0.0.1:8787/v1` for local development. Run
+   `docker compose -f compose.agent.yaml up -d --build`, then `npm run dev`.
+4. Submit a room prompt. Follow-ups reuse the SDK session and the latest canonical scene.
+
+The worker binds to localhost by default. For a deployed app, put the worker behind your HTTPS
+reverse proxy, forward `/v1/*` without buffering SSE, and set `WORLD_AGENT_URL` on the app server
+to that reachable origin plus `/v1`. Set the same `WORLD_AGENT_API_KEY` on both servers.
+A Vercel deployment cannot reach your computer's `127.0.0.1`. Only the worker needs the model
+key; the app authenticates to it with the separate shared secret. No credentials reach the browser.
+
+The named `world-agent-data` volume persists SDK transcripts, working files, published assets,
+and event history across container restarts. `docker compose -f compose.agent.yaml down` keeps
+it; `down -v` deletes it. Interrupted generations report a failure after restart; completed
+worlds remain available and follow-up turns can resume. The demo worker runs one generation at
+a time; concurrent submissions return a conflict. Model/tool errors publish no transcripts or
+partial new assets, and previously published assets remain accessible.
+
+`AGENT_CONFIG.yaml` remains the system-prompt source. The worker supplies SDK tools and defaults
+to the same `claude-opus-5-5` model with low effort (`WORLD_AGENT_MODEL` overrides the model).
+Integration still requires actual pxl/chirp builds and the existing `WorldOutput` manifest. Generated code executes only in the dedicated
+worker container, without the app repository or host Docker socket mounted. The app backend and
+browser consume compiled PNG strips/audio through the existing validated, signed proxy.
+The renderer, terrain, fixed slabs/corners, animation timing, manual edits, HRTF audio and
+resolver ownership of sound IDs are unchanged.
+
+To roll back to Managed Agents (#86), clear `WORLD_AGENT_URL` and configure
+`ANTHROPIC_API_KEY`, `ANTHROPIC_AGENT_ID` and `ANTHROPIC_ENVIRONMENT_ID` on the app server.
+Clear both the worker URL and Anthropic key to use Gemini. Restart/redeploy after changing
+configuration. The worker never switches providers; the app retains its existing fallback behavior and notices.
+Tokens created by a different runtime/key cannot be reused; create a new world after switching.
 
 `POST /api/scene` starts a session or sends a follow-up event and returns a signed session token.
 Authenticated voice/memory turns through `POST /api/agent` use the same flow, passing recalled
@@ -306,7 +331,7 @@ room and prompt. Follow-up prompts reuse the managed session and receive the lat
 scene, including manual positions and mute settings. New sound IDs are assigned only by the
 existing resolver, using the agent's chirp files.
 
-Run `npm test` for provider/protocol validation and `npm run test:managed` with the dev server
+Run `npm test` for worker HTTP, persistence and provider/protocol validation and `npm run test:managed` with the dev server
 running for deterministic browser coverage (no API credits). `npm run check:managed` reconnects
 the completed live run in `test-results/managed-live-run.json`, exercising real session history,
 image/audio downloads and animation without rebuilding assets. If that saved run is absent, the check creates and records a fresh managed world;

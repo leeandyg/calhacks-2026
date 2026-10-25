@@ -6,7 +6,7 @@ import { SLAB_THICKNESS } from '../src/scene/layout.js';
 import { applyOp, clampScene } from '../src/scene/store.js';
 import { ManagedAssets, WorldOutput } from '../src/ai/world.js';
 
-export type AgentSettings = { apiKey: string; agentId: string; environmentId: string };
+export type AgentSettings = { apiKey: string; agentId: string; environmentId: string; baseUrl?: string };
 export class AgentError extends Error { constructor(message: string, readonly status = 502) { super(message); } }
 const origin = 'https://api.anthropic.com/v1';
 const TokenData = z.object({ session: z.string().regex(/^sesn_[a-zA-Z0-9]+$/), turn: WorldOutput.shape.turn, context: z.string().length(64), expires: z.number() });
@@ -47,7 +47,7 @@ export class ManagedAgent {
     return parsed.data;
   }
   async api(path: string, init: RequestInit = {}, signal?: AbortSignal): Promise<Response> {
-    const response = await this.request(`${origin}${path}${path.includes('?') ? '&' : '?'}beta=true`, {
+    const response = await this.request(`${this.settings.baseUrl?.replace(/\/$/, '') ?? origin}${path}${path.includes('?') ? '&' : '?'}beta=true`, {
       ...init, redirect: 'error',
       headers: { 'x-api-key': this.settings.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'managed-agents-2026-04-01', 'content-type': 'application/json', ...init.headers },
       signal: signal ?? AbortSignal.timeout(20_000),
@@ -56,7 +56,7 @@ export class ManagedAgent {
       // Provider bodies and tool transcripts never reach browser errors or server logs.
       const message = response.status === 401 || response.status === 403 ? 'Claude rejected the server credentials or agent access.'
         : response.status === 429 ? 'Claude is busy or its request quota was reached. Please try again shortly.' : 'Claude could not complete this request. Please try again.';
-      throw new AgentError(message, response.status === 429 ? 429 : 502);
+      throw new AgentError(message, response.status === 429 ? 429 : this.settings.baseUrl && response.status === 409 ? 409 : 502);
     }
     return response;
   }
@@ -209,7 +209,7 @@ Set manifest.turn=${turn}. In every file field use only the generated file's bas
           else if (event.type === 'session.status_idle') {
             finished = true;
             const reason = event.stop_reason?.type;
-            send(reason && reason !== 'end_turn' ? { type: 'error', error: reason === 'budget_reached' ? 'The agent reached its session budget.' : 'The agent is waiting for tool permission in its managed environment.' } : { type: 'complete' });
+            send(reason && reason !== 'end_turn' ? { type: 'error', error: reason === 'budget_reached' ? 'The agent reached its session budget.' : 'The agent is waiting for tool permission in its execution environment.' } : { type: 'complete' });
           } else if (event.type === 'agent.tool_use' || event.type === 'agent.message' || event.type === 'span.model_request_start') {
             send({ type: 'progress', id: event.id, message: event.type === 'span.model_request_start' ? 'Claude is planning your environment…' : event.name === 'read' ? 'Choosing materials, motion and sounds…' : 'Creating and checking artwork and audio…' });
           }

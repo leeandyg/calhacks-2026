@@ -148,7 +148,18 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
-**Managed World Director (#86):** the supplied Claude Managed Agent now owns live scene planning,
+**Self-hosted World Director (#114):** live agent execution now uses a persistent Node.js 24
+Claude Agent SDK worker in a dedicated Docker container when `WORLD_AGENT_URL` is configured.
+The model remains Claude Opus 5.5 at low effort via Anthropic's inference API; the agent loop,
+pxl/chirp builds, working files and SDK session history live on our infrastructure. Toolkits are
+installed in the image once. The worker implements the existing session/events/files protocol,
+so signed capabilities, validated `WorldOutput` manifests, compiled PNG/audio, canonical scene,
+resolver ownership and browser rendering remain unchanged. A volume persists completed worlds
+and SDK resumptions; interrupted builds fail visibly. One generation runs at a time. Credentials
+stay in server API configuration and worker environment only. Clear `WORLD_AGENT_URL` for the
+explicit Managed Agents rollback below. The app retains its existing fallback behavior and notices.
+
+**Managed World Director (#86):** the supplied Claude Managed Agent owns live scene planning in the legacy cloud configuration,
 pxl artwork/animation and chirp audio generation when `ANTHROPIC_API_KEY` is configured. The
 backend starts/continues its managed session, streams safe progress across bounded connections,
 validates a per-turn manifest, and proxies the resulting images/audio with signed session access.
