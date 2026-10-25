@@ -31,6 +31,11 @@ loading, typing and demo selection stay responsive without provider calls. It us
 Edge on Windows (`PLAYWRIGHT_CHANNEL` overrides it). The loading mosaic uses a small Canvas 2D
 texture through the existing room renderer, avoiding a second WebGL context and GPU readback.
 
+After pulling scene-contract changes, run `npm run convex:dev -- --once` to sync your configured
+cloud dev backend too. A stale Convex validator can reject painted rooms even when plain rooms
+save. `npm run check:convex -- --cloud-dev` checks artwork/terrain persistence and access isolation
+using separate test identities on the matching dev deployment; it never targets production.
+
 For the self-hosted world director, follow the setup below. For the Gemini-only path, clear
 `WORLD_AGENT_URL`, leave `ANTHROPIC_API_KEY` empty, then create an API key in [Google AI Studio](https://aistudio.google.com/apikey) and set
 `GEMINI_API_KEY` in `.env`. For sounds the pack doesn't have, also set `ELEVENLABS_API_KEY`
