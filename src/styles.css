@@ -14,7 +14,7 @@
   --ui-button: #303d51;
   --ui-edge: #65748d;
   --ui-accent: #9cacf8;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-pixel);
   color: #e8e8f0;
   background: #11171e;
   font-synthesis: none;
@@ -272,7 +272,7 @@ canvas { display: block; touch-action: none; }
 .voice-transcript input { flex: 1 1 180px; min-width: 0; }
 .room-controls:has(.agent-controls) .prompt-tools { max-height: min(calc(60dvh - 88px), max(0px, calc(100dvh - 285px))); overflow-y: auto; pointer-events: auto; }
 .floating-voice-body { min-width: 0; min-height: 0; margin: 0; overflow: auto; background: #11171e; color: #e8e8f0; }
-.floating-voice-panel { padding: 16px; margin: 0; font: 13px/1.45 system-ui, sans-serif; }
+.floating-voice-panel { padding: 16px; margin: 0; font: 14px/1.45 var(--font-pixel); }
 .floating-voice-panel h1 { margin: 0 0 12px; font: 500 22px var(--font-pixel); }
 .floating-voice-panel > button { margin: 0 6px 8px 0; }
 .floating-voice-panel > label { display: flex; align-items: center; gap: 6px; }
@@ -293,7 +293,7 @@ canvas { display: block; touch-action: none; }
   pointer-events: none;
 }
 .assets-beam { width: 100%; border-radius: 0; pointer-events: auto; }
-/* Left "Visited places" sidebar: auto-saved rooms, same frosted card as Assets and the prompt bar. */
+/* Templates and explicitly named saves share the left sidebar. */
 .places-dock {
   position: fixed;
   top: max(24px, env(safe-area-inset-top));
@@ -332,7 +332,15 @@ canvas { display: block; touch-action: none; }
 .place-new:hover, .place-row:hover:not(:disabled) { background: #3b4c64; }
 .place-row[aria-current] { background: #374579; border-color: var(--ui-accent); color: #fff; }
 .place-new:focus-visible, .place-row:focus-visible { outline: 2px solid #e8e8f0; outline-offset: 2px; }
-.places-note { margin: 0; font-size: 12px; color: #9a9fac; }
+.places-note { margin: 0; font-size: 14px; line-height: 1.3; color: #adb8ca; }
+.place-save { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; pointer-events: auto; }
+.place-save label { color: #c2ccdf; font-size: 16px; }
+.place-save input { width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 2px solid var(--ui-edge); border-radius: 0; background: #151d28; color: #e8e8f0; font: 400 18px var(--font-pixel); }
+.place-save input::placeholder { color: #a1adc2; }
+.places-panel button:disabled { opacity: .45; cursor: default; }
+.place-load { display: flex; align-items: center; gap: 8px; }
+.place-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.place-load-label { color: #c2ccdf; font-size: 14px; }
 .assets-panel, .settings-panel {
   display: flex;
   flex-direction: column;
@@ -480,8 +488,10 @@ canvas { display: block; touch-action: none; }
 .templates-panel { max-height: 40dvh; }
 .places-beam { flex: 1; min-height: 0; }
 .places-panel { height: 100%; min-height: 0; max-height: none; }
+.places-panel { overflow-y: auto; scrollbar-width: none; }
+.places-panel::-webkit-scrollbar { display: none; }
 .places-panel > .assets-title, .places-note { flex-shrink: 0; }
-.places-list { flex: 0 1 auto; pointer-events: auto; }
+.places-list { flex: 0 0 auto; overflow-y: visible; pointer-events: auto; }
 .places-list::-webkit-scrollbar, .templates-list::-webkit-scrollbar { display: none; }
 .place-item { flex-shrink: 0; }
 .templates-list .place-row:disabled { opacity: .45; cursor: default; }
@@ -519,4 +529,8 @@ canvas { display: block; touch-action: none; }
   .asset-thumb { flex-basis: 32px; width: 32px; height: 32px; }
   .asset-body { flex-basis: calc(100% - 40px); }
   .asset-actions { margin-left: auto; }
+}
+/* Keep the bottom prompt clear of sidebar actions when the columns overlap it. */
+@media (max-width: 1320px), (max-height: 540px) {
+  .places-dock, .assets-dock { height: calc(100dvh - max(24px, env(safe-area-inset-top)) - max(132px, env(safe-area-inset-bottom))); }
 }

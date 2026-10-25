@@ -133,7 +133,7 @@ try {
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
   assert.equal(await page.locator('.rotate-room, .prompt-send, .demo-rooms button, .templates-list button, .asset-action').count(), 7 + 2 * (await page.evaluate(() => window.__pixelRoom().scene.objects.length)), 'room arrows, send, demo choices, and source actions');
-  await page.getByRole('status').waitFor({ state: 'detached' });
+  await page.locator('.prompt-status[role="status"]').waitFor({ state: 'detached' });
   assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).getByRole('switch', { name: 'Head tracking', exact: true }).count(), 1);
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');

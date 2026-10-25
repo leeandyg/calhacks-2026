@@ -259,7 +259,7 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
     : voice === 'starting' ? 'Preparing microphone…' : voice === 'finishing' ? 'Mic off · finishing transcription…'
     : voice === 'understanding' ? 'Understanding your command…' : voice === 'updating' ? 'Updating your room…'
     : voice === 'speaking' ? 'Speaking · start a new turn to interrupt' : voice === 'done' ? 'Done · microphone off'
-    : availability.configured ? 'Hold Ctrl+Shift+Space · page focused, outside text fields' : 'Voice needs a Cartesia API key. Typed commands still work.';
+    : availability.configured ? '' : 'Voice needs a Cartesia API key. Typed commands still work.';
   const wakeToggle = <label className="switch-row"><span className="switch-label">Hey agent</span><span className="switch"><input type="checkbox" role="switch" checked={wake} disabled={!wake && (locked || !token || !availability.configured)} onChange={event => toggleWake(event.target.checked)}/><span className="switch-track"><span className="switch-knob"/></span></span></label>;
   const microphone = <button type="button" className={portals ? 'prompt-mic' : undefined} aria-label={voiceLabel}
     title={voiceLabel} aria-pressed={voice === "listening"} aria-keyshortcuts="Control+Shift+Space"
@@ -275,7 +275,7 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
       }} /><span className="switch-track"><span className="switch-knob"/></span></span></label>}
       {wakeToggle}
       <button type="button" className="voice-float" onClick={() => { void openFloating().catch(error => setError(error instanceof Error ? error.message : 'The floating window could not open.')); }}>Float controls</button>
-      <span className="voice-status" role={idle ? undefined : "status"}>{voiceStatus}</span>
+      {voiceStatus && <span className="voice-status" role={idle ? undefined : "status"}>{voiceStatus}</span>}
     </div>
     {wake && <p>Microphone stays on for “Hey agent”. Audio is transcribed by Cartesia while enabled. Turn it off to stop listening.</p>}
     {floating && <FloatingVoice window={floating}>
@@ -283,7 +283,7 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
         if (idle) void begin(true); else activate();
       }}>{voiceLabel}</button>
       <button type="button" onClick={stopVoice}>Stop voice</button>
-      <p role="status">{voiceStatus}</p>
+      {voiceStatus && <p role="status">{voiceStatus}</p>}
       {wakeToggle}
       <p>{wake ? 'Mic stays on. Cartesia transcribes audio to detect the phrase.' : 'Mic is off between commands.'}</p>
       {heard && <p className="voice-transcript">Heard: {heard}</p>}

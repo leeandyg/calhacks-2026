@@ -2,17 +2,16 @@ import { createPortal } from "react-dom";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvex, useConvexAuth, useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { BorderBeam } from "border-beam";
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api } from "../../convex/_generated/api.js";
 import type { Id } from "../../convex/_generated/dataModel.js";
 import { convex } from "../scene/convex.js";
 import { DEFAULT_GRID, Scene } from "../scene/scene.js";
 import { useSceneStore } from "../scene/store.js";
-import { useArtStore } from "../art/store.js";
-import { createPlaceAutosave, savedPlaceBackend } from "../scene/placeAutosave.js";
 import { resetManagedSession } from "../ai/managedClient.js";
+import { resumeAudio } from "../audio/context.js";
 
-type Props = { target: HTMLElement | null; hasScene: boolean; onReset: () => void; onLoad: () => void };
+type Props = { target: HTMLElement | null; hasScene: boolean; disabled?: boolean; onReset: () => void; onLoad: () => void };
 
 // The blank slate a New Place drops you into: only the fixed shell, no art, sources or session (#91).
 function emptyScene() {
@@ -26,121 +25,116 @@ function startNewPlace(onReset: () => void) {
 }
 
 // A saved library must never crash the playing room.
-class PlacesBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+class PlacesBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? null : this.props.children; }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-const NewPlaceButton = ({ onClick }: { onClick: () => void }) => (
+const NewPlaceButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
   <li className="place-item">
-    <button type="button" className="place-new" onClick={onClick}>
+    <button type="button" className="place-new" onClick={onClick} disabled={disabled}>
       <span className="place-plus" aria-hidden="true">+</span> New Place
     </button>
   </li>
 );
 
-function PlacesView({ hasScene, target, children }: Pick<Props, "hasScene" | "target"> & { children: ReactNode }) {
+function PlacesView({ target, children }: Pick<Props, "target"> & { children: ReactNode }) {
   if (!target) return null;
-  return createPortal(hasScene
-    ? <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0} className="assets-beam places-beam">
-        <section className="places-panel" aria-label="Visited places">
-          <h2 className="assets-title">Visited places</h2>
+  return createPortal(<BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0} className="assets-beam places-beam">
+        <section className="places-panel" aria-label="Saved places">
+          <h2 className="assets-title">Saved places</h2>
           {children}
         </section>
-      </BorderBeam>
-    : <section className="initial-places" aria-label="Visited places">
-        <h2 className="initial-places-title">Visited places</h2>
-        {children}
-      </section>, target);
+      </BorderBeam>, target);
 }
 
 export function PlacesPanel(props: Props) {
-  if (convex) return <PlacesBoundary><ConnectedPlaces {...props}/></PlacesBoundary>;
-  if (!props.hasScene) return null;
-  return <PlacesView {...props}><ul className="places-list"><NewPlaceButton onClick={() => startNewPlace(props.onReset)}/></ul></PlacesView>;
+  const unavailable = <PlacesView target={props.target}>
+    <ul className="places-list"><NewPlaceButton disabled={props.disabled} onClick={() => startNewPlace(props.onReset)}/></ul>
+    <p className="places-note" role="status">Saved places is unavailable. Your room is still open.</p>
+  </PlacesView>;
+  return convex ? <PlacesBoundary fallback={unavailable}><ConnectedPlaces {...props}/></PlacesBoundary> : unavailable;
 }
 
-function ConnectedPlaces({ hasScene, onReset, onLoad, target }: Props) {
+function ConnectedPlaces({ hasScene, onReset, onLoad, target, disabled }: Props) {
   const { signIn } = useAuthActions();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { isWebSocketConnected } = useConvexConnectionState();
   const client = useConvex();
   const save = useMutation(api.savedScenes.save);
   const rooms = useQuery(api.savedScenes.list, isAuthenticated ? {} : "skip");
-  const listedRooms = useRef(rooms);
-  listedRooms.current = rooms;
   const [activeId, setActiveId] = useState<Id<"savedScenes"> | null>(null);
+  const [name, setName] = useState('');
+  const [working, setWorking] = useState<'save' | 'load'>();
   const [notice, setNotice] = useState<string>();
-  const autosave = useMemo(() => createPlaceAutosave<Id<"savedScenes">>({
-    ...savedPlaceBackend(save, () => listedRooms.current ?? []), onActive: setActiveId,
-    onError: failed => setNotice(failed ? "Could not save this place. Your next edit or reconnect will retry." : undefined),
-  }), [save]);
   const attempted = useRef(false);
 
   useEffect(() => {
     if (isLoading || isAuthenticated || !isWebSocketConnected || attempted.current) return;
     attempted.current = true;
-    void signIn("anonymous").catch(() => {});
+    void signIn("anonymous").catch(() => setNotice('Saved places could not connect. Reload to retry.'));
   }, [isLoading, isAuthenticated, isWebSocketConnected, signIn]);
 
   const ready = isWebSocketConnected && isAuthenticated && rooms !== undefined;
 
-  useEffect(() => {
-    autosave.setReady(ready);
-    return () => autosave.pause();
-  }, [autosave, ready]);
-
-  // Capture snapshots immediately; debounce backend writes without losing an earlier visit.
-  // Art arrives independently of the canonical scene, so it must also refresh the saved label.
-  useEffect(() => {
-    if (!hasScene) return;
-    const capture = () => {
-      const scene = useSceneStore.getState().scene;
-      const env = scene.room.art ? useArtStore.getState().envs[scene.room.art] : undefined;
-      autosave.observe(scene, env?.concept, env?.title);
-    };
-    capture();
-    const unsubscribeScene = useSceneStore.subscribe(capture);
-    const unsubscribeArt = useArtStore.subscribe((state, before) => {
-      const art = useSceneStore.getState().scene.room.art;
-      if (art && (state.envs[art]?.concept !== before.envs[art]?.concept || state.envs[art]?.title !== before.envs[art]?.title)) capture();
-    });
-    return () => { unsubscribeScene(); unsubscribeArt(); };
-  }, [hasScene, autosave]);
+  const locked = disabled || Boolean(working);
+  const savePlace = async (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = name.trim();
+    if (!ready || locked || !hasScene || !trimmed) return;
+    setWorking('save'); setNotice(undefined);
+    try {
+      const scene = Scene.parse(useSceneStore.getState().scene);
+      const id = await save({ name: trimmed, scene });
+      setActiveId(id); setName(trimmed); setNotice(`Saved ${trimmed}.`);
+    } catch { setNotice('Could not save this place. Try again.'); }
+    finally { setWorking(undefined); }
+  };
 
   const loadPlace = async (id: Id<"savedScenes">) => {
-    setNotice(undefined);
+    if (!ready || locked) return;
+    setWorking('load'); setNotice(undefined);
+    void resumeAudio().catch(() => {});
     const before = useSceneStore.getState().scene;
     try {
       const saved = await client.query(api.savedScenes.load, { id });
       if (useSceneStore.getState().scene !== before) { setNotice("Your room changed while loading. Tap the place again."); return; }
       const parsed = Scene.parse(saved.scene);
-      autosave.select(id, parsed.room.art);
       const result = useSceneStore.getState().setScene(parsed);
       if (!result.ok) { setNotice("That place could not load."); return; }
       resetManagedSession();
+      setActiveId(id); setName(saved.name); setNotice(`Loaded ${saved.name}.`);
       onLoad();
-    } catch { setNotice("Could not load that place."); }
+    } catch { setNotice("Could not load that place. Try again."); }
+    finally { setWorking(undefined); }
   };
 
   const newPlace = () => {
-    autosave.select(null); setNotice(undefined);
+    setActiveId(null); setName(''); setNotice(undefined);
     startNewPlace(onReset);
   };
 
-  if (!hasScene && !rooms?.length) return null;
-  return <PlacesView hasScene={hasScene} target={target}>
+  return <PlacesView target={target}>
+    <form className="place-save" onSubmit={event => { void savePlace(event); }} aria-busy={working === 'save'}>
+      <label htmlFor="place-name">Place name</label>
+      <input id="place-name" type="text" placeholder="Name this place" value={name} maxLength={80} disabled={locked} onChange={event => setName(event.target.value)} autoComplete="off"/>
+      <button type="submit" className="place-row" disabled={!ready || locked || !hasScene || !name.trim()}>{working === 'save' ? 'Saving…' : 'Save place'}</button>
+      {rooms?.some(room => room.name === name.trim()) && <p className="places-note">Saving updates the place with this name.</p>}
+    </form>
     <ul className="places-list">
-      {hasScene && <NewPlaceButton onClick={newPlace} />}
+      <NewPlaceButton disabled={locked} onClick={newPlace} />
       {rooms?.map((room) => (
         <li key={room._id} className="place-item">
-          <button type="button" className="place-row" aria-current={room._id === activeId || undefined} onClick={() => void loadPlace(room._id)}>
-            {room.name}
+          <button type="button" className="place-row place-load" title={room.name} aria-label={`Load ${room.name}`} aria-current={room._id === activeId || undefined} disabled={!ready || locked} onClick={() => void loadPlace(room._id)}>
+            <span className="place-name">{room.name}</span><span className="place-load-label" aria-hidden="true">Load</span>
           </button>
         </li>
       ))}
     </ul>
+    {!ready && !notice && <p className="places-note" role="status">Connecting to saved places…</p>}
+    {ready && !rooms?.length && <p className="places-note">No saved places yet.</p>}
+    {working && <p className="places-note" role="status">{working === 'save' ? 'Saving place…' : 'Loading place…'}</p>}
     {notice && <p className="places-note" role="status">{notice}</p>}
   </PlacesView>;
 }

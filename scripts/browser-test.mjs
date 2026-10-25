@@ -18,7 +18,7 @@ try {
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
   await createFixtureRoom(page);
   await page.waitForFunction(() => window.__pixelRoom?.().objects.every(object => object.model));
-  await page.getByRole('status').waitFor({ state: 'detached' });
+  await page.locator('.prompt-status[role="status"]').waitFor({ state: 'detached' });
   const initial = await inspect();
   const verify = async turn => {
     const current = await inspect();
@@ -49,7 +49,7 @@ try {
   assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).getByRole('switch', { name: 'Head tracking', exact: true }).count(), 1);
   assert.equal(await page.locator('header,nav,footer,textarea').count(), 0);
   assert.equal(await page.getByRole('heading', { name: "Where's your flow state, Coin?", exact: true }).count(), 0);
-  assert.equal(await page.locator('h2').count(), 4, 'Templates, Visited places, Assets and Settings headings');
+  assert.equal(await page.locator('h2').count(), 4, 'Templates, Saved places, Assets and Settings headings');
   assert.deepEqual(initial.objects.map(object => object.model).sort(), ['birds', 'fan', 'rain']);
   const canvas = await page.locator('canvas').boundingBox();
   assert.deepEqual([canvas.x, canvas.y, canvas.width, canvas.height], [0, 0, 1440, 900], 'full-viewport canvas');

@@ -378,7 +378,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <div className="scene-error"><strong>The room needs WebGL to open.</strong><p>Enable hardware acceleration in your browser, then reload.</p></div> : this.props.children; }
 }
-export function RoomScene({ loading = false }: { loading?: boolean }) {
+export function RoomScene({ loading = false, empty = false }: { loading?: boolean; empty?: boolean }) {
   const room = useSceneStore(state => state.scene.room);
   const config = useMemo(() => getRoomConfig(room), [room]);
   return <SoundStatusProvider><SceneBoundary><Canvas shadows={false} dpr={[1, 1.8]} gl={{ antialias: false, alpha: true }} fallback={<div className="scene-error">Your browser needs WebGL to show this room.</div>} aria-label="Isometric pixel-art room with movable sound objects. Hover for sound names. Click an object to mute or unmute it." onPointerLeave={() => {
@@ -388,7 +388,7 @@ export function RoomScene({ loading = false }: { loading?: boolean }) {
     <SpawnProvider>
       <FixedCamera/>
       <Lighting/>
-      <RoomGroup config={config} loading={loading}/>
+      <RoomGroup config={config} loading={loading} empty={empty}/>
       <SpawnController/>
       <PixelRoomRenderer loading={loading}/>
       <SoundStatusTracker/>

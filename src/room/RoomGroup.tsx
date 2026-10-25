@@ -10,7 +10,7 @@ import { SoundObjects } from './SoundObjects.js';
 import { GenerationSurfaces } from './GenerationSurfaces.js';
 import { BearAvatar } from './BearAvatar.js';
 
-export function RoomGroup({ config, loading = false }: { config: RoomConfig; loading?: boolean }) {
+export function RoomGroup({ config, loading = false, empty = false }: { config: RoomConfig; loading?: boolean; empty?: boolean }) {
   const group = useRef<Group>(null);
   const animation = useRef<{ start: number; end: number; elapsed: number } | null>(null);
   useFrame((_, delta) => {
@@ -36,9 +36,9 @@ export function RoomGroup({ config, loading = false }: { config: RoomConfig; loa
   }, -2);
   return <group ref={group} name="room">
     <Floor config={config}/>
-    {loading ? <group name="sound-objects"/> : <SoundObjects/>}
+    {loading || empty ? <group name="sound-objects"/> : <SoundObjects/>}
     {config.walls.map(wall => <Wall key={wall.id} wall={wall} config={config}/>)}
     {loading && <GenerationSurfaces config={config}/>}
-    {!loading && <BearAvatar/>}
+    {!loading && !empty && <BearAvatar/>}
   </group>;
 }

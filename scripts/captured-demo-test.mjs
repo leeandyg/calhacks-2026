@@ -20,7 +20,12 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [], apiCalls = [];
 page.on('pageerror', error => errors.push(error.message));
-await page.route('**/api/**', route => { apiCalls.push(route.request().url()); return route.abort(); });
+await page.route('**/api/**', route => {
+  // Settings can inspect voice availability without requiring a transcription provider.
+  if (new URL(route.request().url()).pathname === '/api/voice' && route.request().method() === 'GET')
+    return route.fulfill({ json: { configured: false, spokenReplies: false } });
+  apiCalls.push(route.request().url()); return route.abort();
+});
 await page.addInitScript(() => {
   window.demoSources = [];
   const Native = window.AudioBufferSourceNode;
@@ -95,8 +100,8 @@ try {
     for (const sound of assets.sounds) assert.ok((await stat(`public${sound.url}`)).size > 100);
   }
   await page.goto(origin);
-  assert.equal(await page.locator('canvas').count(), 0);
-  await expect(page.getByRole('group', { name: 'Preloaded demo rooms' }).getByRole('button')).toHaveCount(4);
+  assert.equal(await page.locator('canvas').count(), 1);
+  await expect(page.getByRole('region', { name: 'Templates', exact: true }).getByRole('button')).toHaveCount(4);
   for (const [id, label] of rooms) {
     const start = Date.now();
     await page.getByRole('button', { name: label, exact: true }).click();
@@ -145,7 +150,8 @@ try {
     assert.ok(rect.x >= 0 && rect.x + rect.width <= 391 && rect.y + rect.height <= 844);
   }
   await page.reload();
-  assert.equal(await page.locator('canvas').count(), 0, 'preloading never creates a room');
+  assert.equal(await page.locator('canvas').count(), 1, 'preloading keeps the empty shell visible');
+  assert.deepEqual(await page.evaluate(() => window.sceneStore.getState().scene.objects), [], 'preloading never populates the room');
   await page.getByRole('button', { name: 'Rainy Café', exact: true }).click();
   await page.waitForFunction(() => window.sceneStore.getState().scene.room.art === 'demo-cafe');
   assert.deepEqual(apiCalls, []); assert.deepEqual(errors, []);

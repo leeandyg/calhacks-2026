@@ -44,6 +44,11 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, v
   const lastCommand = useRef<{ prompt: string; change?: CommandChange } | undefined>(undefined);
   const lastAttempt = useRef('');
   const busy = status?.tone === 'busy';
+  useEffect(() => {
+    if (hasScene) return;
+    setValue(''); setStatus(undefined);
+    lastCommand.current = undefined; lastAttempt.current = '';
+  }, [hasScene]);
   useEffect(() => { void Promise.allSettled(capturedDemos.map(demo => loadCapturedDemo(demo.id))); savedRooms(); }, []);
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => {
@@ -264,12 +269,6 @@ export function PromptBar({ hasScene, onSceneReady, onBusyChange, onSwitching, v
         </button>
       </form>
     </BorderBeam>
-    {hasScene ? templatesTarget && createPortal(<TemplatesPanel disabled={busy} onSelect={id => { void selectDemo(id); }}/>, templatesTarget) : <div className="prompt-intro">
-      <h1 className="initial-title">Where's your flow state, Coin?</h1>
-      <div className="demo-rooms" role="group" aria-label="Preloaded demo rooms">
-      {capturedDemos.map(demo => <button key={demo.id} type="button" disabled={busy}
-        onClick={() => { void selectDemo(demo.id); }}>{demo.label}</button>)}
-      </div>
-    </div>}
+    {templatesTarget && createPortal(<TemplatesPanel disabled={busy} onSelect={id => { void selectDemo(id); }}/>, templatesTarget)}
   </>;
 }
