@@ -28,14 +28,15 @@ const CASES = [
   ["pages turning", "event", "page_flip"], ["keyboard typing", "bed", "keyboard"], ["clock ticking", "bed", "clock"],
   ["white noise", "bed", "white_noise"], ["air conditioner hum", "bed", "ac_hum"], ["library ambience", "bed", "library"],
   ["steady electric fan hum", "bed", "fan"], ["espresso machine steaming milk", "bed", "espresso"],
-  ["seagulls calling", "event", "seagull_call"], ["distant police sirens in the city", "bed", "distant_siren"],
+  ["seagulls calling", "event", "seagull_call"], ["alarm clock going off", "event", "alarm_clock"],
+  ["distant police sirens in the city", "bed", "distant_siren"],
   ["owl hooting at night", "event", "owl"], ["birds singing in the morning", "event", "any"],
   ["distant city traffic at night", "bed", "traffic_distant"], ["rain falling softly", "bed", "rain_*"],
   ["rain falls on the tent", "bed", "rain_*"], ["wind howling around the cabin", "bed", "wind"],
   // A place or a modifier is not the sound itself
   ["chatter in a busy cafe", "bed", "cafe_murmur"], ["rain in the forest, distant thunder", "bed", "thunder_distant"],
   ["birds singing in the trees", "event", "bird_chirp"], ["a fire crackling in the fireplace", "bed", "fireplace"],
-  ["wind chimes on a porch", "bed", "gen"], ["fire alarm beeping", "event", "gen"],
+  ["wind chimes on a porch", "bed", "gen"], ["fire alarm beeping", "event", "alarm_clock"],
   // Not in the pack: generated
   ["a cat purring softly, close", "bed", "gen"], ["old radiator hissing and ticking", "bed", "gen"],
   ["kids playing in a park", "bed", "gen"], ["typewriter clacking", "bed", "gen"],
