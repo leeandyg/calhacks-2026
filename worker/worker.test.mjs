@@ -18,9 +18,9 @@ async function setup(run) {
   const agent = new ManagedAgent({ apiKey: 'worker-private-key', agentId: 'local', environmentId: 'local', baseUrl });
   return { root, baseUrl, agent, server };
 }
-async function result(agent, token) {
+async function result(agent, token, scene = null) {
   for (let i = 0; i < 100; i++) {
-    const value = await agent.result(token, null);
+    const value = await agent.result(token, scene);
     if (value) return value;
     await new Promise(resolve => setTimeout(resolve, 10));
   }
@@ -34,6 +34,8 @@ describe('self-hosted world worker', () => {
       if (calls === 2) {
         expect(options.resume).toBe('sdk-session-one');
         expect(prompt).toContain('"muted":true');
+        const turn = prompt.match(/Turn: (r_[a-f0-9]+)/)[1];
+        await writeFile(join(options.cwd, 'outputs', `${turn}_scene.json`), JSON.stringify({ version: 1, turn, response: { kind: 'edit', ops: [{ op: 'set_volume', id: 'fan-1', volume: 0.1 }] } }));
         yield { type: 'result', subtype: 'success' };
         return;
       }
@@ -64,7 +66,10 @@ describe('self-hosted world worker', () => {
     expect(progress).toContain('"type":"complete"');
     expect(progress).not.toContain('sdk-session-one');
     const scene = structuredClone(complete.response.scene); scene.objects[0].muted = true;
-    await agent.start({ prompt: 'Quieter', scene }, started.token);
+    const edited = await agent.start({ prompt: 'Quieter', scene }, started.token);
+    const updated = await result(agent, edited.token, scene);
+    expect(updated.response).toEqual({ kind: 'edit', ops: [{ op: 'set_volume', id: 'fan-1', volume: 0.1 }] });
+    expect(scene.objects[0].muted).toBe(true);
   });
   it('rejects unauthenticated requests and cross-session or symlink files', async () => {
     const { agent, root, baseUrl } = await setup(async function* ({ prompt, options }) {

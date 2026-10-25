@@ -32,7 +32,9 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
   // Completed assets and SDK transcripts survive a restart. Interrupted builds fail visibly.
   for (const id of await readdir(root)) {
     if (!sessionPattern.test(id)) continue;
-    const state = JSON.parse(await readFile(join(root, id, 'state.json'), 'utf8'));
+    let state;
+    try { state = JSON.parse(await readFile(join(root, id, 'state.json'), 'utf8')); }
+    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
     if (state.status !== 'idle') {
       state.status = 'idle';
       state.events.push({ id: `ev_${randomBytes(12).toString('hex')}`, type: 'session.error' });
@@ -53,7 +55,7 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
       for await (const message of run({
         prompt: text.replaceAll('/mnt/session/outputs/', `${cwd}/outputs/`),
         options: {
-          cwd, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again.`,
+          cwd, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last.`,
           ...(state.sdkSession ? { resume: state.sdkSession } : {}),
           env, settingSources: [], tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
           permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, effort: 'low',

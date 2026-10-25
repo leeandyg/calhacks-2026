@@ -10,7 +10,7 @@ See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluepr
 
 - Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room with the arrows (your ears turn with it), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
 - Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
-- AI: self-hosted Node.js Claude Agent SDK worker for pxl/chirp worlds; Claude Managed Agents and Gemini remain explicit fallback configurations
+- AI: self-hosted Node.js Claude Agent SDK worker for pxl/chirp worlds; Claude Managed Agents remains a rollback option; the existing Gemini fallback is preserved
 
 ## Setup
 
@@ -306,8 +306,8 @@ partial new assets, and previously published assets remain accessible.
 
 `AGENT_CONFIG.yaml` remains the system-prompt source. The worker supplies SDK tools and defaults
 to the same `claude-opus-5-5` model with low effort (`WORLD_AGENT_MODEL` overrides the model).
-Integration still requires actual pxl/chirp builds and the existing `WorldOutput` manifest. Generated code executes only in the dedicated
-worker container, without the app repository or host Docker socket mounted. The app backend and
+Integration still requires actual pxl/chirp builds and the existing `WorldOutput` manifest.
+Generated code executes only in the dedicated worker container, without the app repository or host Docker socket mounted. The app backend and
 browser consume compiled PNG strips/audio through the existing validated, signed proxy.
 The renderer, terrain, fixed slabs/corners, animation timing, manual edits, HRTF audio and
 resolver ownership of sound IDs are unchanged.
@@ -327,7 +327,7 @@ functions do not need to remain open for the full generation. `POST /api/world` 
 finished scene and assets, waiting for delayed file publication. The same endpoint proxies only
 image/audio files belonging to the signed session. Tokens expire after 24 hours. The first room
 stays hidden until its output validates and its images have loaded; errors preserve the current
-room and prompt. Follow-up prompts reuse the managed session and receive the latest canonical
+room and prompt. Follow-up prompts reuse the agent session and receive the latest canonical
 scene, including manual positions and mute settings. New sound IDs are assigned only by the
 existing resolver, using the agent's chirp files.
 
