@@ -55,10 +55,12 @@ export async function POST(request: Request): Promise<Response> {
     if (usual && !memory.preferences.length) {
       return privateJson({ error: "No saved preference matches this task and time yet. Choose the task/time you saved or remember a room first." }, 400);
     }
+    // Starting or continuing a Claude session makes up to two Anthropic calls of up to 20 s each
+    // (server/managedAgent.ts); after auth (5 s) and Moss (8 s) this still fits the 60 s function limit.
     const response = await deadline(sceneResponse(new Request(request.url, { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: data.prompt, scene: data.scene, sessionToken: data.sessionToken }) }), {
       ...context, preferences: memory.preferences.map(preferenceExample), recentContext: memory.recentContext,
-    }), 15_000).catch(() => privateJson({ error: "Scene AI took too long to respond." }, 504));
+    }), 40_000).catch(() => privateJson({ error: "Scene AI took too long to respond." }, 504));
     const body = await response.json();
     // An explicit request for a saved setup can restore its validated snapshot if AI is down.
     // Other edits must never fall back to replacing the user's room.

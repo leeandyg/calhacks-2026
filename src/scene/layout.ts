@@ -40,7 +40,11 @@ export function placeInRoom(object: SoundObject, room: Scene['room']): SoundObje
   // For generated art, a rain hint without an explicit wall can be a stream or weather source.
   // Use the standing footprint so the stock window's automatic mounting cannot hide it.
   const source = room.art && !object.wall && getModelId(object) === 'rain' ? { ...object, model: 'speaker' as const } : object;
-  const placed = placeObject(source, room.grid);
+  let placed = placeObject(source, room.grid);
+  // Manual bear stacks are centered even when an odd grid has no central cell.
+  if (getModelId(source) === 'speaker' && (!room.art || /\bspeaker\b/i.test(`${source.label} ${source.sound.query}`)) && !source.wall && source.position[0] === 0 && source.position[2] === 0) {
+    placed = { ...placed, position: [0, placed.position[1], 0] };
+  }
   if (room.art && isWallMountedArt(placed)) {
     // Painted wall props are planes growing out of the actual inner wall face, not the
     // thick stock model's floor footprint. Audio receives this same mounted position.

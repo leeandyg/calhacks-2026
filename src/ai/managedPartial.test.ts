@@ -9,7 +9,7 @@ function part(objects: boolean): ManagedResult {
   const scene = structuredClone(starter); scene.room.art = envId;
   scene.objects = objects ? [scene.objects[1]] : [];
   if (!objects) scene.room.terrain = Array.from({ length: 10 }, () => Array(10).fill(0.5));
-  return { response: { kind: 'create', scene }, assets: { envId, sprites: [], sounds: [], ...(!objects ? { environment: { concept: 'Forest', shell: '#677367', colors: ['#11171e', '#677367'], openAir: false, terrain: scene.room.terrain } } : {}) } };
+  return { response: { kind: 'create', scene }, assets: { envId, sprites: [], sounds: [], ...(!objects ? { environment: { title: 'Whispers Beneath the Willow', concept: 'Forest', shell: '#677367', colors: ['#11171e', '#677367'], openAir: false, terrain: scene.room.terrain } } : {}) } };
 }
 beforeEach(() => { useSceneStore.getState().setScene(starter); useArtStore.setState({ envs: {}, sprites: {} }); });
 describe('first-ready world assembly', () => {
@@ -36,5 +36,6 @@ describe('first-ready world assembly', () => {
     expect(useSceneStore.getState().scene.objects).toHaveLength(1);
     expect(useSceneStore.getState().scene.room.terrain?.[0][0]).toBe(0.5);
     expect(useArtStore.getState().envs[envId].concept).toBe('Forest');
+    expect(useArtStore.getState().envs[envId].title).toBe('Whispers Beneath the Willow');
   });
 });

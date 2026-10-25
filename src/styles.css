@@ -41,18 +41,18 @@ canvas { display: block; touch-action: none; }
 }
 .room-controls-centered .prompt-status {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 156px);
   width: 100%;
   margin: 0;
 }
 .demo-rooms { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; pointer-events: auto; }
-.demo-rooms button { border: 1px solid #343c47; border-radius: 16px; padding: 6px 12px; background: #18212b; color: #cbd3de; font: inherit; font-size: 12px; cursor: pointer; }
+.demo-rooms button { border: 1px solid #343c47; border-radius: 16px; padding: 6px 12px; background: #18212b; color: #cbd3de; font: inherit; font-size: 20px; cursor: pointer; }
 .demo-rooms button:hover:not(:disabled), .demo-rooms button:focus-visible { border-color: #97b8c4; color: #fff; }
 .demo-rooms button:disabled { opacity: .5; cursor: default; }
-.room-controls-centered .demo-rooms { position: absolute; top: 100%; width: 100%; }
+.room-controls .demo-rooms { position: absolute; bottom: calc(100% + 14px); width: 100%; margin: 0; }
 @media (max-width: 480px) {
   .demo-rooms { gap: 6px; }
-  .demo-rooms button { padding: 6px 10px; font-size: 11px; }
+  .demo-rooms button { padding: 6px 10px; font-size: 20px; }
 }
 .rotate-room {
   display: inline-flex;
@@ -80,14 +80,15 @@ canvas { display: block; touch-action: none; }
   display: flex;
   align-items: center;
   width: 100%;
-  height: 76px;
+  height: 74px;
   border-radius: 999px;
   background: #2a2c33;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 14px 14px 14px 26px;
+  padding: 14px;
   gap: 10px;
 }
 .prompt-bar input {
+  margin-bottom: 5px;
   flex: 1;
   min-width: 0;
   padding: 0;
@@ -101,7 +102,7 @@ canvas { display: block; touch-action: none; }
   transform: translateY(1px);
 }
 .prompt-bar input::placeholder { color: #7a7a90; opacity: 1; }
-.prompt-send {
+.prompt-send, .prompt-mic {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,7 +119,7 @@ canvas { display: block; touch-action: none; }
   -webkit-tap-highlight-color: transparent;
 }
 .prompt-send:disabled { opacity: .45; cursor: default; }
-.prompt-send:hover:not(:disabled) { transform: translateY(-1px); }
+.prompt-send:hover:not(:disabled), .prompt-mic:hover:not(:disabled) { transform: translateY(-1px); }
 .prompt-send:focus-visible { outline: 2px solid #e8e8f0; outline-offset: 3px; }
 .prompt-status {
   margin: 0 auto 10px;
@@ -175,7 +176,8 @@ canvas { display: block; touch-action: none; }
 .enter-room:hover { transform: translateY(-1px); }
 .enter-room:focus-visible { outline: 2px solid #e8e8f0; outline-offset: 3px; }
 .head-tracking { pointer-events: auto; font-size: 13px; color: #e8e8f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.switch-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.switch-row { display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer; }
+.switch-row > .switch { margin-left: auto; }
 .switch-label { font-size: 14px; color: #e8e8f0; font-weight: 500; }
 /* iOS-style toggle: a visually hidden checkbox drives a purple track + sliding knob. */
 .switch { position: relative; display: inline-flex; flex: 0 0 auto; width: 40px; height: 24px; }
@@ -185,16 +187,8 @@ canvas { display: block; touch-action: none; }
 .switch input:checked ~ .switch-track { background: #5b6ce0; }
 .switch input:checked ~ .switch-track .switch-knob, .switch input:checked + .switch-track .switch-knob { transform: translateX(16px); }
 .switch input:focus-visible ~ .switch-track { outline: 2px solid #e8e8f0; outline-offset: 2px; }
-.head-recenter {
-  padding: 4px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 999px;
-  background: #2a2c33;
-  color: #e8e8f0;
-  font: inherit;
-  cursor: pointer;
-}
-.head-status { min-width: 9ch; }
+.head-angle { flex: 0 0 auto; padding: 4px 7px; border-radius: 999px; background: rgba(91, 108, 224, 0.18); color: #c9cdfa; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.head-status { width: 100%; color: #9a9fac; font-size: 12px; }
 .sound-status-layer { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .sound-status {
   position: absolute;
@@ -266,14 +260,53 @@ canvas { display: block; touch-action: none; }
   top: max(24px, env(safe-area-inset-top));
   right: max(18px, env(safe-area-inset-right));
   z-index: 1;
-  width: min(320px, 88vw);
-  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 24px);
+  width: var(--sidebar-width, min(320px, 88vw));
+  height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 24px);
   display: flex;
   flex-direction: column;
   gap: 12px;
   pointer-events: none;
 }
 .assets-beam { width: 100%; border-radius: 24px; pointer-events: auto; }
+/* Left "Visited places" sidebar: auto-saved rooms, same frosted card as Assets and the prompt bar. */
+.places-dock {
+  position: fixed;
+  top: max(24px, env(safe-area-inset-top));
+  left: max(18px, env(safe-area-inset-left));
+  z-index: 1;
+  width: var(--sidebar-width, min(320px, 88vw));
+  height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 24px);
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.places-panel, .templates-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 24px);
+  padding: 18px;
+  border-radius: 24px;
+  background: #2a2c33;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.places-list, .templates-list { min-height: 0; scrollbar-width: none; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
+.place-item { margin: 0; }
+.place-new, .place-row {
+  width: 100%; text-align: left; padding: 10px 12px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e8e8f0; font: inherit; font-size: 20px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background 160ms, border-color 160ms;
+}
+.place-new { display: flex; align-items: center; gap: 8px; color: #c9cdfa; font-weight: 600; border-color: rgba(91, 108, 224, 0.5); }
+.place-plus { font-size: 18px; line-height: 1; }
+.place-new:hover, .place-row:hover { background: rgba(255, 255, 255, 0.08); }
+.place-row[aria-current] { background: rgba(91, 108, 224, 0.22); border-color: #5b6ce0; color: #fff; }
+.place-new:focus-visible, .place-row:focus-visible { outline: 2px solid #e8e8f0; outline-offset: 2px; }
+.places-note { margin: 0; font-size: 12px; color: #9a9fac; }
 .assets-panel, .settings-panel {
   display: flex;
   flex-direction: column;
@@ -283,12 +316,15 @@ canvas { display: block; touch-action: none; }
   background: #2a2c33;
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
-/* Assets takes about half the dock and scrolls so a long source list never crowds out Settings. */
+/* Assets fills the space above bottom-anchored Settings and scrolls for long source lists. */
 .assets-panel {
-  max-height: min(46dvh, 460px);
+  height: 100%;
+  max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none;
 }
+.assets-panel::-webkit-scrollbar { display: none; }
 .assets-title {
   margin: 0;
   padding: 0 2px;
@@ -376,10 +412,83 @@ canvas { display: block; touch-action: none; }
 .asset-action[aria-pressed="true"] { color: #e8e8f0; }
 .asset-delete:hover { background: rgba(255, 92, 92, 0.16); color: #ff9b9b; }
 @media (max-width: 720px) {
-  .assets-dock { width: min(260px, 70vw); }
-  .assets-panel { max-height: 26vh; padding: 14px; }
+  :root { --sidebar-width: min(260px, calc((100vw - 48px) / 2)); }
+  .assets-panel { padding: 14px; }
   .settings-panel { padding: 14px; }
+  .places-panel, .templates-panel { padding: 14px; }
+  .head-tracking .switch-row { gap: 5px; }
+  .head-tracking .switch-label { font-size: 12px; }
+  .head-angle { max-width: 36px; padding: 4px; font-size: 10px; white-space: normal; text-align: center; line-height: 1.15; }
+  .settings-panel .agent-controls .switch-label { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .assets-beam::before, .assets-beam::after, .assets-beam [data-beam-bloom] { animation: none !important; }
+}
+
+/* The original voice controller renders into the prompt and Settings via React portals. */
+.prompt-microphone { display: inline-flex; flex: 0 0 44px; }
+.prompt-mic:disabled { opacity: .45; cursor: default; }
+.prompt-mic[aria-pressed="true"] { color: #ff9b9b; background: rgba(165,47,75,.2); }
+.prompt-mic:focus-visible { outline: 2px solid #e8e8f0; outline-offset: 3px; }
+.voice-settings-section { padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); }
+.settings-subtitle { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: #9a9fac; }
+.settings-panel .agent-controls { margin: 0; padding: 0; }
+.settings-panel .agent-activation { flex-direction: column; align-items: stretch; gap: 12px; }
+.settings-panel .agent-controls .switch-row { justify-content: flex-start; gap: 8px; }
+.agent-controls .switch input { padding: 0; border: 0; }
+.switch input:disabled { cursor: default; }
+.switch:has(input:disabled) { opacity: .45; }
+.voice-float { width: 100%; min-height: 36px; }
+.voice-status { color: #9a9fac; font-size: 11px; line-height: 1.5; }
+
+.assets-dock > .assets-beam { min-height: 0; }
+.assets-dock > .assets-beam:not(.settings-beam) { flex: 1; min-height: 96px; }
+.assets-dock > .settings-beam { flex: 0 1 auto; max-height: calc(100% - 108px); }
+.settings-beam .settings-panel { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.settings-beam .settings-panel::-webkit-scrollbar { display: none; }
+
+.templates-slot:empty { display: none; }
+.templates-slot { flex: 0 0 auto; min-height: 0; }
+.templates-panel { max-height: 40dvh; }
+.places-beam { flex: 1; min-height: 0; }
+.places-panel { height: 100%; min-height: 0; max-height: none; }
+.places-panel > .assets-title, .places-note { flex-shrink: 0; }
+.places-list { flex: 0 1 auto; pointer-events: auto; }
+.places-list::-webkit-scrollbar, .templates-list::-webkit-scrollbar { display: none; }
+.place-item { flex-shrink: 0; }
+.templates-list .place-row:disabled { opacity: .45; cursor: default; }
+
+/* Empty space in the tall history card must not block room drags underneath it. */
+.places-beam, .places-panel { pointer-events: none; }
+.places-panel .assets-title, .places-list > .place-item, .places-note { pointer-events: auto; }
+
+.places-dock-hidden { display: none; }
+.places-slot { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.initial-places-slot { position: absolute; top: calc(100% + 16px); width: 100%; pointer-events: auto; }
+.initial-places-slot:empty { display: none; }
+.initial-places { display: flex; flex-direction: column; gap: 10px; max-height: 38dvh; }
+.initial-places-title { margin-top: 20px; color: #9a9fac; font-size: 20px; font-weight: 500; text-align: left; }
+.initial-places .places-list { min-height: 0; }
+.initial-places .place-row { background: transparent; border-color: transparent; }
+.initial-places .place-row:hover { background: rgba(255,255,255,.04); }
+
+@media (max-width: 720px) {
+  .room-controls-centered .prompt-status { bottom: calc(100% + 200px); }
+}
+
+.prompt-mic { background: transparent; }
+.prompt-intro { position: absolute; bottom: calc(100% + 14px); width: 100%; display: flex; flex-direction: column; gap: 16px; }
+.prompt-intro .demo-rooms { position: static; width: 100%; margin: 0; }
+.initial-title { margin: 0 0 80px; color: #e8e8f0; font-size: 32px; font-weight: 500; line-height: 1.25; text-align: center; }
+@media (max-width: 1100px) { .initial-title { font-size: 20px; } }
+
+/* Card typography only; preserve the prompt and initial-screen styles. */
+:is(.templates-panel, .places-panel, .assets-panel, .settings-panel),
+.templates-panel :is(.assets-title, .place-row),
+.places-panel :is(.assets-title, .place-row, .place-new, .places-note),
+.assets-panel :is(.assets-title, .assets-empty, .asset-label),
+.settings-panel :is(.assets-title, .settings-subtitle, .head-tracking, .head-angle, .head-status, .agent-controls, .voice-status),
+.settings-panel .switch-label,
+.settings-panel .agent-controls .switch-label {
+  font-size: 18px;
 }

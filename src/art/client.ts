@@ -33,7 +33,7 @@ export async function paintEnvironment(prompt: string, scene: Scene): Promise<{ 
     await events.return(undefined);
     throw new Error('The environment returned an invalid ground layout.');
   }
-  const env: EnvArt = { id: plan.id, concept: plan.concept, shell: plan.shell, colors: plan.colors, terrain: terrain.data, textures: {} };
+  const env: EnvArt = { id: plan.id, title: plan.title, concept: plan.concept, shell: plan.shell, colors: plan.colors, terrain: terrain.data, textures: {} };
   addEnvironment(env);
   const painted = (async () => {
     let failed = false;

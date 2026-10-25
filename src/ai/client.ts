@@ -56,13 +56,15 @@ export async function fallbackScene(prompt: string, scene: Scene | null, progres
 
 async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void, signal?: AbortSignal, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<SceneReply> {
   signal?.throwIfAborted();
+  // Starting a Claude session can make two Anthropic calls of up to 20 s each (server/managedAgent.ts).
+  const timeout = engine === 'agent' ? 40_000 : 15_000;
   let res: Response;
   try {
     res = await fetch("/api/scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(engine === 'gemini' ? { prompt, scene, engine } : { prompt, scene, mode: AGENT_MODE, sessionToken: scene ? currentAgentSession() : undefined }),
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeout)]) : AbortSignal.timeout(timeout),
     });
   } catch {
     signal?.throwIfAborted();

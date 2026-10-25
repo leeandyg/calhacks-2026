@@ -141,7 +141,7 @@ try {
     await page.getByRole('button', { name: label, exact: true }).click();
     await page.waitForFunction(id => window.sceneStore.getState().scene.room.art === `demo-${id}` && !window.__spawnBusy, id);
     await page.screenshot({ path: `test-results/captured-${id}-mobile.png` });
-    const rect = await page.getByRole('group', { name: 'Preloaded demo rooms' }).boundingBox();
+    const rect = await page.getByRole('region', { name: 'Templates', exact: true }).boundingBox();
     assert.ok(rect.x >= 0 && rect.x + rect.width <= 391 && rect.y + rect.height <= 844);
   }
   await page.reload();

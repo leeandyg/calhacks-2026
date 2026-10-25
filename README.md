@@ -67,7 +67,8 @@ resolved normally and do not trigger offline replay.
 
 ## Offline demo
 
-Four fully captured rooms are available from the buttons below the prompt: **Rainy café**,
+Four fully captured rooms are available from the buttons above the initial prompt, then from
+the **Templates** card above Visited places once a room appears: **Rainy café**,
 **Beach**, **Cyberpunk city**, and **Zen garden**. Each has exactly three sounds (two beds and one random event),
 pixel artwork, and fixed starting placements. Complete bundles live in `public/demo/<id>/`:
 `scene.json`, `assets.json`, capture/provenance notes, PNGs and compressed MP3s. A source the sound
@@ -132,10 +133,10 @@ Wear headphones. The spatial effect depends on them.
 
 ## Head tracking (webcam)
 
-Tick **Head tracking** in the demo controls and allow the camera. MediaPipe Face Landmarker runs in the
+Turn on **Head tracking** in Settings and allow the camera. MediaPipe Face Landmarker runs in the
 browser (frames never leave it; the model and wasm load from a CDN the first time), and turning your
 head turns your ears: the sounds stay where they are in the room. The direction you face when it
-starts is straight ahead; **Recenter** resets that. If your face is lost (turned away, out of frame),
+starts is straight ahead; Settings shows the current angle beside the head-tracking switch. If your face is lost (turned away, out of frame),
 the last direction holds, and when it's found again the sound glides back to where your head really
 is. The status shows the current angle, e.g. "20° left". Head yaw lives in `src/sensors/headPose.ts`,
 never in the scene, so saved rooms don't capture it.
@@ -148,9 +149,12 @@ configures a deployment and writes `CONVEX_DEPLOYMENT` and the public
 a Convex account. In another terminal, run `npm run convex:auth` once to configure
 the deployment's signing keys, then start/restart `npm run dev`.
 
-After creating a room with the prompt, name the current room and click **Save room**. Saving the same
-name updates that snapshot. Choose an entry under **Saved room**, then click
-**Load room** to replace the active scene. Snapshots include positions, volumes,
+Generated rooms are automatically saved in **Visited places**; selecting a captured template never adds one.
+Before a place is shown, saved places appear as a plain list below the centered prompt. Rooms are named by the environment AI agent as part of the same generation request
+(`environment.title`). Older recordings without a title retain their existing fallback label. Later edits update that place; switching environments
+creates a separate entry. Click an entry to reopen it, or **New Place** to start from an empty
+room. Saving uses the existing Convex `savedScenes.save` function. Repeated environment labels
+get a numbered suffix so each visit keeps its own snapshot. Snapshots include positions, volumes,
 sound references, event intervals, listener orientation, room settings and session
 state. The existing Zod scene contract validates saves and loads.
 

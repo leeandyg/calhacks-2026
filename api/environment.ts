@@ -7,7 +7,7 @@ import { ART_PX_PER_BLOCK as PX } from "../src/scene/layout.js";
 import { RoomGrid, RoomPreset, TERRAIN_MAX, WallId } from "../src/scene/scene.js";
 
 // POST /api/environment: { prompt, preset, grid, objects } -> NDJSON stream, one event per line:
-//   { type: "plan", id, concept, shell, colors, terrain }      the ground's shape, as soon as it's planned
+//   { type: "plan", id, title, concept, shell, colors, terrain }      the ground's shape, as soon as it's planned
 //   { type: "texture", surface, png, colors } | { type: "texture", surface, error }   floor, north, east, south, west
 //   { type: "done" }
 // Called after /api/scene creates a scene, so the room appears before its sound objects do.
@@ -33,6 +33,7 @@ const EnvironmentRequest = z.object({
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const Plan = z.object({
+  title: z.string().trim().min(1).max(60).describe("A short, literal 1–4 word environment label for Visited places, such as Rainy Cafe, Beach, Cyberpunk City, or Zen Garden. Use the place type and defining atmosphere. No poetic names, slogans, metaphors, invented venue names, quotes, or rendering terminology."),
   concept: z.string().min(1).max(1500).describe("2-5 sentences: what this place really looks like around a person standing in it, the ground, the light, and why."),
   palette: z.array(hex).min(8).max(24).describe("8-24 colors for the whole room, as ramps from dark to light."),
   shell: hex.describe("Color of the wall tops and the floor's outer edge, from the palette."),
@@ -84,7 +85,7 @@ Sound objects that will be separate props in it (don't plan them into the surfac
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: object) => { if (!cancelled) controller.enqueue(encoder.encode(JSON.stringify(event) + "\n")); };
-      send({ type: "plan", id: `env-${randomUUID().slice(0, 8)}`, concept: plan.concept, shell: plan.shell.toLowerCase(), colors: plan.palette.map((c) => c.toLowerCase()), terrain });
+      send({ type: "plan", id: `env-${randomUUID().slice(0, 8)}`, title: plan.title, concept: plan.concept, shell: plan.shell.toLowerCase(), colors: plan.palette.map((c) => c.toLowerCase()), terrain });
       await Promise.all(SURFACES.map(async (surface) => {
         try {
           const { png, colors } = await cachedArt(['surface-v2', ART_MODEL, surface, plan, grid, prompt], () => paintSurface(surface, plan, terrain, grid, prompt));
@@ -131,6 +132,7 @@ not a box with wallpaper: think about what actually surrounds a person standing 
 ground is like underfoot, where the light comes from, before you answer.
 
 Plan:
+- title: author a short, literal 1–4 word environment label (at most 60 characters), such as "Rainy Cafe", "Beach", "Cyberpunk City", or "Zen Garden". Use the place type and defining atmosphere from the request. Avoid poetic names, slogans, metaphors, invented venue names, and rendering terminology.
 - concept: the place in a few sentences.
 - palette: one coherent palette of 8-24 colors, as ramps (dark to light) per material, light from
   the top-left. Muted and natural unless the place is neon or vivid.

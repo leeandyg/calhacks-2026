@@ -2,14 +2,15 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Sprite } from 'three';
 import { useSceneStore } from '../scene/store.js';
-import { groundHeight } from '../scene/layout.js';
+import { bearGround, bearSpeakers } from '../scene/speakerStack.js';
 import { usePaintTexture } from './PaintedSurface.js';
 import { useRoomStore } from './useRoomStore.js';
 import { BEAR_VIEWS, bearDirection } from './bearDirections.js';
 
 /** A persistent listener avatar, separate from agent-owned sound sources. */
 export function BearAvatar() {
-  const room = useSceneStore(state => state.scene.room);
+  const scene = useSceneStore(state => state.scene);
+  const hidden = useRoomStore(state => state.hiddenObjectIds);
   const direction = useRoomStore(state => bearDirection(state.viewAngle));
   const backRight = usePaintTexture(BEAR_VIEWS[0].image);
   const backLeft = usePaintTexture(BEAR_VIEWS[1].image);
@@ -19,8 +20,8 @@ export function BearAvatar() {
   const ref = useRef<Sprite>(null);
   // Sit on the highest central cell covered by the bear's feet, including on
   // an even-sized grid where the exact room center meets four terrain cells.
-  const elevation = Math.max(...[-0.4, 0.4].flatMap(x =>
-    [-0.3, 0.3].map(z => groundHeight([x, 0, z], room))));
+  const elevation = Math.max(bearGround(scene.room), ...bearSpeakers(scene)
+    .filter(object => !hidden.includes(object.id)).map(object => object.position[1] + 0.7 * object.scale));
   useFrame(() => {
     if (!ref.current) return;
     ref.current.visible = Boolean(texture?.image);
