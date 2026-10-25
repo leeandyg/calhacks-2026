@@ -2,7 +2,7 @@
 
 Goal: issue #121 — concurrently create environment and source assets, rendering either completed branch immediately while the other runs.
 
-Architecture: new self-hosted creation sessions launch two SDK queries with isolated working directories, a common fixed grid/palette brief and separate manifest names. Both use the existing WorldOutput shape. Publish signed, validated branch results through the existing proxy and merge the unchanged final manifest after both finish. Edits and legacy cloud sessions retain their existing path.
+Architecture: new self-hosted creation sessions launch two SDK queries with isolated working directories, a common fixed grid/palette brief and separate manifest names. Both use the existing WorldOutput shape. Publish signed, validated branch results through the existing proxy and merge the unchanged final manifest after both finish. Edits and legacy cloud sessions retain their existing path; a replacement is routed before building and uses the parallel creation jobs.
 
 - [x] Worker: gated tests prove both jobs start before either finishes, publication occurs in either order, failed output stays private, sessions remain resumable, and final output merges both branches.
 - [x] API: accept only environment/objects branch selectors; validate branch invariants and compiled mappings with the existing scene/asset validation.

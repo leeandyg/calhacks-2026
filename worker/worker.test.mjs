@@ -201,3 +201,35 @@ describe('parallel first-ready publication', () => {
     } finally { gates.environment.release(); gates.objects.release(); }
   });
 });
+
+describe('replacement routing', () => {
+  it('routes a replacement before building, then creates both branches and hides the routing marker', async () => {
+    const branches = new Set(); let routed = 0;
+    const { agent } = await setup(async function* ({ prompt, options }) {
+      const turn = prompt.match(/Turn: (r_[a-f0-9]+)/)[1];
+      const branch = prompt.match(/WORLD BRANCH: (environment|objects)/)?.[1];
+      if (!branch) {
+        routed++;
+        expect(options.systemPrompt).toContain('Before reading toolkits or building');
+        await writeFile(join(options.cwd, 'outputs', `${turn}_replace.json`), '{"replace":true}');
+        yield { type: 'result', subtype: 'success' }; return;
+      }
+      branches.add(branch);
+      const outputs = prompt.match(/BRANCH OUTPUT DIRECTORY: (.+)/)[1];
+      const output = { version: 1, turn, response: { kind: 'create', scene: { ...starter, objects: [] } }, sprites: [], sounds: [] };
+      if (branch === 'environment') {
+        const file = `${turn}_environment_floor.png`;
+        await writeFile(join(outputs, file), 'compiled');
+        output.environment = { concept: 'New room', shell: '#677367', colors: ['#11171e', '#677367'], textures: { floor: { file, w: 160, h: 160 } } };
+      }
+      await writeFile(join(outputs, `${turn}_${branch}.json`), JSON.stringify(output));
+      yield { type: 'result', subtype: 'success' };
+    }, true);
+    const started = await agent.start({ prompt: 'Replace this with an empty room', scene: starter });
+    const final = await result(agent, started.token, starter);
+    expect(final.response.kind).toBe('create');
+    expect(routed).toBe(1); expect([...branches].sort()).toEqual(['environment', 'objects']);
+    expect(await agent.result(started.token, starter, 'environment')).toBeDefined();
+    expect((await agent.files(agent.verify(started.token).session)).some(file => file.filename.endsWith('_replace.json'))).toBe(false);
+  });
+});

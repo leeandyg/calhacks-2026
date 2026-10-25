@@ -120,7 +120,7 @@ Set manifest.turn=${turn}. In every file field use only the generated file's bas
     try { output = WorldOutput.parse(await (await this.api(`/files/${manifest.id}/content`)).json()); }
     catch { throw new AgentError('Claude produced a scene the app could not validate. Please try again.'); }
     if (output.turn !== run.turn) throw new AgentError('Claude returned an outdated scene.');
-    if (part && (context || output.response.kind !== 'create')) throw new AgentError('Partial publication is only valid for a new world.');
+    if (part && output.response.kind !== 'create') throw new AgentError('Partial publication is only valid for a new world.');
     if (part === 'environment' && (!output.environment || output.response.kind !== 'create' || output.response.scene.objects.length || output.sprites.length || output.sounds.length)) throw new AgentError('Invalid environment branch.');
     if (part === 'objects' && output.environment) throw new AgentError('Invalid objects branch.');
     let response: SceneResponse = output.response;

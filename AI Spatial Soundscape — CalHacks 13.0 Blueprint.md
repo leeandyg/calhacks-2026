@@ -111,7 +111,8 @@ installed in the image once. New-world environment and source-art/audio jobs run
 from one prompt, fixed grid and palette. Each publishes its own validated manifest immediately;
 the first ready branch reveals the renderer while its peer continues. Late terrain is applied by
 the canonical scene store, preserving manual source edits. The worker merges the unchanged final
-WorldOutput after both finish. Follow-up edits reuse the source SDK session as single turns.
+WorldOutput after both finish. Follow-up edits reuse the source SDK session as single turns;
+full replacements route before building and then use the same two concurrent jobs.
 The worker implements the existing session/events/files protocol,
 so signed capabilities, validated `WorldOutput` manifests, compiled PNG/audio, canonical scene,
 resolver ownership and browser rendering remain unchanged. A volume persists completed worlds
