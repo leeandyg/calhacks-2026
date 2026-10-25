@@ -8,8 +8,8 @@ let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
 
 /** One durable managed run can span many short API/SSE connections. */
-export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void): Promise<ManagedResult> {
-  const deadline = Date.now() + 12 * 60 * 1000;
+export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, budgetMs = 12 * 60 * 1000): Promise<ManagedResult> {
+  const deadline = Date.now() + budgetMs;
   const seen = new Set<string>();
   let complete = false, failures = 0;
   while (!complete && Date.now() < deadline) {

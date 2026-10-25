@@ -141,7 +141,8 @@ export async function sceneResponse(request: Request, preferenceContext?: unknow
     }
   }
 
-  const managed = agentSettings();
+  // The browser asks for Gemini by name when the Claude agent failed (src/ai/client.ts).
+  const managed = raw?.engine === "gemini" ? undefined : agentSettings();
   if (managed) {
     try {
       const previousToken = typeof raw?.sessionToken === 'string' ? raw.sessionToken : undefined;
