@@ -1,5 +1,6 @@
 import { Terrain, type Scene, type SoundObject } from "../scene/scene.js";
 import { addEnvironment, addTexture, setSprite, spriteKey, useArtStore, type EnvArt, type Surface } from "./store.js";
+import { loadPaintImage } from './images.js';
 
 // Browser side of POST /api/environment (streamed) and POST /api/sprite. Keys stay on the server.
 
@@ -80,8 +81,9 @@ function schedule(job: () => Promise<void>) {
 /** Paints each object's prop once per environment (in the background, a few at a time). */
 export function paintSprites(envId: string, objects: SoundObject[]) {
   const env = useArtStore.getState().envs[envId];
-  if (!env || env.managed) return;
+  if (!env) return;
   for (const object of objects) {
+    if (object.kind === 'live') continue;
     const key = spriteKey(envId, object);
     if (useArtStore.getState().sprites[key]) continue;
     setSprite(key, { status: "painting" });
@@ -95,10 +97,13 @@ export function paintSprites(envId: string, objects: SoundObject[]) {
         });
         if (!res.ok) throw new Error(`/api/sprite ${res.status}: ${await res.text()}`);
         const { png, w, h } = await res.json();
+        await loadPaintImage(png);
         setSprite(key, { status: "ready", png, w, h });
       } catch (error) {
         console.warn(`art: "${object.label}" wasn't painted; using its stock prop`, error);
-        setSprite(key, { status: "failed" });
+        // A fallback-AI addition has no managed artwork to preserve. Keep it
+        // usable even when the separate prop painter is unavailable.
+        setSprite(key, { status: "failed", stockFallback: Boolean(env.managed) });
       }
     });
   }

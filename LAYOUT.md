@@ -71,6 +71,9 @@ For a rectangle use, for example, `mode: "Rectangle", columns: 10, rows: 6, wall
   manual rotation. Waiting portals and generating labels remain until the sprite succeeds or
   fails; failure reveals the stock prop. Structural forest paintings may depict distant trees;
   separate branches/trees must be sound sources. No extra decorative objects or controls.
+  In captured/managed rooms, fallback-AI additions request only their missing source sprites,
+  including when the AI reply carries a fallback notice. If that new painting fails, show its
+  stock geometry; original managed sprites are never repainted or replaced by this recovery.
 
 - Use `ROOM_THEMES` in `src/room/roomConfig.ts` for the shared wall/floor finish. The plain bedroom is neutral gray (`#969aa3`) with no marks. Other presets adapt the neutral finish to their environment without changing thickness. Walls and floor must use the same surface color, including exposed slab edges; lighting may shade faces naturally.
 - Forest uses muted earth/gray-green slabs with **sparse small dirt and moss pixels** on wall faces, top faces, floor and exposed floor edges. These are structural surface details, not additional scene objects. Normal plain rooms have no texture, speckles, decorative border or grouting.

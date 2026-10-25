@@ -23,7 +23,7 @@ export type EnvArt = {
 export type SpriteArt =
   | { status: "painting" }
   | { status: "ready"; png: string; w: number; h: number; frames?: number; fps?: number }
-  | { status: "failed" };
+  | { status: "failed"; stockFallback?: boolean };
 
 type ArtState = {
   envs: Record<string, EnvArt>;

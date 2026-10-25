@@ -51,8 +51,10 @@ function Source({ object }: { object: SoundObject }) {
   const managed = useArtStore(state => room.art ? state.envs[room.art]?.managed : false);
   const art = useArtStore(state => room.art ? state.sprites[spriteKey(room.art, object)] : undefined);
   useEffect(() => {
-    if (room.art && !art) paintSprites(room.art, [object]);
-  }, [room.art, object, art]);
+    // Managed originals are installed/restored as a set. Only an explicit AI
+    // addition may request new art inside those rooms (PromptBar).
+    if (room.art && !art && !managed) paintSprites(room.art, [object]);
+  }, [room.art, object, art, managed]);
   const model = getModelId(object);
   const wall = useMemo(() => object.wall ? getRoomConfig(room).walls.find(wall => wall.id === object.wall) : undefined, [room, object.wall]);
   useLayoutEffect(() => {
@@ -93,6 +95,7 @@ function Source({ object }: { object: SoundObject }) {
   const rotation = object.wall ? WALL_ROTATIONS[object.wall] : model === 'fan' ? Math.PI / 4 : 0;
   const height = object.position[1] / object.scale;
   const footprint = gridFootprint(object);
+  const stockFallback = object.kind === 'live' || !managed || (art?.status === 'failed' && art.stockFallback);
   const hover = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
     const state = useRoomStore.getState();
@@ -106,7 +109,7 @@ function Source({ object }: { object: SoundObject }) {
     if (state.hoveredObjectId === object.id) state.setHovered(null);
     document.body.style.cursor = '';
   }}>
-    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : (managed && object.kind !== 'live') || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
+    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : !stockFallback || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
   </group>;
 }
 
