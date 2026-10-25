@@ -27,6 +27,12 @@ describe('painted standing sources', () => {
       }
     }
   });
+  it('does not turn generated floor water with a rain hint into a wall window', () => {
+    const stream = placeInRoom({ ...tree, model: 'rain', label: 'Babbling stream', wall: null }, room);
+    expect(stream.wall).toBeNull();
+    expect(stream.model).toBe('speaker');
+    expect(paintedPropLayout(stream, room, { w: 48, h: 20 }).mounted).toBe(false);
+  });
   it('keeps a mounted window at its canonical height and inside corner posts', () => {
     const object = placeInRoom({ ...starter.objects[0], position: [-100, 3, -100] }, room);
     const layout = paintedPropLayout(object, room, { w: 32, h: 48 });
