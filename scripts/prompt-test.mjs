@@ -11,7 +11,7 @@ await page.route('**/api/environment', route => route.fulfill({ json: { error: '
 let reply;
 await page.route('**/api/scene', async route => { requests.push(route.request().postDataJSON()); await reply(route); });
 page.on('pageerror', error => errors.push(error.message));
-page.on('console', message => { if (message.type() === 'error' && !(reply?.outage && message.text().includes('503'))) errors.push(message.text()); });
+page.on('console', message => { if ((message.type() === 'error' || message.text().includes('GL_INVALID_VALUE')) && !(reply?.outage && message.text().includes('503'))) errors.push(message.text()); });
 try {
   await mkdir('test-results', { recursive: true });
   await page.goto(process.env.TEST_URL ?? 'http://localhost:5173');
@@ -63,14 +63,21 @@ try {
   reply = async route => { await pendingCreation; await createReply(route); };
   await input.fill('  A quiet forest room  '); await send.click();
   await page.waitForFunction(() => document.querySelector('form')?.getAttribute('aria-busy') === 'true');
-  assert.equal(await page.locator('canvas, .room-rotation').count(), 0,'no starter room while creating');
+  await page.locator('canvas').waitFor();
+  assert.equal(await page.locator('.room-rotation, .assets-panel').count(), 0, 'loading shell has no room controls');
+  assert.deepEqual(await page.evaluate(() => window.sceneStore.getState().scene.objects), [], 'loading effect leaves the canonical scene empty');
   const pendingRect = await page.locator('.prompt-bar').boundingBox();
-  assert.ok(Math.abs(pendingRect.y + pendingRect.height / 2 - 450) < 1,'progress leaves the prompt centered');
+  assert.ok(pendingRect.y > 700, 'loading shell moves the prompt below the room');
+  await page.waitForTimeout(800);
+  const loadingFrame = await page.locator('canvas').screenshot();
+  await page.waitForTimeout(800);
+  assert.notDeepEqual(await page.locator('canvas').screenshot(), loadingFrame, 'generation mosaic animates while the request is pending');
+  await page.screenshot({ path: 'test-results/generation-loading.png' });
   releaseCreation();
   await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
   assert.equal(await rotate.innerText(), '');
   assert.equal(await left.innerText(), '');
-  assert.equal(await page.getByRole('button').count(), 7);
+  assert.equal(await page.getByRole('button').count(), 7 + 2 * (await page.evaluate(() => window.__pixelRoom().scene.objects.length)), '2 arrows, send, four captured choices, plus disable & delete per asset');
   assert.equal(await input.inputValue(), '');
   assert.equal(requests[1].prompt, 'A quiet forest room');
   assert.equal(requests[1].scene, null, 'the first room has no dummy scene context');

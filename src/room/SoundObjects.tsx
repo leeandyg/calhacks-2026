@@ -129,8 +129,11 @@ export function SoundObjects() {
     return () => window.removeEventListener('blur', clear);
   }, []);
   const preset = room.preset;
+  // Sources hidden from the environment through the Assets panel are muted and not rendered at all.
+  const hidden = useRoomStore(state => state.hiddenObjectIds);
+  const visible = objects.filter(object => !hidden.includes(object.id));
   return <group name="sound-objects">
-    {objects.map(object => <Source key={object.id} object={object}/>)}
-    {objects.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={room.art && !isWallMountedArt(object) ? [object.position[0], groundHeight(object.position, room), object.position[2]] : object.position} scale={object.scale} preset={preset}/>)}
+    {visible.map(object => <Source key={object.id} object={object}/>)}
+    {visible.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={room.art && !isWallMountedArt(object) ? [object.position[0], groundHeight(object.position, room), object.position[2]] : object.position} scale={object.scale} preset={preset}/>)}
   </group>;
 }

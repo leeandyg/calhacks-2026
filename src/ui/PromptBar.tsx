@@ -21,7 +21,7 @@ const DEMO_MODE = new URLSearchParams(window.location.search).has('demo');
 
 // Sends the prompt and current scene to the server agent and applies the validated reply. Without AI,
 // the client falls back to the local presets and recorded demo, and says so in the status line.
-export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSceneReady: () => void }) {
+export function PromptBar({ hasScene, onSceneReady, onBusyChange }: { hasScene: boolean; onSceneReady: () => void; onBusyChange?: (busy: boolean) => void }) {
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<Status>();
   const demoMode = DEMO_MODE;
@@ -32,6 +32,7 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
   const lastAttempt = useRef('');
   const busy = status?.tone === 'busy';
   useEffect(() => { void Promise.allSettled(capturedDemos.map(demo => loadCapturedDemo(demo.id))); }, []);
+  useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => {
     if (status?.tone !== 'notice') return;
     const timer = setTimeout(() => setStatus(undefined), NOTICE_MS);

@@ -9,8 +9,11 @@ interface RoomState {
   selectedObjectId: string | null;
   hoveredObjectId: string | null;
   draggingObjectId: string | null;
+  /** View-only: sources hidden from the environment through the Assets panel. They are also muted
+   *  (silence goes through the scene store), but their props and portals are not rendered at all. */
+  hiddenObjectIds: string[];
   lighting: 'day' | 'evening';
-  /** The room's on-screen rotation in radians, including mid-turn. The audio listener turns with it. */
+  /** View-only room rotation in radians, including mid-turn. Audio stays in canonical coordinates. */
   viewAngle: number;
   camera: { position: Vec3; target: Vec3 };
   rotate: (direction: 'left' | 'right') => void;
@@ -20,11 +23,12 @@ interface RoomState {
   selectObject: (id: string | null) => void;
   setHovered: (id: string | null) => void;
   setDragging: (id: string | null) => void;
+  setHidden: (id: string, hidden: boolean) => void;
   frameRoom: (dimensions: RoomDimensions) => void;
 }
 export const useRoomStore = create<RoomState>((set, get) => ({
   orientation: 0, pendingSteps: 0, isRotating: false, lighting: 'day', viewAngle: 0,
-  selectedObjectId: null, hoveredObjectId: null, draggingObjectId: null,
+  selectedObjectId: null, hoveredObjectId: null, draggingObjectId: null, hiddenObjectIds: [],
   camera: roomCamera(getRoomDimensions(DEFAULT_ROOM_GRID)),
   rotate: (direction) => { if (!get().isRotating && !get().draggingObjectId) set({ pendingSteps: direction === 'right' ? -1 : 1, isRotating: true, hoveredObjectId: null }); },
   reset: () => {
@@ -37,5 +41,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   selectObject: selectedObjectId => set({ selectedObjectId }),
   setHovered: hoveredObjectId => { if (get().hoveredObjectId !== hoveredObjectId) set({ hoveredObjectId }); },
   setDragging: draggingObjectId => set({ draggingObjectId }),
+  setHidden: (id, hidden) => set(state => ({ hiddenObjectIds: hidden ? [...new Set([...state.hiddenObjectIds, id])] : state.hiddenObjectIds.filter(hiddenId => hiddenId !== id) })),
   frameRoom: dimensions => set({ camera: roomCamera(dimensions) }),
 }));

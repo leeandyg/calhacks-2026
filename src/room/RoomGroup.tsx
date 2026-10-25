@@ -7,8 +7,10 @@ import type { RoomConfig } from './types.js';
 import { Floor } from './Floor.js';
 import { Wall } from './Wall.js';
 import { SoundObjects } from './SoundObjects.js';
+import { GenerationSurfaces } from './GenerationSurfaces.js';
+import { BearAvatar } from './BearAvatar.js';
 
-export function RoomGroup({ config }: { config: RoomConfig }) {
+export function RoomGroup({ config, loading = false }: { config: RoomConfig; loading?: boolean }) {
   const group = useRef<Group>(null);
   const animation = useRef<{ start: number; end: number; elapsed: number } | null>(null);
   useFrame((_, delta) => {
@@ -34,7 +36,9 @@ export function RoomGroup({ config }: { config: RoomConfig }) {
   }, -2);
   return <group ref={group} name="room">
     <Floor config={config}/>
-    <SoundObjects/>
+    {loading ? <group name="sound-objects"/> : <SoundObjects/>}
     {config.walls.map(wall => <Wall key={wall.id} wall={wall} config={config}/>)}
+    {loading && <GenerationSurfaces config={config}/>}
+    {!loading && <BearAvatar/>}
   </group>;
 }

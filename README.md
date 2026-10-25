@@ -8,7 +8,7 @@ See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Bluepr
 
 ## Stack
 
-- Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room with the arrows (your ears turn with it), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
+- Frontend: Vite, React, TypeScript, React Three Fiber + drei, zustand, zod, Tailwind, BorderBeam. A pixel-art isometric room (see [LAYOUT.md](LAYOUT.md)): drag a prop to move its sound, click it to mute, turn the room visually with the arrows (audio stays fixed), and type into the prompt bar. A prop shows "generating…" while ElevenLabs makes its sound.
 - Audio: Web Audio API (one HRTF `PannerNode` per sound object, driven by the scene store)
 - AI: self-hosted Node.js Claude Agent SDK worker for pxl/chirp worlds; Claude Managed Agents remains a rollback option; the existing Gemini fallback is preserved
 
