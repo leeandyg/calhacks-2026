@@ -4,6 +4,7 @@ import { constants } from 'node:fs';
 import { mkdir, open, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { branchPrompt, branchOutput, mergeBranches } from './parallel.mjs';
 
 const sessionPattern = /^sesn_[a-zA-Z0-9]+$/;
 const filenamePattern = /^[a-zA-Z0-9_-]+\.(json|png|wav|mp3|ogg)$/;
@@ -24,10 +25,12 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
   const sessions = new Map();
   const subscribers = new Map();
   const active = new Set();
-  const save = async state => {
-    const path = join(root, state.id, 'state.json');
-    await writeFile(`${path}.tmp`, JSON.stringify(state), { mode: 0o600 });
-    await rename(`${path}.tmp`, path);
+  let saveTail = Promise.resolve();
+  const save = state => {
+    const serialized = JSON.stringify(state), path = join(root, state.id, 'state.json');
+    const operation = saveTail.then(async () => { await writeFile(`${path}.tmp`, serialized, { mode: 0o600 }); await rename(`${path}.tmp`, path); });
+    saveTail = operation.catch(() => {});
+    return operation;
   };
   // Completed assets and SDK transcripts survive a restart. Interrupted builds fail visibly.
   for (const id of await readdir(root)) {
@@ -47,32 +50,53 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
     state.events.push(value);
     for (const subscriber of subscribers.get(state.id) ?? []) subscriber.write(`data: ${JSON.stringify(value)}\n\n`);
   }
-  async function execute(state, text) {
+  async function execute(state, text, parallel) {
     const cwd = join(root, state.id, 'work');
     try {
       const env = Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'ANTHROPIC_API_KEY', 'CLAUDE_CONFIG_DIR'].filter(name => process.env[name]).map(name => [name, process.env[name]]));
-      let success = false;
-      for await (const message of run({
-        prompt: text.replaceAll('/mnt/session/outputs/', `${cwd}/outputs/`),
-        options: {
-          cwd, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last. Skip artwork review, lint, image inspection, and preview generation; use pxl build --no-preview and publish the first valid build. Repair compilation failures only.`,
-          ...(state.sdkSession ? { resume: state.sdkSession } : {}),
-          env, settingSources: [], tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
-          permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, effort: 'low',
-          maxTurns: 80,
-        },
-      })) {
-        if (message.type === 'system' && message.subtype === 'init') {
-          state.sdkSession = message.session_id;
-          await save(state);
-        } else if (message.type === 'assistant') {
-          for (const item of message.message?.content ?? []) if (item.type === 'tool_use') emit(state, { type: 'agent.tool_use', name: item.name?.toLowerCase() });
-        } else if (message.type === 'result') success = message.subtype === 'success';
-      }
-      if (!success) throw new Error('Agent run failed');
-      state.status = 'idle';
+      const outputs = join(cwd, 'outputs');
       const turn = text.match(/^Turn: (r_[a-f0-9]{16})\n/)?.[1];
-      state.files = [...new Set([...(state.files ?? []), ...(await catalog(state, true)).filter(file => turn && file.filename.startsWith(`${turn}_`)).map(file => file.filename)])];
+      const runBranch = async branch => {
+        const working = branch ? join(cwd, branch) : state.sdkCwd ?? cwd;
+        await mkdir(working, { recursive: true });
+        let success = false;
+        for await (const message of run({
+          prompt: branch ? branchPrompt(text.replaceAll('/mnt/session/outputs/', `${outputs}/`), branch, outputs) : text.replaceAll('/mnt/session/outputs/', `${outputs}/`) + (state.sdkSessions ? '\nThis is a complete follow-up turn; earlier branch-only restrictions no longer apply.' : ''),
+          options: {
+            cwd: working, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last. Skip artwork review, lint, image inspection, and preview generation; use pxl build --no-preview and publish the first valid build. Repair compilation failures only.${branch ? ` This is the ${branch} branch only. Override the full-world workflow: ${branch === 'environment' ? 'use pxl for environment textures/terrain only; do not read chirp or build objects/audio' : 'build sources, sprites and needed audio only; do not paint the environment'}. Publish only your branch manifest.` : ''}`,
+            ...(!branch && state.sdkSession ? { resume: state.sdkSession } : {}),
+            env, settingSources: [], tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
+            permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, effort: 'low',
+            maxTurns: 80,
+          },
+        })) {
+          if (message.type === 'system' && message.subtype === 'init') {
+            if (branch) { state.sdkSessions ??= {}; state.sdkSessions[branch] = message.session_id; }
+            if (!branch || branch === 'objects') { state.sdkSession = message.session_id; state.sdkCwd = working; }
+            await save(state);
+          } else if (message.type === 'assistant') {
+            for (const item of message.message?.content ?? []) if (item.type === 'tool_use') emit(state, { type: 'agent.tool_use', name: item.name?.toLowerCase() });
+          } else if (message.type === 'result') success = message.subtype === 'success';
+        }
+        if (!success) throw new Error('Agent run failed');
+        if (!branch) return;
+        const result = await branchOutput(outputs, turn, branch, await catalog(state, true));
+        state.files = [...new Set([...(state.files ?? []), ...result.names])];
+        await save(state);
+        emit(state, { type: 'agent.assets_ready', name: branch });
+        await save(state);
+        return result.output;
+      };
+      if (parallel) {
+        const results = await Promise.allSettled(['environment', 'objects'].map(runBranch));
+        if (results.some(result => result.status === 'rejected')) throw new Error('A world branch failed');
+        const name = await mergeBranches(outputs, turn, results[0].value, results[1].value);
+        state.files = [...new Set([...(state.files ?? []), name])];
+      } else {
+        await runBranch();
+        state.files = [...new Set([...(state.files ?? []), ...(await catalog(state, true)).filter(file => turn && file.filename.startsWith(`${turn}_`)).map(file => file.filename)])];
+      }
+      state.status = 'idle';
       emit(state, { type: 'session.status_idle', stop_reason: { type: 'end_turn' } });
     } catch {
       state.status = 'idle';
@@ -81,13 +105,13 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
       try { await save(state); } finally { active.delete(state.id); }
     }
   }
-  async function start(state, text) {
+  async function start(state, text, parallel = false) {
     if (active.size) throw new HttpError(409); // One build at a time in this demo worker.
     state.status = 'running';
     emit(state, { type: 'user.message', content: [{ type: 'text', text }] });
     active.add(state.id);
     try { await save(state); } catch (error) { active.delete(state.id); throw error; }
-    void execute(state, text).catch(() => { active.delete(state.id); });
+    void execute(state, text, parallel).catch(() => { active.delete(state.id); });
   }
   function getSession(id) {
     if (!sessionPattern.test(id ?? '') || !sessions.has(id)) throw new HttpError(404);
@@ -129,7 +153,7 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
         await mkdir(join(root, id, 'work', 'outputs'), { recursive: true });
         const state = { id, system, status: 'idle', events: [] };
         sessions.set(id, state);
-        await start(state, text);
+        await start(state, text, input.parallel === true);
         return json(200, { id });
       }
       const match = url.pathname.match(/^\/v1\/sessions\/(sesn_[a-zA-Z0-9]+)(?:\/(events)(\/stream)?)?$/);

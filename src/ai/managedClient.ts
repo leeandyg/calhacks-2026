@@ -1,16 +1,18 @@
 import type { Scene, SoundObject } from '../scene/scene.js';
 import { ManagedResult, type ManagedAssets } from './world.js';
-import { addEnvironment, setSprite, spriteKey } from '../art/store.js';
+import { useArtStore, addEnvironment, setSprite, spriteKey } from '../art/store.js';
 import { registerManagedSound } from '../audio/managed.js';
+import { useSceneStore } from '../scene/store.js';
 import { loadPaintImage } from '../art/images.js';
 
 let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
 
 /** One durable managed run can span many short API/SSE connections. */
-export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void): Promise<ManagedResult> {
-  const deadline = Date.now() + 12 * 60 * 1000;
+export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, budgetMs = 12 * 60 * 1000, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<ManagedResult> {
+  const deadline = Date.now() + budgetMs;
   const seen = new Set<string>();
+  const ready = new Set<WorldPart>();
   let complete = false, failures = 0;
   while (!complete && Date.now() < deadline) {
     try {
@@ -19,6 +21,15 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
       for await (const value of sse(res.body)) {
         const event = JSON.parse(value);
         if (event.type === 'error') throw new AgentRunError(event.error ?? 'Claude could not finish this environment.');
+        if (event.type === 'ready' && (event.part === 'environment' || event.part === 'objects') && !ready.has(event.part)) {
+          if (partial) {
+            const result = await readManagedResult(token, scene, event.part);
+            partial(result, event.part);
+            sessionToken = token;
+          }
+          ready.add(event.part);
+          progress?.(event.part === 'environment' ? 'Environment ready. Creating sound sources…' : 'Sound sources ready. Painting the environment…');
+        }
         if (event.type === 'complete') { complete = true; break; }
         if (event.type === 'progress' && (!event.id || !seen.has(event.id))) {
           if (event.id) seen.add(event.id);
@@ -34,9 +45,16 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
   }
   if (!complete) throw new Error('Claude is taking too long to finish this environment. Please try again.');
   progress?.('Loading your environment, artwork and sounds…');
+  const result = await readManagedResult(token, scene);
+  sessionToken = token;
+  return result;
+}
+
+export type WorldPart = 'environment' | 'objects';
+async function readManagedResult(token: string, scene: Scene | null, part?: WorldPart): Promise<ManagedResult> {
   // Published output files may arrive just after the end-turn event.
   for (let attempt = 0; attempt < 16; attempt++) {
-    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene }), signal: AbortSignal.timeout(25_000) });
+    const res = await fetch('/api/world', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'result', token, scene, ...(part ? { part } : {}) }), signal: AbortSignal.timeout(25_000) });
     if (res.status === 202) { await new Promise(resolve => setTimeout(resolve, 2000)); continue; }
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? 'The generated environment could not be loaded.');
@@ -46,7 +64,6 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
       ...Object.values(result.assets.environment?.textures ?? {}).map(image => loadPaintImage(image.url)),
       ...result.assets.sprites.map(image => loadPaintImage(image.url)),
     ]);
-    sessionToken = token;
     return result;
   }
   throw new Error('Claude finished, but its generated files are not available yet. Please try again.');
@@ -54,6 +71,7 @@ export async function followManagedRun(token: string, scene: Scene | null, progr
 class AgentRunError extends Error {}
 export function installManagedAssets(assets: ManagedAssets, scene: Scene) {
   const { environment, envId } = assets;
+  if (!environment && !useArtStore.getState().envs[envId]) addEnvironment({ id: envId, concept: 'Environment is being painted', shell: '#969aa3', colors: [], terrain: scene.room.terrain ?? [], textures: {}, managed: true });
   if (environment) {
     addEnvironment({ id: envId, concept: environment.concept, shell: environment.shell, colors: environment.colors,
       terrain: environment.terrain ?? Array.from({ length: scene.room.grid.rows }, () => Array(scene.room.grid.columns).fill(0)),
@@ -85,4 +103,17 @@ async function* sse(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
       }
     }
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+}
+
+/** Apply one creation branch without replaying an older source list over manual edits. */
+export function applyManagedPartial(result: ManagedResult, part: WorldPart, first: boolean) {
+  if (result.response.kind !== 'create') throw new Error('A creation branch must create a scene.');
+  const store = useSceneStore.getState();
+  const incoming = result.response.scene;
+  const scene = first ? incoming : part === 'environment'
+    ? { ...store.scene, room: incoming.room }
+    : { ...incoming, room: store.scene.room, listener: store.scene.listener };
+  installManagedAssets(result.assets, scene);
+  const applied = store.setScene(scene);
+  if (!applied.ok) throw new Error(applied.error);
 }

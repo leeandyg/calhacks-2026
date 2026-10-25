@@ -160,6 +160,18 @@ to that reachable origin plus `/v1`. Set the same `WORLD_AGENT_API_KEY` on both 
 A Vercel deployment cannot reach your computer's `127.0.0.1`. Only the worker needs the model
 key; the app authenticates to it with the separate shared secret. No credentials reach the browser.
 
+New-world creation starts two SDK jobs concurrently: one paints the environment/terrain, the
+other builds source sprites and audio. They share the request, fixed grid and palette, with
+separate working directories and branch manifests. A `ready` stream event publishes each
+validated branch through `POST /api/world` with `part: "environment"` or `part: "objects"`.
+The first branch reveals the room immediately; the other appears without resetting manual
+positions, volume or mute. The final manifest retains the existing `WorldOutput` contract.
+A failed second branch leaves the valid first result visible with an error. Follow-up edits
+reuse the source session and remain single turns. Legacy cloud sessions still accept the old
+complete-result flow. A single world uses two concurrent model requests; total generation time
+is bounded by the slower job rather than their sum, plus coordination and loading overhead.
+`npm run test:parallel` covers both completion orders, reconnects and late failure with no credits.
+
 The named `world-agent-data` volume persists SDK transcripts, working files, published assets,
 and event history across container restarts. `docker compose -f compose.agent.yaml down` keeps
 it; `down -v` deletes it. Interrupted generations report a failure after restart; completed

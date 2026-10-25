@@ -8,14 +8,17 @@ import { starter } from '../src/scene/fixtures.ts';
 
 const cleanup = [];
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close(); });
-async function setup(run) {
+async function setup(run, parallel = false) {
   const root = await mkdtemp(join(tmpdir(), 'soundscape-worker-'));
   cleanup.push(() => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }));
   const server = await createWorker({ key: 'worker-private-key', root, run });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   cleanup.push(() => new Promise(resolve => server.close(resolve)));
   const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
-  const agent = new ManagedAgent({ apiKey: 'worker-private-key', agentId: 'local', environmentId: 'local', baseUrl });
+  const agent = new ManagedAgent({ apiKey: 'worker-private-key', agentId: 'local', environmentId: 'local', baseUrl }, (input, init) => {
+    if (!parallel && init?.body) { const body = JSON.parse(init.body); delete body.parallel; init = { ...init, body: JSON.stringify(body) }; }
+    return fetch(input, init);
+  });
   return { root, baseUrl, agent, server };
 }
 async function result(agent, token, scene = null) {
@@ -144,5 +147,57 @@ describe('self-hosted world worker', () => {
     expect(progress).toContain('"type":"error"');
     expect(progress).not.toContain('provider-private-secret');
     expect(await agent.result(started.token, null)).toBeUndefined();
+  });
+});
+
+const gate = () => { let release; const promise = new Promise(resolve => { release = resolve; }); return { promise, release }; };
+describe('parallel first-ready publication', () => {
+  it.each([['environment', false], ['objects', false], ['environment', true]])('publishes %s first and handles peer failure=%s', async (first, fail) => {
+    const gates = { environment: gate(), objects: gate() }, started = new Set(), directories = new Set();
+    const { agent } = await setup(async function* ({ prompt, options }) {
+      const branch = prompt.match(/WORLD BRANCH: (environment|objects)/)?.[1];
+      if (!branch) throw new Error('Expected a parallel branch');
+      started.add(branch); directories.add(options.cwd);
+      await gates[branch].promise;
+      const turn = prompt.match(/Turn: (r_[a-f0-9]+)/)[1];
+      const outputs = prompt.match(/BRANCH OUTPUT DIRECTORY: (.+)/)[1];
+      if (fail && branch !== first) { await writeFile(join(outputs, `${turn}_objects_unfinished.png`), 'partial'); throw new Error('private-model-error'); }
+      const scene = { ...starter, objects: branch === 'objects' ? [starter.objects[1]] : [] };
+      const output = { version: 1, turn, response: { kind: 'create', scene }, sprites: [], sounds: [] };
+      if (branch === 'environment') output.environment = { concept: 'A forest', shell: '#324d35', colors: ['#324d35', '#91a56c'], textures: { floor: { file: `${turn}_environment_floor.png`, w: 160, h: 160 } } };
+      else { output.sprites = [{ objectId: 'fan-1', file: `${turn}_objects_tree.png`, w: 24, h: 40 }]; output.sounds = [{ objectId: 'fan-1', file: `${turn}_objects_wind.wav` }]; }
+      for (const file of [output.environment?.textures.floor.file, ...output.sprites.map(s => s.file), ...output.sounds.map(s => s.file)].filter(Boolean)) await writeFile(join(outputs, file), 'compiled');
+      await writeFile(join(outputs, `${turn}_${branch}.json`), JSON.stringify(output));
+      yield { type: 'system', subtype: 'init', session_id: `${branch}-sdk` };
+      yield { type: 'result', subtype: 'success' };
+    }, true);
+    try {
+      const run = await agent.start({ prompt: 'Forest', scene: null });
+      for (let i = 0; i < 100 && started.size < 2; i++) await new Promise(resolve => setTimeout(resolve, 10));
+      expect([...started].sort()).toEqual(['environment', 'objects']);
+      expect(directories.size).toBe(2);
+      gates[first].release();
+      let partial;
+      for (let i = 0; i < 100 && !partial; i++) { partial = await agent.result(run.token, null, first); if (!partial) await new Promise(resolve => setTimeout(resolve, 10)); }
+      expect(partial).toBeDefined();
+      expect((await (await agent.api(`/sessions/${agent.verify(run.token).session}`)).json()).status).toBe('running');
+      expect(await agent.result(run.token, null)).toBeUndefined();
+      const other = first === 'environment' ? 'objects' : 'environment'; gates[other].release();
+      if (fail) {
+        for (let i = 0; i < 100 && (await (await agent.api(`/sessions/${agent.verify(run.token).session}`)).json()).status !== 'idle'; i++) await new Promise(resolve => setTimeout(resolve, 10));
+        const events = await agent.stream(run.token).text();
+        expect(events).toContain('\"type\":\"error\"');
+        expect(events).not.toContain('private-model-error');
+        expect(await agent.result(run.token, null)).toBeUndefined();
+        expect(await agent.result(run.token, null, first)).toBeDefined();
+        expect((await agent.files(agent.verify(run.token).session)).some(file => file.filename.endsWith('unfinished.png'))).toBe(false);
+        return;
+      }
+      const final = await result(agent, run.token);
+      expect(final.assets.environment).toBeDefined();
+      expect(final.assets.sprites).toHaveLength(1);
+      expect(final.response.scene.objects).toHaveLength(1);
+      expect(final.assets.envId).toBe(partial.assets.envId);
+    } finally { gates.environment.release(); gates.objects.release(); }
   });
 });

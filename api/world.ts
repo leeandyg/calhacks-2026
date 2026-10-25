@@ -35,12 +35,12 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: 'Unknown agent action.' }, { status: 400 });
   } catch (error) { return agentError(error); }
 }
-const ResultRequest = z.object({ action: z.literal('result'), token: z.string().max(3000), scene: Scene.nullable() });
+const ResultRequest = z.object({ action: z.literal('result'), token: z.string().max(3000), scene: Scene.nullable(), part: z.enum(['environment', 'objects']).optional() });
 export async function POST(request: Request): Promise<Response> {
   try {
     const parsed = ResultRequest.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return Response.json({ error: 'Send the agent token and original scene context.' }, { status: 400 });
-    const result = await client().result(parsed.data.token, parsed.data.scene);
+    const result = await client().result(parsed.data.token, parsed.data.scene, parsed.data.part);
     return result ? Response.json(result, { headers: { 'Cache-Control': 'no-store' } }) : Response.json({ pending: true }, { status: 202, headers: { 'Retry-After': '2' } });
   } catch (error) { return agentError(error); }
 }

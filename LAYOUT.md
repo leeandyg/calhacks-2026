@@ -59,14 +59,15 @@ For a rectangle use, for example, `mode: "Rectangle", columns: 10, rows: 6, wall
   surfaces; do not substitute detached flat skyline panels for walls. Environment and source
   strips use horizontal equal-size frames on the shared pixel grid. Bed motion loops; event motion
   runs during playback. Muting freezes source animation. Keep the initial prompt centered until
-  the generated scene validates and its images finish loading. Start the canonical scene empty:
+  the first generated branch validates and its images finish loading, then reveal it while the other branch runs. Start the canonical scene empty:
   no fixture artwork, sources or session. Live generation errors never insert demo content.
 
 - Live generated environments (#76) extend these defaults: `room.art` references five pxl PNGs in
   the browser art store, and `room.terrain[row][column]` raises individual floor cells. The fixed
   structural slab stays `SLAB_THICKNESS`; raised earth is terrain above it. Paint each wall through
-  its remaining panels so openings stay empty and artwork fades with its own wall. Display the
-  environment first, then plan and paint physical sound sources. A generated prop replaces that
+  its remaining panels so openings stay empty and artwork fades with its own wall. The self-hosted director creates the
+  environment and physical source assets concurrently and renders whichever is ready first. Late terrain
+  goes through the canonical store without resetting manual edits. The Gemini fallback retains its existing flow. A generated prop replaces that
   source's stock geometry and uses the same canonical position, drag/mute controls, pixel pass and
   manual rotation. Waiting portals and generating labels remain until the sprite succeeds or
   fails; failure reveals the stock prop. Structural forest paintings may depict distant trees;
@@ -129,7 +130,7 @@ Disable renderer/light/mesh shadows. The explicitly requested BorderBeam glow is
 
 ## 10. Prompt controls
 
-A fresh page shows only the prompt, centered horizontally and vertically. Keep it centered during creation and after an error; progress/error text sits above it without shifting the pill. Do not mount the room canvas, audio engine or rotation arrows until the first creation succeeds. Submit with `scene: null` for the first request and unlock audio from that user gesture. After successful environment painting and source placement, reveal the room and arrows and move the same prompt below it. Generated source portals may continue their existing reveal after the room appears. `?demo` follows the same empty start and creates its room on the first supported prompt.
+A fresh page shows only the prompt, centered horizontally and vertically. Keep it centered during creation and after an error; progress/error text sits above it without shifting the pill. Do not mount the room canvas, audio engine or rotation arrows until the first creation branch validates and its images decode. Submit with `scene: null` for the first request and unlock audio from that user gesture. After successful environment painting and source placement, reveal the room and arrows and move the same prompt below it. Generated source portals may continue their existing reveal after the room appears. `?demo` follows the same empty start and creates its room on the first supported prompt.
 
 The app includes exactly two plain arrow icons flanking the room and exactly one `BorderBeam size="md" colorVariant="colorful" strength={0.7} theme="dark"` prompt. Use system sans-serif and light text #e8e8f0. The prompt is a 76px-high pill, width min(640px,92vw), background #15151f, radius 999px, padding 16px 6px 16px 20px, gap 8px. Its controlled `input type="text"` is single-line with aria-label Prompt, 15px font, and placeholder Generate anything... in #7a7a90. Never use a textarea. The Send button is a 44px circle with white-to-light-gray gradient and an inline 18px upward-arrow SVG, stroke width 2.5. Disable it for blank/whitespace-only input (opacity .45); enabled hover moves up 1px. Form submission by Enter or click trims the value and sends it with the current scene to `POST /api/scene` through `src/ai/client.ts`; a successful reply updates the scene store and clears the input. One small status line above the prompt reports progress, fallback notices and errors; a failed prompt stays in the input. BorderBeam is the only new dependency for this UI; do not add icon or animation packages. Keep the room above both controls at desktop/mobile/landscape sizes.
 

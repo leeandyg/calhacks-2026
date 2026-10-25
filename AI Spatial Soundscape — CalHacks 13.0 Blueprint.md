@@ -107,10 +107,15 @@ The agent only emits edit ops into the store. The 3D room and the audio engine s
 Claude Agent SDK worker in a dedicated Docker container when `WORLD_AGENT_URL` is configured.
 The model remains Claude Opus 5.5 at low effort via Anthropic's inference API; the agent loop,
 pxl/chirp builds, working files and SDK session history live on our infrastructure. Toolkits are
-installed in the image once. The worker implements the existing session/events/files protocol,
+installed in the image once. New-world environment and source-art/audio jobs run concurrently
+from one prompt, fixed grid and palette. Each publishes its own validated manifest immediately;
+the first ready branch reveals the renderer while its peer continues. Late terrain is applied by
+the canonical scene store, preserving manual source edits. The worker merges the unchanged final
+WorldOutput after both finish. Follow-up edits reuse the source SDK session as single turns.
+The worker implements the existing session/events/files protocol,
 so signed capabilities, validated `WorldOutput` manifests, compiled PNG/audio, canonical scene,
 resolver ownership and browser rendering remain unchanged. A volume persists completed worlds
-and SDK resumptions; interrupted builds fail visibly. One generation runs at a time. Credentials
+and SDK resumptions; interrupted builds fail visibly. One world runs at a time, with two concurrent creation jobs. Credentials
 stay in server API configuration and worker environment only. Clear `WORLD_AGENT_URL` for the
 explicit Managed Agents rollback below; no automatic provider switch occurs on failure.
 
@@ -132,7 +137,7 @@ its model/tools. Gemini and offline/demo paths remain available. See README for 
 **First room (#81):** a fresh page shows only a centered prompt, with no starter environment.
 The canonical store initially contains only the fixed structure and listener, with no fixture
 objects, artwork, terrain or session. The first request sends `scene: null`. Live failures keep
-the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden during creation or errors, then reveal
+the empty/current scene unchanged; recorded scenes are available only through explicit `?demo`. Keep the room hidden until the first validated branch is ready; errors before any result keep it hidden. Then reveal
 it with its rotation arrows and move the prompt below it after successful creation. Prompt
 submission supplies the audio gesture; the engine starts when the created room is revealed.
 

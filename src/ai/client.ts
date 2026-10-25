@@ -1,10 +1,12 @@
 import { SceneResponse, type Scene, type SceneRequest } from "../scene/scene.js";
 import { currentAgentSession, followManagedRun } from './managedClient.js';
+import type { ManagedResult } from './world.js';
+import type { WorldPart } from './managedClient.js';
 import type { ManagedAssets } from './world.js';
 
 // Browser side of POST /api/scene. Keys stay on the server; this only sends the prompt and scene.
 
-export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void): Promise<SceneResponse & { notice?: string; managed?: ManagedAssets }> {
+export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<SceneResponse & { notice?: string; managed?: ManagedAssets }> {
   if (demoMode) {
     const { offlineResponse } = await import("./offline.js");
     const saved = offlineResponse(prompt, scene);
@@ -29,7 +31,7 @@ export async function requestScene(prompt: string, scene: Scene | null, demoMode
   }
   const json = await res.json().catch(() => null);
   if (json?.kind === 'managed' && typeof json.token === 'string') {
-    const result = await followManagedRun(json.token, scene, progress);
+    const result = await followManagedRun(json.token, scene, progress, undefined, partial);
     return { ...result.response, managed: result.assets };
   }
   try {

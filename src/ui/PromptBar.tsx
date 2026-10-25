@@ -3,7 +3,7 @@ import { BorderBeam } from 'border-beam';
 import { requestScene } from '../ai/client.js';
 import { useSceneStore } from '../scene/store.js';
 import { paintEnvironment, paintSprites } from '../art/client.js';
-import { installManagedAssets } from '../ai/managedClient.js';
+import { applyManagedPartial, installManagedAssets } from '../ai/managedClient.js';
 import { resumeAudio } from '../audio/context.js';
 
 type Status = { tone: 'busy' | 'notice' | 'error'; text: string };
@@ -29,10 +29,15 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
     // Submit is the user gesture that unlocks audio; the engine starts after creation succeeds.
     void resumeAudio().catch(error => console.warn('Audio could not be enabled.', error));
     setStatus({ tone: 'busy', text: 'Building your space...' });
+    let partialApplied = false;
     try {
-      const response = await requestScene(prompt, hasScene ? useSceneStore.getState().scene : null, DEMO_MODE, text => setStatus({ tone: 'busy', text }));
+      const response = await requestScene(prompt, hasScene ? useSceneStore.getState().scene : null, DEMO_MODE, text => setStatus({ tone: 'busy', text }), (result, part) => {
+        applyManagedPartial(result, part, !partialApplied);
+        partialApplied = true;
+        onSceneReady();
+      });
       if (!hasScene && response.kind !== 'create') throw new Error('Describe a place to create your first room.');
-      if (response.managed) {
+      if (response.managed && !partialApplied) {
         const scene = response.kind === 'create' ? response.scene : useSceneStore.getState().scene;
         installManagedAssets(response.managed, scene);
       }
@@ -70,7 +75,7 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
       }
       // Read the store again: the user may have dragged or muted something while the agent worked.
       const store = useSceneStore.getState();
-      const result = response.kind === 'create' ? store.setScene(response.scene)
+      const result = partialApplied ? { ok: true as const } : response.kind === 'create' ? store.setScene(response.scene)
         : response.ops.length ? store.applyOps(response.ops) : { ok: true as const };
       if (!result.ok) throw new Error(`The room could not apply that change: ${result.error}`);
       if (!response.managed && !DEMO_MODE && !response.notice && store.scene.room.art) paintSprites(store.scene.room.art, useSceneStore.getState().scene.objects);
