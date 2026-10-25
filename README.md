@@ -124,6 +124,15 @@ persist across refreshes in browser storage; clearing that storage or using anot
 browser starts a new library. Save/load stores scene data, while sound files keep
 using the existing pack, generation and cache paths.
 
+**Claude worlds are kept too** (`convex/agentWorlds.ts`, #112). A Claude world's paintings, sprites and chirp
+sounds live in Anthropic's session storage for 24 hours, and only the page that created them knows them. So
+right after a world arrives, the browser asks Convex to copy every file into Convex file storage (once per
+file) and keep one manifest per world (`room.art`), merging later edits. Reopening a scene that names an
+`agent-…` world the page doesn't have (after a reload, **Load room**, or Moss's "usual setup") reinstalls it
+from Convex, and a `managed:` sound the page doesn't know plays from its kept copy; without Convex it plays the
+closest library sound. No key is involved: Convex fetches the files from the production site's own
+`/api/world` proxy with the world's signed token, and accepts a world id only for that token's session.
+
 Listing and saving never change the playing scene. A delayed load is discarded if
 the room changes while it is in flight. Missing configuration or a disconnected
 Convex deployment leaves local presets, AI prompts and playback available.
@@ -252,7 +261,9 @@ The Freesound candidates move to `assets/raw/<sound>/_unused/`; move them back a
 
 ### Sounds on command
 
-The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one, **library first**: a pack sound when the tags match well; otherwise the sound the Claude agent composed for that object with chirp (`managed:…`); otherwise `gen:<kind>:<query>`. A `gen:` id plays the closest pack sound unless live ElevenLabs generation is switched on with `VITE_ELEVENLABS_SOUNDS=on` (then v2 for 15 s loops, v3 for 2 s one-shots). Generated and agent sounds are converted to mono and matched to pack loudness, and fall back to the closest pack sound if they can't load, including after a reload, when the page no longer has an agent's file.
+The agent only describes sounds (`sound.query`). In the browser, `src/audio/resolve.ts` fills in `assetId` for every object that doesn't have one, **library first**: a pack sound when the tags match well; otherwise the sound the Claude agent composed for that object with chirp (`managed:…`); otherwise `gen:<kind>:<query>`. A `gen:` id plays the closest pack sound unless live ElevenLabs generation is switched on with `VITE_ELEVENLABS_SOUNDS=on` (then v2 for 15 s loops, v3 for 3 s one-shots with room for natural decay; requests ask for natural, dry recordings of one physical source, with prompt influence 0.5). Generated and agent sounds are converted to mono and matched to pack loudness, and fall back to the closest pack sound if they can't load, including after a reload, when the page no longer has an agent's file.
+
+Generated and agent (chirp) sounds are converted to mono with protection against stereo phase cancellation and normalized to pack loudness, including clips shorter than 400 ms and quiet Foley that needs up to 40 dB of gain. Silent output takes the existing pack fallback path. Events use a 2 m distance reference (beds keep 1 m), giving the direct sound of perimeter events about 6 dB more level without changing the saved volume, mute, position or random scheduling. Existing cached recordings receive these playback fixes after a page refresh; new descriptions use the improved generation request. Cached files are reused, not automatically regenerated at additional cost.
 
 With Convex connected (see **Save and load rooms with Convex**), each generated sound is stored once in Convex file storage (`convex/sounds.ts`) and shared by every browser and deployment, so a description is paid for once. Two browsers asking for the same new sound at once wait for one generation. Set the key in the Convex deployment, not just `.env`:
 
@@ -263,7 +274,7 @@ grep '^ELEVENLABS_API_KEY=' .env | cut -d= -f2- | npx convex env set ELEVENLABS_
 
 Without Convex, or if it fails, the browser generates through `GET /api/sound?kind=bed|event&q=...`, which only the browser and Vercel's CDN cache. `useSoundStatus` in `src/audio/generated.ts` says which sounds are still generating.
 
-Run `npm run check:resolver` to see which descriptions use a pack sound and which get generated; it reads the local manifest and makes no API calls. Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
+Run `npm run check:resolver` to see which descriptions use a pack sound and which get generated; it reads the local manifest and makes no API calls. `npm run check:generated` checks normalization in headless Chromium without using speakers or provider credits. Each generation costs ElevenLabs credits (40 per second of audio). `scripts/test-elevenlabs.mjs` is the listening test used to pick the models; it writes a comparison page to `assets/raw/elevenlabs/listen.html`.
 
 ## Layout
 
@@ -334,7 +345,7 @@ distinct pxl paintings for the floor and each wall. An NDJSON stream delivers th
 as it finishes. The interactive room displays the terrain and paintings before a second scene pass
 places the physical sound sources in that environment. `/api/sprite` paints each source, while a
 portal and a “generating…” label hold its position; the finished prop emerges through that portal.
-Follow-up edits preserve the environment. Only explicit `?demo` mode uses preset rooms and props; live failures preserve the current scene.
+Follow-up edits preserve the environment. `?demo` replays preset rooms and recorded edits with no AI requests. A live prompt always ends in a playable room (#110): if the Claude agent errors, can't be reached or runs past 5 minutes (`CLAUDE_BUDGET_MS` in `src/ai/client.ts`), Gemini builds the standard room ("The world builder was unavailable…"); if Gemini fails too, the offline preset or recorded edit loads, labeled "Offline: …". A prompt with no offline recording keeps the room unchanged. Bad requests (4xx other than 429) stay errors.
 
 The art agents receive the pinned [pxl skill and reference](https://github.com/uilianks/pxl)
 (MIT), render their code, and get errors, lint coordinates and a PNG preview for up to two further

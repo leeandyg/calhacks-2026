@@ -20,7 +20,8 @@ export const WorldOutput = z.object({
 });
 export type WorldOutput = z.infer<typeof WorldOutput>;
 
-const assetUrl = z.string().startsWith('/api/world?');
+// A file through the session's /api/world proxy, or its copy kept in Convex file storage (#112).
+const assetUrl = z.string().refine(url => url.startsWith('/api/world?') || /^https:\/\/[a-z0-9-]+\.convex\.cloud\/api\/storage\/[\w-]+$/.test(url), 'Unknown asset URL');
 const runtimeImage = ImageOutput.omit({ file: true }).extend({ url: assetUrl });
 export const ManagedAssets = z.object({
   envId: z.string(),

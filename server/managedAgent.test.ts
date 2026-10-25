@@ -62,10 +62,21 @@ describe('managed world integration', () => {
     const delayed = fixture(world(), files().slice(0, 3));
     expect(await delayed.result(await run(delayed), null)).toBeUndefined();
   });
+  it('briefs the agent with the sound library and accepts sources that use it instead of chirp', async () => {
+    const brief = new ManagedAgent(settings).brief({ prompt: 'a rainy cafe', scene: null }, turn);
+    expect(brief).toContain('SOUND LIBRARY FIRST');
+    expect(brief).toMatch(/- rain_window \(bed\): rain, window, glass/);
+    expect(brief).not.toMatch(/chirp for EVERY/);
+    const librarySound = world(); librarySound.sounds = [];
+    const agent = fixture(librarySound);
+    const result = await agent.result(await run(agent), null);
+    expect(result?.assets.sounds).toEqual([]);
+    expect(result?.assets.sprites.map(s => s.objectId)).toEqual(['fan-1']);
+  });
   it('rejects missing source mappings, external paths and stale output', async () => {
-    const noSound = world(); noSound.sounds = [];
-    const invalid = fixture(noSound);
-    await expect(invalid.result(await run(invalid), null)).rejects.toThrow(/all artwork and sounds/);
+    const noSprite = world(); noSprite.sprites = [];
+    const invalid = fixture(noSprite);
+    await expect(invalid.result(await run(invalid), null)).rejects.toThrow(/all artwork/);
     const external = world(); external.sprites[0].file = 'https://example.com/a.png';
     const malicious = fixture(external);
     await expect(malicious.result(await run(malicious), null)).rejects.toThrow(/validate/);

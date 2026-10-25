@@ -1,5 +1,5 @@
 import { SceneResponse, type Scene } from "../scene/scene.js";
-import { requestScene } from "./client.js";
+import { CLAUDE_BUDGET_MS, fallbackScene, requestScene } from "./client.js";
 import { currentAgentSession, followManagedRun } from "./managedClient.js";
 import { localContext, type Preference, type TimeBucket } from "./preferences.js";
 
@@ -33,19 +33,21 @@ export async function requestAgent(prompt: string, scene: Scene | null, context?
     const result = await memoryRequest(context, { prompt, scene, sessionToken: scene ? currentAgentSession() : undefined }, signal);
     if (result.kind === 'managed' && result.token) {
       startedManaged = true;
-      const generated = await followManagedRun(result.token, scene, progress, signal);
+      const generated = await followManagedRun(result.token, scene, progress, signal, CLAUDE_BUDGET_MS);
       return { ...result, response: { ...generated.response, managed: generated.assets } };
     }
     return result.kind ? { ...result, response: SceneResponse.parse(result) } : result;
   } catch (error) {
     signal?.throwIfAborted();
-    if (startedManaged || memoryCommand(prompt)) throw error;
-    if (error instanceof AgentError && error.status === 401) {
+    if (memoryCommand(prompt)) throw error;
+    if (!startedManaged && error instanceof AgentError && error.status === 401) {
       if (/\b(?:usual|remembered|saved setup)\b/i.test(prompt)) throw error;
       const response = await requestScene(prompt, scene, false, progress, signal);
       return { response, notice: response.notice ?? "Memory is offline. This command used the current room and prompt." };
     }
-    if (error instanceof AgentError && error.status < 500 && error.status !== 429) throw error;
-    throw new Error("The scene agent is unavailable. Your room was kept unchanged. Please try again.");
+    if (!startedManaged && error instanceof AgentError && error.status < 500 && error.status !== 429) throw error;
+    // The agent errored, ran out of time or couldn't be reached: Gemini, then the offline room (client.ts).
+    const response = await fallbackScene(prompt, scene, progress, signal);
+    return { response, notice: response.notice };
   }
 }

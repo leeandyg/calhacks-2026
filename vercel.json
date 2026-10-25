@@ -3,7 +3,7 @@
   "functions": {
     "api/agent.ts": {
       "maxDuration": 60,
-      "includeFiles": "AGENT_CONFIG.yaml"
+      "includeFiles": "{AGENT_CONFIG.yaml,public/sounds/manifest.json}"
     },
     "api/voice.ts": {
       "maxDuration": 30
@@ -21,11 +21,11 @@
     },
     "api/scene.ts": {
       "maxDuration": 60,
-      "includeFiles": "AGENT_CONFIG.yaml"
+      "includeFiles": "{AGENT_CONFIG.yaml,public/sounds/manifest.json}"
     },
     "api/world.ts": {
       "maxDuration": 60,
-      "includeFiles": "AGENT_CONFIG.yaml"
+      "includeFiles": "{AGENT_CONFIG.yaml,public/sounds/manifest.json}"
     }
   }
 }
