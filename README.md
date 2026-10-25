@@ -355,8 +355,8 @@ portal and a “generating…” label hold its position; the finished prop emer
 Follow-up edits preserve the environment. `?demo` replays preset rooms and recorded edits with no AI requests. A live prompt always ends in a playable room (#110): if the Claude agent errors, can't be reached or runs past 5 minutes (`CLAUDE_BUDGET_MS` in `src/ai/client.ts`), Gemini builds the standard room ("The world builder was unavailable…"); if Gemini fails too, the offline preset or recorded edit loads, labeled "Offline: …". A prompt with no offline recording keeps the room unchanged. Bad requests (4xx other than 429) stay errors.
 
 The art agents receive the pinned [pxl skill and reference](https://github.com/uilianks/pxl)
-(MIT), render their code, and get errors, lint coordinates and a PNG preview for up to two further
-calls when the deadline allows. All model code and pxl's platform-independent core run inside
+(MIT), compile their code, and publish the first valid result immediately. Only compilation,
+dimensions or contract errors trigger up to two repair calls; there is no artwork review call. All model code and pxl's platform-independent core run inside
 QuickJS/WASM in a separate process, without host functions, module imports, environment variables,
 filesystem or network APIs. Each render has a 96 MB interpreter heap, an 8-second interrupt and a
 12-second process kill limit. The trusted parent only encodes bounded pixel data as PNG.
@@ -374,3 +374,6 @@ prevent regeneration on other Vercel instances or after a cold start. Cross-inst
 future work. Partial surface failures retain the paintings that succeeded; failed sprites use stock
 props. Run `npm run check:art` for renderer isolation/cache checks and `npm run test:art` with the
 dev server running for the environment/terrain/portal browser flow (no live generation).
+
+`npm run test:props` checks generated-source grounding during emergence and full sprite containment
+at each wall/corner across all four room orientations, using deterministic compiled assets.

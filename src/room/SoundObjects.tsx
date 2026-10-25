@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { Color, DoubleSide, Group, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
 import { useSceneStore } from '../scene/store.js';
 import { useRoomStore } from './useRoomStore.js';
-import { ART_PX_PER_BLOCK, getModelId, gridFootprint, groundHeight, WALL_ROTATIONS } from '../scene/layout.js';
+import { getModelId, gridFootprint, groundHeight, isWallMountedArt, WALL_ROTATIONS } from '../scene/layout.js';
 import { getRoomConfig } from './roomConfig.js';
 import type { SoundObject } from '../scene/scene.js';
 import { useSourceDrag } from './useSourceDrag.js';
@@ -13,23 +13,25 @@ import { getWallOpacity } from './WallVisibility.js';
 import { SpawnPortal, SPAWN_EMERGE_DELAY, SPAWN_EMERGE_SPAN, clamp01, easeOutBack, useSpawnSchedule } from './spawn.js';
 import { spriteKey, useArtStore, type SpriteArt } from '../art/store.js';
 import { usePaintTexture } from './PaintedSurface.js';
+import { paintedPropLayout } from './paintedProp.js';
 import { paintSprites } from '../art/client.js';
 
-function PaintedProp({ art, object }: { art: Extract<SpriteArt, { status: 'ready' }>; object: SoundObject }) {
+const up = new Vector3(0, 1, 0);
+function PaintedProp({ art, object, layout }: { art: Extract<SpriteArt, { status: 'ready' }>; object: SoundObject; layout: ReturnType<typeof paintedPropLayout> }) {
   const texture = usePaintTexture(art.png, { frames: art.frames ?? 1, fps: art.fps ?? 10 }, () => !object.muted && (object.kind === 'bed' || eventIsPlaying(object.id)), object.kind === 'event' && !object.muted);
   const ref = useRef<Mesh>(null);
   const rotation = useMemo(() => new Quaternion(), []);
-  const room = useSceneStore(state => state.scene.room);
-  const width = Math.min(art.w / ART_PX_PER_BLOCK, gridFootprint(object).columns / object.scale);
-  const height = width * art.h / art.w;
+  const direction = useMemo(() => new Vector3(), []);
+  const { width, height } = layout;
   useFrame(({ camera }) => {
-    if (!object.wall && ref.current?.parent) {
+    if (!layout.mounted && ref.current?.parent) {
+      // Yaw only: camera pitch must not lift the feet or lean the canopy through a wall.
+      camera.getWorldDirection(direction).negate().setY(0);
       ref.current.parent.getWorldQuaternion(rotation);
-      ref.current.quaternion.copy(rotation.invert().multiply(camera.quaternion));
+      ref.current.quaternion.setFromAxisAngle(up, Math.atan2(direction.x, direction.z)).premultiply(rotation.invert());
     }
   });
-  const y = object.wall ? 0 : (groundHeight(object.position, room) - object.position[1]) / object.scale + height / 2;
-  return <mesh ref={ref} name="painted-prop" position={[0, y, 0]}>
+  return <mesh ref={ref} name="painted-prop" position={[0, layout.offsetY, 0]}>
     <planeGeometry args={[width, height]}/>
     <meshStandardMaterial map={texture} transparent alphaTest={0.15} side={DoubleSide} roughness={1}/>
   </mesh>;
@@ -75,9 +77,12 @@ function Source({ object }: { object: SoundObject }) {
     const start = schedule.current.get(object.id);
     const emerge = start === undefined ? 0
       : easeOutBack(clamp01((clock.elapsedTime - start - SPAWN_EMERGE_DELAY) / SPAWN_EMERGE_SPAN));
-    group.current.scale.setScalar(object.scale * Math.max(0, emerge));
+    group.current.scale.setScalar(object.scale * Math.max(0, art?.status === 'ready' ? Math.min(1, emerge) : emerge));
     camera.getWorldPosition(cameraPosition);
-    const fade = (art?.status === 'ready' || model === 'rain') && wall ? 0.2 + 0.8 * getWallOpacity(wall, group.current.parent.matrixWorld, cameraPosition) : 1;
+    // Only the rain window belongs to the wall, so it fades out with it. Every other source is a
+    // thing standing in the room: it stays fully visible even when mounted on a near/hidden wall,
+    // so dragging a source to the room's edge or rotating never makes it disappear.
+    const fade = model === 'rain' && wall ? 0.2 + 0.8 * getWallOpacity(wall, group.current.parent.matrixWorld, cameraPosition) : 1;
     const opacity = fade * (object.muted ? 0.58 : 1);
     group.current.userData.opacity = opacity;
     for (const { mesh, material } of parts.current) {
@@ -86,19 +91,21 @@ function Source({ object }: { object: SoundObject }) {
       mesh.renderOrder = 3;
     }
   });
-  const rotation = object.wall ? WALL_ROTATIONS[object.wall] : model === 'fan' ? Math.PI / 4 : 0;
+  const layout = art?.status === 'ready' ? paintedPropLayout(object, room, art) : undefined;
+  const rotation = layout && !layout.mounted ? 0 : object.wall ? WALL_ROTATIONS[object.wall] : model === 'fan' ? Math.PI / 4 : 0;
   const height = object.position[1] / object.scale;
   const footprint = gridFootprint(object);
-  return <group ref={group} name={`sound-${object.id}`} position={object.position} rotation={[0, rotation, 0]} scale={object.scale} userData={{ model, muted: object.muted, wall: object.wall }} onPointerDown={startGesture} onPointerOver={event => { event.stopPropagation(); if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = 'grab'; }} onPointerOut={() => { if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = ''; }}>
-    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : managed || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
+  return <group ref={group} name={`sound-${object.id}`} position={layout?.position ?? object.position} rotation={[0, rotation, 0]} scale={object.scale} userData={{ model, muted: object.muted, wall: object.wall }} onPointerDown={startGesture} onPointerOver={event => { event.stopPropagation(); if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = 'grab'; }} onPointerOut={() => { if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = ''; }}>
+    {art?.status === 'ready' && layout ? <PaintedProp art={art} object={object} layout={layout}/> : managed || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
   </group>;
 }
 
 export function SoundObjects() {
   const objects = useSceneStore(state => state.scene.objects);
-  const preset = useSceneStore(state => state.scene.room.preset);
+  const room = useSceneStore(state => state.scene.room);
+  const preset = room.preset;
   return <group name="sound-objects">
     {objects.map(object => <Source key={object.id} object={object}/>)}
-    {objects.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={object.position} scale={object.scale} preset={preset}/>)}
+    {objects.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={room.art && !isWallMountedArt(object) ? [object.position[0], groundHeight(object.position, room), object.position[2]] : object.position} scale={object.scale} preset={preset}/>)}
   </group>;
 }

@@ -55,7 +55,7 @@ export async function createWorker({ key, root, run = runClaude, model = 'claude
       for await (const message of run({
         prompt: text.replaceAll('/mnt/session/outputs/', `${cwd}/outputs/`),
         options: {
-          cwd, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last.`,
+          cwd, model, systemPrompt: `${state.system}\n\nThe pxl and chirp tools are already installed at /opt/pxl and /opt/chirp. Read their SKILL.md and reference.md; use their real CLI builds. Do not clone or install them again. Build with the actual CLIs, then copy the compiled PNG/WAV/OGG files from their nested output folders into the flat outputs directory specified in the turn brief. Publish the turn manifest last. Skip artwork review, lint, image inspection, and preview generation; use pxl build --no-preview and publish the first valid build. Repair compilation failures only.`,
           ...(state.sdkSession ? { resume: state.sdkSession } : {}),
           env, settingSources: [], tools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
           permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, effort: 'low',

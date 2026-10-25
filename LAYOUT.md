@@ -97,6 +97,7 @@ Sources retain the shared contract: `id`, `model`, metadata `label`, `sound`, `k
 - Source positions use local **block units**, before view rotation. A floor model occupies a whole-cell footprint that contains its complete scaled geometry.
 - Quantize the start of the complete footprint, then derive its center. Do not snap centers blindly: odd/even footprints have different center parity. Full footprints must remain inside the room.
 - Floor-object height uses half-block steps within model bounds. Wall-window positions use whole-segment spans, tangent anchors and levels. Wall-normal offsets follow wall thickness/model depth and are calculated by the renderer.
+- Generated standing props (fan/speaker hints, including trees) stay upright with their base on the canonical terrain. Their emergence scales from that base, including at room edges; a wall snap does not turn them into centered wall paintings. Keep the complete sprite inside the inner slab faces at every manual rotation. Window and perched-bird art retains its canonical wall anchor.
 - Floor models can occupy the interior or snap beside a wall at an edge. Windows stay mounted on their selected wall and face inward. Apply rectangular width/depth independently when choosing/clamping a wall.
 - Use validated immutable scene operations. `move` updates position and wall attachment together. Room edits update grid counts/openings and re-clamp sources. Do not mutate only meshes.
 
