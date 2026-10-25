@@ -17,7 +17,8 @@ export async function memoryRequest(context: AgentContext, body: Record<string, 
     Authorization: `Bearer ${context.token}`, "Content-Type": "application/json",
   }, body: JSON.stringify({ ...local, ...context, token: undefined,
     timeBucket: context.timeBucket === "auto" ? local.timeBucket : context.timeBucket, ...body }),
-  signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(35_000)]) : AbortSignal.timeout(35_000) });
+  // Outlasts /api/agent's own budget (auth, Moss and a 40 s session start) within Vercel's 60 s limit.
+  signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(58_000)]) : AbortSignal.timeout(58_000) });
   const result = await response.json();
   if (!response.ok) throw new AgentError(result.error || "The agent is unavailable.", response.status);
   return result as AgentReply & { kind?: string; token?: string; preferences?: Preference[] };
@@ -49,6 +50,7 @@ export async function requestAgent(prompt: string, scene: Scene | null, context?
     }
     if (!startedManaged && error instanceof AgentError && error.status < 500 && error.status !== 429) throw error;
     // The agent errored, ran out of time or couldn't be reached: Gemini, then the offline room (client.ts).
+    console.warn('agent: falling back', error);
     const response = await fallbackScene(prompt, scene, progress, signal);
     return { response, notice: response.notice };
   }
