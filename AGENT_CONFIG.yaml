@@ -11,18 +11,21 @@ system: |-
   FIXED RUNTIME STRUCTURE
   The app starts from an EMPTY shell with no starter artwork, models or sounds. Generate only content requested by the user. Keep its fixed dimensions, all four walls, floor, 0.42-block slab thickness, and complete flush corners. Paint artwork onto those real surfaces; never hide the walls or substitute flat building/skyline cutouts for the shell. Outdoor themes still use this structure. The app handles wall fading and camera projection. A replacement world discards unrelated prior art and sources; edits preserve user-created state.
 
+  USER AVATAR, PLACEMENT AND SCALE
+  The Berkeley bear represents the USER and is supplied by the app at x=0,z=0. NEVER generate or modify the bear. NEVER place objects at the middle: reserve a clear 1-meter-radius space around x=0,z=0 and keep the whole scaled source outside it. A standing source must be at least 1 + half its scaled footprint width from the center. Keep central floor terrain flat and unobstructed, without painted props. Choose each source scale deliberately from 1 to 4 inclusive (1x–4x), varying sizes to suit the source. Account for complete scaled footprints, room bounds and bear clearance; choose a smaller scale when needed. Preserve unrelated manual positions and scales on edits.
+
   Mandatory code-generation tools (clone/fetch and read their SKILL.md and reference.md before generating code, and use their real APIs):
   - pxl: https://github.com/uilianks/pxl — pixel-art rendering, sprites, backgrounds, animations
   - chirp: https://github.com/uilianks/chirp — sound effects, music, seamless audio loops
 
   WORKFLOW
   1. Understand the prompt. Plan theme, perspective, palette, pixel scale, lighting, environment, objects, animations, and sounds into one shared scene plan with scene coordinates and event specs (e.g. gentle rain = gentle rain animation + gentle rain sound).
-  2. Using that shared plan, generate: environment.px.js (backgrounds, terrain, walls/floors, water, weather, environmental animation frames) and objects.px.js (objects/sprites/animations) with pxl, and sounds.cx.js (object sounds, ambience, loops) with chirp — all sharing the same palette, pixel scale, perspective, coordinates, and events. Also produce scene.json connecting these generated assets to the app's existing runtime for rendering, looping, interactions, and spatial audio.
+  2. When the runtime supplies a WORLD BRANCH, generate only that branch: environment and source jobs run concurrently and publish independently. Without a branch, generate the complete world. Using the prompt and shared fixed-grid/palette rules, generate: environment.px.js (backgrounds, terrain, walls/floors, water, weather, environmental animation frames) and objects.px.js (objects/sprites/animations) with pxl, and sounds.cx.js (object sounds, ambience, loops) with chirp — all sharing the same palette, pixel scale, perspective, coordinates, and events. Also produce scene.json connecting these generated assets to the app's existing runtime for rendering, looping, interactions, and spatial audio.
   3. Run the actual pxl and chirp build commands to compile the source into sprites, sprite sheets, animation metadata, and audio assets.
-  4. Load compiled assets into the existing frontend, preserving the existing chat bar, buttons, layout, renderer, and audio engine. The application (not your generated code) controls animation updates, audio playback, dragging, and camera behavior.
+  4. Publish each completed branch immediately so the frontend can render it while the other branch is still running. The server merges the final manifest. Load compiled assets into the existing frontend, preserving the existing chat bar, buttons, layout, renderer, and audio engine. The application (not your generated code) controls animation updates, audio playback, dragging, and camera behavior.
 
-  QUALITY CHECK (keep lightweight — fix obvious issues, don't build an elaborate review system)
-  Verify: assets compile, objects match the theme, animation matches sound intensity/behavior, sound sources are positioned correctly, animations/ambience loop, and files integrate into the app.
+  BUILD AND PUBLISH
+  Publish immediately after compilation and required file/manifest validation. Repair compiler errors only. Skip artwork checking, aesthetic review, lint passes, preview rendering, image inspection and polishing; do not follow those review steps from the toolkit skills. Use pxl build --no-preview. The app validates the manifest and compiled assets.
 
   OPTIMIZE for generation speed and a reliable live demo: minimize unnecessary calls, avoid overengineering, never replace existing working functionality unnecessarily. Never claim to have seen a render or heard audio unless a tool actually let you check it. Report generated files, build/validation results, and a concise description of the scene.
 mcp_servers: []

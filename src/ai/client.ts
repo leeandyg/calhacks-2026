@@ -1,5 +1,8 @@
 import { SceneResponse, type Scene } from "../scene/scene.js";
 import { currentAgentSession, followManagedRun } from './managedClient.js';
+import { AGENT_MODE } from './mode.js';
+import type { ManagedResult } from './world.js';
+import type { WorldPart } from './managedClient.js';
 import type { ManagedAssets } from './world.js';
 
 // Browser side of POST /api/scene. Keys stay on the server; this only sends the prompt and scene.
@@ -22,14 +25,15 @@ class Unavailable extends Error {}
 
 const OFFLINE = 'Offline: the scene AI is unavailable.';
 
-export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, signal?: AbortSignal, engine: Engine = 'agent'): Promise<SceneReply> {
+export async function requestScene(prompt: string, scene: Scene | null, demoMode = false, progress?: (message: string) => void, signal?: AbortSignal, engine: Engine = 'agent', partial?: (result: ManagedResult, part: WorldPart) => void): Promise<SceneReply> {
   signal?.throwIfAborted();
   if (demoMode) return localResponse(prompt, scene, 'Demo mode.', signal);
+  let published = false;
   try {
-    return await ask(prompt, scene, engine, progress, signal);
+    return await ask(prompt, scene, engine, progress, signal, partial ? (result, part) => { partial(result, part); published = true; } : undefined);
   } catch (error) {
     signal?.throwIfAborted();
-    if (!(error instanceof Unavailable)) throw error;
+    if (published || !(error instanceof Unavailable)) throw error;
     console.warn('scene: falling back', error);
     return engine === 'agent' ? fallbackScene(prompt, scene, progress, signal) : localResponse(prompt, scene, OFFLINE, signal);
   }
@@ -50,14 +54,14 @@ export async function fallbackScene(prompt: string, scene: Scene | null, progres
   }
 }
 
-async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void, signal?: AbortSignal): Promise<SceneReply> {
+async function ask(prompt: string, scene: Scene | null, engine: Engine, progress?: (message: string) => void, signal?: AbortSignal, partial?: (result: ManagedResult, part: WorldPart) => void): Promise<SceneReply> {
   signal?.throwIfAborted();
   let res: Response;
   try {
     res = await fetch("/api/scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(engine === 'gemini' ? { prompt, scene, engine } : { prompt, scene, sessionToken: scene ? currentAgentSession() : undefined }),
+      body: JSON.stringify(engine === 'gemini' ? { prompt, scene, engine } : { prompt, scene, mode: AGENT_MODE, sessionToken: scene ? currentAgentSession() : undefined }),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
     });
   } catch {
@@ -74,7 +78,7 @@ async function ask(prompt: string, scene: Scene | null, engine: Engine, progress
   signal?.throwIfAborted();
   if (json?.kind === 'managed' && typeof json.token === 'string' && engine === 'agent') {
     try {
-      const result = await followManagedRun(json.token, scene, progress, signal, CLAUDE_BUDGET_MS);
+      const result = await followManagedRun(json.token, scene, progress, signal, CLAUDE_BUDGET_MS, partial, AGENT_MODE);
       return { ...result.response, managed: result.assets };
     } catch (error) {
       signal?.throwIfAborted();

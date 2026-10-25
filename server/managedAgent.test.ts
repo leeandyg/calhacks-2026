@@ -41,6 +41,8 @@ describe('managed world integration', () => {
     expect(JSON.stringify(sent)).toContain('The current prompt wins');
     expect(JSON.stringify(sent)).toContain('Start from an EMPTY fixed shell');
     expect(JSON.stringify(sent)).toContain('exactly 0.42 blocks');
+    expect(JSON.stringify(sent)).toContain('NEVER place a source at the middle');
+    expect(JSON.stringify(sent)).toContain('scale deliberately from 1 to 4');
     expect(JSON.stringify(sent)).toContain('never replace them with flat cutouts');
     expect(JSON.stringify(result)).not.toContain(settings.apiKey);
     expect(sent).toMatchObject({ agent: { type: 'agent_with_overrides', id: settings.agentId, system: expect.stringContaining('AI Pixel World Director') }, environment_id: settings.environmentId });
@@ -98,6 +100,27 @@ describe('managed world integration', () => {
     expect(result?.response).toEqual(output.response);
     expect(context.objects[1]).toMatchObject({ muted: true, position: [2, 1.5, -2] });
   });
+  it('keeps a large generated source clear of the user center', async () => {
+    const output = world();
+    output.response.scene.objects[0] = { ...output.response.scene.objects[0], model: 'speaker', wall: null, scale: 4, position: [0, 1, 0] };
+    const agent = fixture(output), result = await agent.result(await run(agent), null);
+    if (result?.response.kind !== 'create') throw new Error('missing scene');
+    const source = result.response.scene.objects[0];
+    expect(source.scale).toBe(4);
+    expect(Math.hypot(source.position[0], source.position[2])).toBeGreaterThanOrEqual(3.5);
+  });
+  it('corrects an explicit center move without touching an unrelated manually centered source', async () => {
+    const context = structuredClone(starter) as Scene;
+    context.objects[0].position = [0, 2, 0];
+    const before = structuredClone(context);
+    const output = { version: 1, turn, response: { kind: 'edit', ops: [{ op: 'move', id: 'fan-1', position: [0, 1, 0] }] } };
+    const agent = fixture(output), result = await agent.result(await run(agent, JSON.stringify(context)), context);
+    if (result?.response.kind !== 'edit' || result.response.ops[0].op !== 'move') throw new Error('missing move');
+    const position = result.response.ops[0].position;
+    expect(Math.hypot(position[0], position[2])).toBeGreaterThanOrEqual(2);
+    expect(result.response.ops).toHaveLength(1);
+    expect(context).toEqual(before);
+  });
   it('replays missed events, skips older turns and duplicate live events', async () => {
     const events = [
       { id: 'old', type: 'session.status_idle', stop_reason: { type: 'end_turn' } },
@@ -120,5 +143,40 @@ describe('managed world integration', () => {
   it('does not leak provider errors or credentials', async () => {
     const agent = new ManagedAgent(settings, (async () => new Response(settings.apiKey, { status: 401 })) as typeof fetch);
     await expect(agent.api('/sessions')).rejects.toThrow('Claude rejected');
+  });
+});
+
+describe('validated first-ready branches', () => {
+  it.each(['environment', 'objects'] as const)('loads only the %s branch with a stable final world id', async part => {
+    const output = world();
+    const catalog = files();
+    catalog[0].filename = `${turn}_${part}.json`;
+    if (part === 'environment') {
+      output.response.scene.objects = [];
+      output.sprites = []; output.sounds = [];
+      output.environment.textures.floor.file = `${turn}_environment_floor.png`;
+      catalog[1].filename = `${turn}_environment_floor.png`;
+    } else {
+      const sources = { ...output, environment: undefined };
+      sources.sprites[0].file = `${turn}_objects_tree.png`;
+      sources.sounds[0].file = `${turn}_objects_wind.wav`;
+      catalog[2].filename = `${turn}_objects_tree.png`; catalog[3].filename = `${turn}_objects_wind.wav`;
+      const agent = fixture(sources, catalog);
+      const result = await agent.result(await run(agent), null, part);
+      expect(result?.assets.envId).toBe(`agent-${session}-${turn}`);
+      expect(result?.assets.sprites).toHaveLength(1);
+      expect(result?.assets.environment).toBeUndefined();
+      return;
+    }
+    const agent = fixture(output, catalog);
+    const result = await agent.result(await run(agent), null, part);
+    expect(result?.assets.envId).toBe(`agent-${session}-${turn}`);
+    expect(result?.response.kind === 'create' && result.response.scene.objects).toEqual([]);
+    expect(result?.assets.environment).toBeDefined();
+  });
+  it('rejects a mixed environment branch rather than exposing its source list', async () => {
+    const catalog = files(); catalog[0].filename = `${turn}_environment.json`;
+    const agent = fixture(world(), catalog);
+    await expect(agent.result(await run(agent), null, 'environment')).rejects.toThrow(/environment branch/);
   });
 });

@@ -77,6 +77,7 @@ try {
       const current = await source(id);
       assert.equal(current.wall, wall, `${id} reaches ${wall}`);
       if (id === 'rain-1') {
+        // A wall-mounted source no longer cuts the wall: it mounts on the intact slab.
         const room = await inspect();
         assert.ok(room.walls.every(item => !item.openings.some(opening => opening.id === 'source-rain-1')), 'a wall-mounted window never cuts the slab');
       }
@@ -130,9 +131,9 @@ try {
   assert.equal((await source('fan-1')).muted, true, 'moving a muted object preserves mute');
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
-  assert.equal(await page.getByRole('button').count(), 7);
+  assert.equal(await page.getByRole('button').count(), 7 + 2 * (await inspect()).scene.objects.length, '2 arrows, send, four captured choices, plus disable & delete per asset');
   await page.getByRole('status').waitFor({ state: 'detached' });
-  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), 'Head tracking Rainy café Beach Cyberpunk city Zen garden');
+  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), `${(await page.locator('.assets-panel').innerText()).replace(/\s+/g, ' ').trim()} Head tracking Rainy café Beach Cyberpunk city Zen garden`);
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');
   console.log('PASS: touch tap mute/unmute, muted dragging, minimal mobile UI, no shadows and no browser errors');
