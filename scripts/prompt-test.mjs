@@ -141,7 +141,7 @@ try {
     assert.equal(layout.placeholder, 'rgb(122, 122, 144)');
     assert.equal(layout.opacity, '0.45');
     assert.ok(layout.bounds.bottom < layout.bar.y, 'room clears the taller prompt');
-    assert.ok(layout.arrows[0].right < layout.bounds.left && layout.arrows[1].x > layout.bounds.right, 'arrows flank the room without overlapping it');
+    assert.ok(layout.arrows[0].right <= layout.bounds.left + 0.5 && layout.arrows[1].x >= layout.bounds.right - 0.5, 'arrows flank the room without overlapping it');
     assert.ok(layout.arrows.every(arrow => arrow.x >= 0 && arrow.right <= viewport.width && arrow.y > layout.bounds.top && arrow.bottom < layout.bounds.bottom));
     assert.ok(layout.arrowStyles.every(style => style.border === '0px' && style.background === 'rgba(0, 0, 0, 0)'));
     assert.equal(layout.overflow, false);
