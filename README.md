@@ -249,7 +249,16 @@ npm run sounds:pack    # builds public/sounds/ + manifest.json + CREDITS.md
 
 Add a sound by adding it to `SOUNDS` in `scripts/fetch-freesound.mjs` and `TAGS` in `scripts/pack.mjs`. Tags are what the resolver matches the agent's descriptions against.
 
-To replace a weak sound with an ElevenLabs-generated one (rain_window, fireplace, cup_clink and sparrow already are):
+To use a recording you picked on freesound.org yourself, save its original download (wav, flac, aif or mp3, keeping Freesound's `<id>__<author>__<name>` file name) as the only file in `assets/raw/<sound>/`, then:
+
+```sh
+npm run sounds:fetch -- --describe   # records author and license for hand-downloaded files
+npm run sounds:pack -- <sound>       # rebuilds only that sound
+```
+
+If only part of a recording is usable (a fan spinning up, one bird call out of three), set its window in `CROP` in `scripts/pack.mjs`.
+
+To replace a weak sound with an ElevenLabs-generated one (sparrow already is):
 
 ```sh
 node --env-file=.env scripts/generate-pack.mjs fireplace "crackling fireplace in a small wooden cabin"   # costs credits
