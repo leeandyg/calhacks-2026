@@ -5,6 +5,9 @@ import { useSceneStore } from "../scene/store.js";
 import { memoryRequest, type AgentContext, type CommandOptions } from "./agent.js";
 import { type Preference, type TimeBucket } from "./preferences.js";
 import { playReadyCue, prepareVoice, speakReply, startVoice, type VoiceSession } from "./voice.js";
+import { duckSoundscape } from '../audio/ducking.js';
+import { FloatingVoice, useFloatingVoice } from './FloatingVoice.js';
+import { wakeCommand } from './wakePhrase.js';
 
 type Props = { disabled: boolean; demoMode: boolean; refresh: number;
   onContext: (context: AgentContext | undefined) => void;
@@ -16,7 +19,11 @@ export function AgentControls(props: Props) {
 }
 
 function ConnectedAgentControls({ disabled, demoMode, refresh, onContext, onCommand }: Props) {
-  const token = useAuthToken();
+  const token = useAuthToken() ?? undefined;
+  return <VoiceAgentControls {...{ disabled, demoMode, refresh, onContext, onCommand, token }}/>;
+}
+
+export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onCommand, token }: Props & { token?: string }) {
   const [task, setTask] = useState("");
   const [timeBucket, setTimeBucket] = useState<TimeBucket | "auto">("auto");
   const [summary, setSummary] = useState("");
@@ -41,6 +48,12 @@ function ConnectedAgentControls({ disabled, demoMode, refresh, onContext, onComm
   const reply = useRef<AbortController | undefined>(undefined);
   const mounted = useRef(true);
   const held = useRef(false);
+  const [wake, setWake] = useState(false);
+  const wakeEnabled = useRef(false);
+  const [armed, setArmed] = useState(false);
+  const wakeArmed = useRef(false);
+  const activeWake = useRef(false);
+  const wakeDuck = useRef<(() => void) | undefined>(undefined);
   const locked = disabled || pending || demoMode;
   const context = useCallback((): AgentContext => ({ token: token ?? "", task: (task.trim() || useSceneStore.getState().scene.session?.task || "").slice(0, 80),
     timeBucket, turns: turns.current }), [task, timeBucket, token]);
@@ -60,7 +73,7 @@ function ConnectedAgentControls({ disabled, demoMode, refresh, onContext, onComm
       if (mounted.current) setAvailability(value);
     }).catch(() => {});
     const stopReply = useSceneStore.subscribe(() => reply.current?.abort());
-    return () => { mounted.current = false; controller.current?.abort(); reply.current?.abort(); stopReply(); };
+    return () => { mounted.current = false; controller.current?.abort(); reply.current?.abort(); wakeDuck.current?.(); stopReply(); };
   }, []);
 
   const load = useCallback(async () => {
@@ -121,49 +134,116 @@ function ConnectedAgentControls({ disabled, demoMode, refresh, onContext, onComm
     } finally { if (controller.current === current) controller.current = undefined; }
   }, [context, onCommand, token]);
 
-  const begin = useCallback(async (auto = false) => {
+  const executeLatest = useRef(execute); executeLatest.current = execute;
+  const begin = useCallback(async (auto = false, fromWake = false) => {
     if (locked || !token || controller.current || !availability.configured) return;
     reply.current?.abort();
     const current = new AbortController(); controller.current = current;
     activeAutomatic.current = auto; finalHeard.current = "";
-    setError(""); setNotice(""); setHeard(""); setEditing(false); setVoice("starting");
+    activeWake.current = fromWake;
+    if (!fromWake) { setError(""); setNotice(""); setHeard(""); }
+    setEditing(false); setVoice("starting");
     let submitted = false;
+    let detected = false;
+    let releaseThisWake: (() => void) | undefined;
+    const detectedWake = () => {
+      if (detected) return;
+      detected = true; setError(''); setNotice('');
+      releaseThisWake = duckSoundscape(); wakeDuck.current = releaseThisWake;
+      try { playReadyCue(); } catch { /* Text feedback remains available. */ }
+    };
+    const releaseWake = () => {
+      releaseThisWake?.();
+      if (wakeDuck.current === releaseThisWake) wakeDuck.current = undefined;
+      releaseThisWake = undefined;
+    };
     try {
       const session = await startVoice(token, current.signal, (text) => {
         submitted = true;
+        releaseWake();
+        if (controller.current !== current || current.signal.aborted) return;
+        if (fromWake) {
+          if (!wakeEnabled.current) return;
+          const command = wakeCommand(text);
+          if (!wakeArmed.current && command === undefined) {
+            controller.current = undefined; capture.current = undefined; setVoice('idle'); return;
+          }
+          if (command !== undefined) detectedWake();
+          text = command ?? text;
+          if (!text.trim()) {
+            releaseWake(); wakeArmed.current = true; setArmed(true);
+            controller.current = undefined; capture.current = undefined; setVoice('idle'); return;
+          }
+          releaseWake(); wakeArmed.current = false; setArmed(false);
+        }
         finalHeard.current = text;
-        void execute(text, current);
+        void executeLatest.current(text, current);
       }, (message) => {
+        releaseWake();
+        if (controller.current !== current) return;
         controller.current = undefined; capture.current = undefined;
-        if (mounted.current) { setError(message); setVoice("idle"); }
+        const quiet = fromWake && message.startsWith('No speech was detected');
+        if (fromWake) {
+          wakeArmed.current = false; setArmed(false);
+          if (!quiet) { wakeEnabled.current = false; setWake(false); }
+        }
+        if (mounted.current) { if (!quiet) setError(message); setVoice("idle"); }
       }, () => { if (mounted.current && controller.current === current) setVoice("finishing"); }, {
-        automatic: auto, onPartial: (text) => { if (mounted.current && controller.current === current) setHeard(text); },
+        automatic: auto, duck: !fromWake || wakeArmed.current,
+        onPartial: (text) => {
+          if (!mounted.current || controller.current !== current) return;
+          if (!fromWake) { setHeard(text); return; }
+          const command = wakeCommand(text);
+          if (command !== undefined) detectedWake();
+          if (wakeArmed.current || command !== undefined) setHeard(command ?? text);
+        },
       });
       if (submitted) return;
       if (controller.current !== current || current.signal.aborted) { session.cancel(); return; }
       capture.current = session;
-      if (mounted.current) { setVoice("listening"); try { playReadyCue(); } catch { /* Ready text still works. */ } }
+      if (mounted.current) {
+        setVoice("listening");
+        if (!fromWake) try { playReadyCue(); } catch { /* Ready text still works. */ }
+      }
     } catch (error) {
+      releaseWake();
       if (controller.current !== current) return;
       controller.current = undefined; capture.current = undefined;
       if (mounted.current) {
+        if (fromWake) { wakeEnabled.current = false; setWake(false); wakeArmed.current = false; setArmed(false); }
         setVoice("idle");
         if (!current.signal.aborted) setError(error instanceof Error ? error.message : "Microphone access failed.");
       }
     }
-  }, [locked, token, availability.configured, execute]);
+  }, [locked, token, availability.configured]);
 
   const end = useCallback((cancel = false) => {
+    wakeDuck.current?.(); wakeDuck.current = undefined;
     if (cancel || !capture.current) {
       controller.current?.abort(); controller.current = undefined; capture.current = undefined;
       if (mounted.current) setVoice("idle");
     } else { capture.current.stop(); setVoice("finishing"); }
   }, []);
+  const stopVoice = useCallback(() => {
+    wakeEnabled.current = false; setWake(false); wakeArmed.current = false; setArmed(false);
+    held.current = false; end(true); reply.current?.abort();
+  }, [end]);
+  const { floating, open: openFloating } = useFloatingVoice(stopVoice);
+  const toggleWake = (enabled: boolean) => {
+    stopVoice();
+    if (enabled) { wakeEnabled.current = true; setWake(true); }
+  };
+  useEffect(() => {
+    if (!wake || locked || !token || !availability.configured || controller.current || (voice !== 'idle' && voice !== 'done')) return;
+    const timer = setTimeout(() => { if (wakeEnabled.current) void begin(true, true); }, wakeArmed.current ? 0 : 250);
+    return () => clearTimeout(timer);
+  }, [wake, locked, token, availability.configured, voice, begin]);
   useEffect(() => {
     function down(event: KeyboardEvent) {
-      if (event.key === "Escape") { end(true); reply.current?.abort(); return; }
+      if (event.key === "Escape") { stopVoice(); return; }
       if (event.code !== "Space" || !event.ctrlKey || !event.shiftKey || event.altKey || event.metaKey || event.repeat) return;
-      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.nodeType === 1 && target.closest("input, textarea, select, [contenteditable='true']")) return;
       if (locked || !token || controller.current || !availability.configured) return;
       event.preventDefault(); held.current = true; void begin(false);
     }
@@ -172,42 +252,64 @@ function ConnectedAgentControls({ disabled, demoMode, refresh, onContext, onComm
         held.current = false; event.preventDefault(); end();
       }
     }
-    const blur = () => { held.current = false; end(true); reply.current?.abort(); };
+    const blur = () => { if (held.current) { held.current = false; end(true); } };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up); window.addEventListener("blur", blur);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
-  }, [begin, end, locked, token, availability.configured]);
-  useEffect(() => { if (demoMode) end(true); }, [demoMode, end]);
+    floating?.addEventListener('keydown', down); floating?.addEventListener('keyup', up); floating?.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur);
+      floating?.removeEventListener('keydown', down); floating?.removeEventListener('keyup', up); floating?.removeEventListener('blur', blur);
+    };
+  }, [begin, end, stopVoice, locked, token, availability.configured, floating]);
+  useEffect(() => { if (demoMode || !token) stopVoice(); }, [demoMode, token, stopVoice]);
 
   const capturing = voice === "starting" || voice === "listening" || voice === "finishing";
   const processing = voice === "understanding" || voice === "updating";
   const idle = voice === "idle" || voice === "done";
   const warm = () => { if (token && availability.configured && !demoMode) void prepareVoice(token).catch(() => {}); };
   function activate() {
+    if (wakeEnabled.current && activeWake.current) { stopVoice(); return; }
     if (idle) void begin(automatic);
     else if (voice === "speaking") { reply.current?.abort(); setVoice("idle"); }
     else end(processing || voice !== "listening");
   }
+
+  const voiceLabel = wake && activeWake.current && (capturing || idle) ? 'Stop listening' : idle ? 'Talk to agent' : voice === 'starting' ? 'Cancel microphone' : voice === 'listening' ? 'Stop & send' : voice === 'speaking' ? 'Stop reply' : 'Cancel command';
+  const voiceStatus = voice === 'listening' && wake && activeWake.current ? (armed ? 'Listening for your command…' : 'Mic on · say “Hey agent” and your command')
+    : voice === 'listening' ? (activeAutomatic.current ? 'Listening · finishes when your sentence ends · Esc cancels' : 'Listening · release shortcut or click Stop · Esc cancels')
+    : voice === 'starting' ? 'Preparing microphone…' : voice === 'finishing' ? 'Mic off · finishing transcription…'
+    : voice === 'understanding' ? 'Understanding your command…' : voice === 'updating' ? 'Updating your room…'
+    : voice === 'speaking' ? 'Speaking · start a new turn to interrupt' : voice === 'done' ? 'Done · microphone off'
+    : availability.configured ? 'Hold Ctrl+Shift+Space · page focused, outside text fields' : 'Voice needs a Cartesia API key. Typed commands still work.';
+  const wakeToggle = <label><input type="checkbox" checked={wake} disabled={!wake && (locked || !token || !availability.configured)} onChange={event => toggleWake(event.target.checked)}/>Hey agent</label>;
 
   return <div className="agent-controls">
     <div className="agent-activation">
       <button type="button" aria-pressed={voice === "listening"} aria-keyshortcuts="Control+Shift+Space"
         disabled={idle && (locked || !token || !availability.configured)} onPointerEnter={warm} onFocus={warm}
         onClick={activate}>
-        {idle ? "Talk to agent" : voice === "starting" ? "Cancel microphone" : voice === "listening" ? "Stop & send" : voice === "speaking" ? "Stop reply" : "Cancel command"}
+        {voiceLabel}
       </button>
-      <span role={idle ? undefined : "status"}>{voice === "listening" ? (activeAutomatic.current ? "Listening · finishes when your sentence ends · Esc cancels" : "Listening · release shortcut or click Stop · Esc cancels")
-        : voice === "starting" ? "Preparing microphone…"
-        : voice === "finishing" ? "Mic off · finishing transcription…"
-        : voice === "understanding" ? "Understanding your command…"
-        : voice === "updating" ? "Updating your room…"
-        : voice === "speaking" ? "Speaking · start a new turn to interrupt"
-        : voice === "done" ? "Done · microphone off"
-        : availability.configured ? "Hold Ctrl+Shift+Space · page focused, outside text fields" : "Voice needs a Cartesia API key. Typed commands still work."}</span>
+      <span role={idle ? undefined : "status"}>{voiceStatus}</span>
       <label><input type="checkbox" checked={automatic} disabled={!idle} onChange={(event) => setAutomatic(event.target.checked)} />Finish automatically</label>
       {availability.spokenReplies && <label><input type="checkbox" checked={spoken} onChange={(event) => {
         spokenRef.current = event.target.checked; setSpoken(event.target.checked); if (!event.target.checked) reply.current?.abort();
       }} />Spoken replies</label>}
+      {wakeToggle}
+      <button type="button" onClick={() => { void openFloating().catch(error => setError(error instanceof Error ? error.message : 'The floating window could not open.')); }}>Float controls</button>
     </div>
+    {wake && <p>Microphone stays on for “Hey agent”. Audio is transcribed by Cartesia while enabled. Turn it off to stop listening.</p>}
+    {floating && <FloatingVoice window={floating}>
+      <button type="button" disabled={idle && (locked || !token || !availability.configured)} onClick={() => {
+        if (idle) void begin(true); else activate();
+      }}>{voiceLabel}</button>
+      <button type="button" onClick={stopVoice}>Stop voice</button>
+      <p role="status">{voiceStatus}</p>
+      {wakeToggle}
+      <p>{wake ? 'Mic stays on. Cartesia transcribes audio to detect the phrase.' : 'Mic is off between commands.'}</p>
+      {heard && <p className="voice-transcript">Heard: {heard}</p>}
+      {notice && <p role="status">{notice}</p>}
+      {error && <p role="alert">{error}</p>}
+    </FloatingVoice>}
     {heard && <div className="voice-transcript">
       {editing ? <form onSubmit={(event) => {
         event.preventDefault(); if (!draft.trim() || locked || !token) return;

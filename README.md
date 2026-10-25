@@ -196,11 +196,32 @@ sceneStore.getState().applyOps([{ op: "move", id: "rain-1", position: [3, 1.5, 0
 Create a room with the prompt, then click **Talk to agent** to start listening and **Stop & send**
 to submit the final transcript. Alternatively, hold **Ctrl+Shift+Space** while the
 page is focused and the cursor is outside text fields; releasing any key in the
-shortcut ends the turn. **Esc** or leaving the page cancels it. The microphone is
-off between turns, and a turn is limited to 30 seconds. This shortcut works within
-the active tab; a system-wide shortcut and an always-listening wake word are later work.
+shortcut ends the turn. **Esc** cancels voice; losing focus cancels a held shortcut.
+Click-activated commands can continue while you use another tab. The microphone is
+off between explicit turns, and a turn is limited to 30 seconds. This shortcut works
+within the active tab; there is no system-wide keyboard shortcut.
 Allow the site's microphone permission when you first use it. No raw recordings
 are saved. Ink-2 streaming transcription feeds the same command path as typed input.
+
+For homework, click **Float controls** to open a small voice controller. On supported
+desktop browsers it stays above other windows; otherwise it opens as a normal separate
+window. Its **Talk to agent** button ends a command automatically, and its **Stop voice**
+button cancels listening or processing. Keep the original soundscape tab open.
+
+Enable **Hey agent** in either window to keep listening while you work elsewhere.
+Say **“Hey agent, mute rain”** in one sentence, or **“Hey agent”** followed by your command.
+This is an opt-in Cartesia transcription gate, not an offline wake-word model: the mic
+stays active and audio uses Cartesia transcription while enabled. Other speech is
+discarded before the room agent and is not shown as a command. Listening pauses during
+processing/replies and resumes afterwards; standby does not lower the room volume.
+Disable **Hey agent**, press **Stop voice** / **Esc** in the controller, or close the
+floating window to stop. Closing/reloading the original page also releases the mic.
+Provider/mic errors stop wake listening. Sleeping/closing the browser suspends this
+feature; desktop browser background-media policies still apply. No new keys are needed.
+Run `npm run test:background-voice` for fake-media, cross-tab, floating-window and
+microphone-cleanup checks without provider charges.
+On Windows this uses an isolated desktop Edge window; set `PLAYWRIGHT_CHANNEL=chrome`
+to check desktop Chrome instead.
 
 Voice startup preloads the worklet file and a short-lived transcription token without
 opening the mic. Permission, audio setup and connection run in parallel; initial

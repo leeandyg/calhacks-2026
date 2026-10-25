@@ -4,6 +4,8 @@ Read this before generating rooms, source geometry, or interactions. The supplie
 
 Reference views: [Image 1](docs/references/room-view-1.png) and [Image 2](docs/references/room-view-2.png). Follow their aligned orthographic room presentation. Exclude their clutter and shadows.
 
+The requested optional floating voice controller (#139) is a portal from the existing app into a small Picture-in-Picture window (or popup fallback), never a separate frontend or scene. Main voice controls may expose Float controls and an opt-in Hey agent toggle. Both windows share listening state, transcript and stop controls.
+
 ## 1. Modular dimensions
 
 - Use a **grid of modular blocks**, approximately one meter/yard per segment. The renderer uses a fixed one-unit segment. Do not accept custom metric segment sizes or arbitrary room-size tuples.

@@ -242,4 +242,10 @@ canvas { display: block; touch-action: none; }
 .voice-transcript { max-height: 72px; overflow-y: auto; overflow-wrap: anywhere; }
 .voice-transcript form, .voice-transcript p { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
 .voice-transcript input { flex: 1 1 180px; min-width: 0; }
-.room-controls:has(.agent-controls) .prompt-tools { max-height: calc(60dvh - 88px); overflow-y: auto; pointer-events: auto; }
+.room-controls:has(.agent-controls) .prompt-tools { max-height: min(calc(60dvh - 88px), max(0px, calc(100dvh - 285px))); overflow-y: auto; pointer-events: auto; }
+.floating-voice-body { min-width: 0; min-height: 0; margin: 0; overflow: auto; background: #11171e; color: #e8e8f0; }
+.floating-voice-panel { padding: 16px; margin: 0; font: 13px/1.45 system-ui, sans-serif; }
+.floating-voice-panel h1 { margin: 0 0 12px; font-size: 16px; }
+.floating-voice-panel > button { margin: 0 6px 8px 0; }
+.floating-voice-panel > label { display: flex; align-items: center; gap: 6px; }
+.floating-voice-panel p { overflow-wrap: anywhere; }
