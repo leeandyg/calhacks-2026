@@ -8,12 +8,13 @@ Build a **browser app** (React + React Three Fiber for the room, Web Audio API w
 
 Your instinct on order is right: **3D room with draggable spatial audio first, AI second.** But design the scene JSON on hour one so the AI can slot in without a rewrite.
 
-- **Core (must demo):** prompt → room fills with labeled sound objects → drag one and hear it move → "make it rainier" edits the room.
-- **Best stretch for a wow moment:** AirPods head tracking, so sources stay fixed in the room as you turn your head.
-- **Best stretch for the "agentic" pitch:** mic-level noise sensing + a Pomodoro-style agent that changes the scene on its own.
-- **Voice and memory (#68):** push-to-talk with Cartesia, Moss context/preference retrieval, Convex persistence and Gemini scene edits. The automatic noise/Pomodoro agent (#20) remains separate work.
+**Status at the Sunday 3am freeze** (details in each section):
+
+- **Core (built):** prompt → a Claude managed agent paints a pixel world whose props are sound sources (pxl art, chirp audio where the library has no match) → drag one and hear it move → "make it rainier" edits the room and keeps your drags. Gemini, then an offline room, stand in if Claude is unavailable (#110). Four captured demo rooms load instantly.
+- **Head tracking (built, webcam, #21):** sources stay fixed in the room as you turn your head. AirPods tracking (#24) was not built.
+- **Voice and memory (built, #68, #139):** Cartesia push-to-talk and an opt-in "Hey agent", Moss preference recall ("my usual coding setup"), Convex persistence.
 - **App audio (Swift helper, #26–#28, built):** an app playing sustained audio, like Spotify, joins the room automatically as a live sound object you can drag and see pulse; the app's own output is muted.
-- **Skip:** meeting speaker separation. It's real, but it can eat the whole weekend.
+- **Not built:** the mic-noise/Pomodoro adaptive agent (#20), the lecture tab (#22, dropped: the helper covers app audio), collab rooms, and meeting speaker separation.
 
 ## The four core problems
 
@@ -23,11 +24,12 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 
 | Option | How it works | Trade-off | Use it for |
 | --- | --- | --- | --- |
-| Curated local pack | 37 sounds today (24 seamless loops, 13 one-shots) tagged in `public/sounds/manifest.json`, built by `scripts/pack.mjs` | Only what's in the pack, but zero latency and works on bad Wi-Fi | **Built (#4).** The instant, offline layer |
-| Freesound API | Tag search, download the HQ preview MP3 with an API token (`scripts/fetch-freesound.mjs`) | Slow CDN; quality varies; licenses vary (we keep CC0 and CC-BY only) | **Source of most of the pack** (26 of 33), auto-picked by download count |
-| ElevenLabs Sound Effects | Text prompt to audio; `loop: true` makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | 15 s loops, 3 s one-shots with room for decay; 40 credits per second | **Built (#17): the live fallback** for anything the pack lacks ("a cat purring") |
+| Curated local pack | 38 sounds today (24 seamless loops, 14 one-shots) tagged in `public/sounds/manifest.json`, built by `scripts/pack.mjs` | Only what's in the pack, but zero latency and works on bad Wi-Fi | **Built (#4).** The instant, offline layer |
+| Freesound API | Tag search, download the HQ preview MP3 with an API token (`scripts/fetch-freesound.mjs`) | Slow CDN; quality varies; licenses vary (we keep CC0 and CC-BY only) | **Source of most of the pack**, hand-picked by ear after an auto-picked first pass (#119) |
+| ElevenLabs Sound Effects | Text prompt to audio; `loop: true` makes a seamless loop ([docs](https://elevenlabs.io/docs/capabilities/sound-effects)) | 15 s loops, 3 s one-shots with room for decay; 40 credits per second | **Built (#17), off by default since #103.** Claude's chirp sounds fill the gaps instead |
+| Claude chirp | The world agent composes a sound in its sandbox only where the library has no good match (#108) | Synthesized, so less natural than a recording; adds agent time | **Built:** second choice in the resolver |
 
-**Pack source: hand-picked recordings.** In a side-by-side listening test, ElevenLabs beat the auto-picked Freesound sounds, so four were generated (#40). A later listening pass replaced those, except `sparrow`, with hand-picked Freesound recordings, along with other weak sounds. It also brought back `fan` and `espresso` (removed earlier for electrical hum), swapped the brown and white noise beds for recordings, and added `distant_siren` and `seagull_call`. `scripts/pack.mjs` crops recordings where only part is usable. Any weak sound can still be regenerated (`scripts/generate-pack.mjs`, about 600 credits per 15 s loop, 80 per one-shot).
+**Pack source: hand-picked recordings.** In a side-by-side listening test, ElevenLabs beat the auto-picked Freesound sounds, so four were generated (#40). A later listening pass replaced those, except `sparrow`, with hand-picked Freesound recordings, along with other weak sounds. It also brought back `fan` and `espresso` (removed earlier for electrical hum), swapped the brown and white noise beds for recordings, and added `distant_siren` and `seagull_call`; `alarm_clock` followed (#147). `scripts/pack.mjs` crops recordings where only part is usable. Any weak sound can still be regenerated (`scripts/generate-pack.mjs`, about 600 credits per 15 s loop, 80 per one-shot).
 
 **Resolver (`src/audio/resolve.ts`, built):** the agent writes a description per sound object (`sound.query`). The browser's resolver fills in `assetId` for any object that arrives without one:
 
@@ -68,7 +70,7 @@ Each core problem has a safe default you can ship by Saturday morning and an upg
 
 A persistent pixel-art Berkeley golden bear wearing the supplied silver/black headphones (with the red accent preserved) sits at the center of every ready world. This is a view-only listener avatar, not a generated sound source; it follows canonical terrain and survives all scene replacements. Its colors bypass generated room palette changes. Two front and two back sprites follow manual room rotation, with a permanent matching You portrait in Assets even after all sources are removed. The agent reserves a one-meter radius around the center plus each standing source’s scaled half-width, chooses source scale deliberately from 1x to 4x, and preserves unrelated manual edits. Both Managed/Self-hosted and Gemini paths apply this agent-only placement guard without changing the canonical scene schema.
 
-The room is a floor plane with an isometric orthographic camera. Each sound object is an icon, a label and a ring sized to its volume. Drag by raycasting the pointer onto the floor. The listener is a head avatar in the center with a facing arrow that later turns with head tracking.
+**As built:** a fixed 10 × 10 × 7 block room with an isometric orthographic camera, pixelated on one shared grid (see [LAYOUT.md](LAYOUT.md)). Each sound object is a prop (a Claude or Gemini sprite, or stock geometry) with a name label and outline on hover. Drag by raycasting the pointer onto the floor; click to mute. Two arrows turn the view (never the listener). The listener is the bear avatar above. The Assets panel lists each source with volume, hide and delete.
 
 ### 4. The AI that builds and edits the room
 
@@ -78,6 +80,8 @@ scene, painted floor/four walls, source sprites and compressed audio. Four expli
 load these pre-generated rooms without provider calls. Reuse the normal scene store, dragging,
 spatial playback and live voice/AI edits. Local asset preloading must not change the active room.
 Provider capabilities remain in ignored capture scratch files, never in the public bundles.
+
+**As built:** a Claude managed agent is the world director (see "Managed World Director" under "Scene contract"). It plans the scene, paints the pxl art and composes chirp sounds, and returns the same scene JSON. The Gemini path below is the labeled fallback (#110): it builds the standard room without paintings.
 
 - Give Gemini two tools: `create_scene(scene)` and `edit_scene(ops)`, where ops are add, remove, move, set\_volume and set\_room.
 - Always send the current scene JSON with the user's prompt. "Make the rain quieter" then becomes an edit, and the user's manual drags survive.
@@ -100,13 +104,13 @@ Go **web-first, with an optional Swift helper** for the Mac-only tricks. Judges 
 
 - **Frontend:** Vite, React, TypeScript, `@react-three/fiber`, `@react-three/drei`, `zustand` for the scene store, `zod` for schemas.
 - **Audio:** Web Audio HRTF `PannerNode` per object, driven by the scene store; `ConvolverNode` room reverb, `AnalyserNode` for visuals and mic level.
-- **AI:** Gemini 3.8 Flash through the Google GenAI SDK's Interactions API with tool use, called from the backend so keys stay server-side.
-- **Sounds:** local pack (Freesound today) plus live ElevenLabs Sound Effects fallback through the resolver; word-overlap scoring now. Moss semantic asset search is a later upgrade, separate from its planned memory role.
-- **Voice (#68, contributes to #23):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for push-to-talk commands, Moss for context, Gemini for scene operations, and optional Sonic TTS for short acknowledgements. Pomodoro coach cues remain part of #20/#23.
+- **AI:** Claude Managed Agents as the world director (scene, pxl art, chirp audio; `?mode=cloud`), with an optional self-hosted Agent SDK worker (`?mode=local`). Gemini 3.8 Flash through the Google GenAI SDK's Interactions API with tool use is the fallback. All called from the backend so keys stay server-side.
+- **Sounds:** local pack (hand-picked Freesound recordings), then the agent's chirp sounds, through the resolver; ElevenLabs generation is off by default. Word-overlap scoring. Moss semantic asset search is a later upgrade, separate from its planned memory role.
+- **Voice (#68, contributes to #23):** Cartesia [Ink-2](https://docs.cartesia.ai/changelog) streaming STT for push-to-talk commands, Moss for context, the world agent for scene operations, and optional Sonic TTS for short acknowledgements. Pomodoro coach cues remain part of #20/#23.
 - **Memory (#68):** [Moss sessions](https://docs.moss.dev/docs/integrate/sessions) for live conversational context and persistent indexes for recalling preferences across sessions. Keep Gemini as the scene agent; Moss Inference is optional, outside the first implementation.
 - **Saved state:** Convex stores named scene snapshots (#51), scoped to an anonymous authenticated browser session. Explicit Save/Load preserves the existing scene contract; Zustand remains the active room. Separate preference records feed Moss retrieval. SpacetimeDB remains an alternative if shared rooms become the priority.
 - **Swift helper (`helper/`, built for app audio):** Core Audio process taps to detect and capture app audio such as Spotify (macOS 14.2+, [Apple docs](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)); later `CMHeadphoneMotionManager` for AirPods pose (macOS 14+, [WWDC23](https://developer.apple.com/videos/play/wwdc2023/10179)). See "App audio in the room" below.
-- **Hosting:** Vercel for the frontend and `api/`; Convex for stored sounds and rooms.
+- **Hosting:** Vercel for the frontend and `api/`; Convex for saved rooms, preferences and kept Claude worlds.
 
 ## Architecture
 
@@ -161,8 +165,8 @@ remain on the existing resolver/cache path; they are not copied into scene recor
 
 ### Scene contract
 
-**Self-hosted World Director (#114):** live agent execution now uses a persistent Node.js 24
-Claude Agent SDK worker in a dedicated Docker container when `WORLD_AGENT_URL` is configured.
+**Self-hosted World Director (#114, `?mode=local` only):** with `?mode=local`, live agent execution uses a persistent Node.js 24
+Claude Agent SDK worker in a dedicated Docker container at `WORLD_AGENT_URL`. Only its owner runs it.
 The model remains Claude Opus 5.5 at low effort via Anthropic's inference API; the agent loop,
 pxl/chirp builds, working files and SDK session history live on our infrastructure. Toolkits are
 installed in the image once. New-world environment and source-art/audio jobs run concurrently
@@ -175,10 +179,10 @@ The worker implements the existing session/events/files protocol,
 so signed capabilities, validated `WorldOutput` manifests, compiled PNG/audio, canonical scene,
 resolver ownership and browser rendering remain unchanged. A volume persists completed worlds
 and SDK resumptions; interrupted builds fail visibly. One world runs at a time, with two concurrent creation jobs. Credentials
-stay in server API configuration and worker environment only. Clear `WORLD_AGENT_URL` for the
-explicit Managed Agents rollback below. The app retains its existing fallback behavior and notices.
+stay in server API configuration and worker environment only. `?mode=cloud`, the default, uses
+the Managed Agents path below; neither mode falls back to the other. The app retains its existing fallback behavior and notices.
 
-**Managed World Director (#86):** the supplied Claude Managed Agent owns live scene planning in the legacy cloud configuration,
+**Managed World Director (#86):** the supplied Claude Managed Agent owns live scene planning in `?mode=cloud` (the default and the live site),
 pxl artwork/animation and chirp audio generation when `ANTHROPIC_API_KEY` is configured. The
 backend starts/continues its managed session, streams safe progress across bounded connections,
 validates a per-turn manifest, and proxies the resulting images/audio with signed session access.
@@ -280,17 +284,17 @@ A third kind, `live`, is audio playing in another app on the Mac, streamed by th
 
 ## Stretch features
 
-Build the adaptive agent and camera head tracking first: together they make the "AI manages your study environment" pitch real for under 8 hours. Skip true speaker separation; collab rooms give you the meeting experience without it.
+**Status at the freeze:** camera head tracking, Moss memory, app audio and the hover polish were built. The adaptive agent, lecture tab, AirPods tracking and collab rooms were not; the Claude world director became the agentic part of the pitch instead. Speaker separation was skipped as planned.
 
 | Priority | Feature | How to build it | Est. hours | Risk | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Adaptive agent | Mic level via `getUserMedia` + `AnalyserNode`, a Pomodoro state machine, and a loop that sends Gemini {noise level, minutes in session, task, current scene} every few minutes or on a spike. It returns edit ops: raise the masking bed, switch to a break scene, play a spoken cue | 3–5 | Low | **Build — this is the pitch** |
+| 1 | Adaptive agent | Mic level via `getUserMedia` + `AnalyserNode`, a Pomodoro state machine, and a loop that sends Gemini {noise level, minutes in session, task, current scene} every few minutes or on a spike. It returns edit ops: raise the masking bed, switch to a break scene, play a spoken cue | 3–5 | Low | Not built (#20) |
 | 2 | Camera head tracking | MediaPipe Face Landmarker in the browser; read yaw from its transformation matrix (One Euro smoothing, hold while the face is lost, glide back when found) and add it to the `AudioListener`'s yaw through a head-pose store outside the scene | 2–3 | Low | **Built (#21)**: works for any judge with a webcam. Pitch is left out: HRTF elevation cues are weak |
-| 3 | Lecture audio into the room | Chrome `getDisplayMedia({audio: true})` captures a tab; feed it into a PannerNode as a "Lecture" object; duck other sounds while it plays | 2–3 | Low–med | **Build** the browser path |
-| 4 | AirPods head tracking | Swift helper with `CMHeadphoneMotionManager` streams yaw/pitch/roll over a localhost WebSocket | 3–5 | Medium | **Build if you have a Swift dev** — best wow moment |
-| 5 | Collab rooms | Shared scene + avatar positions in SpacetimeDB; voices over a small WebRTC mesh; each remote voice gets a PannerNode at that person's avatar | 6–10 | Med–high | Only if the core is done by Saturday noon |
-| 6 | Moss preference memory | Convex stores accepted task/time preferences; Moss retrieves relevant memories and live voice context for Gemini. Explicit remember, corrections and forgetting preserve manual edits. See above | 3–5 | Medium | Foundation in **#68**; automatic feedback suggestions later |
-| 7 | Visual polish | Per-object pulse from its `AnalyserNode`; lighting per room preset | 2 | Low | Sunday early morning |
+| 3 | Lecture audio into the room | Chrome `getDisplayMedia({audio: true})` captures a tab; feed it into a PannerNode as a "Lecture" object; duck other sounds while it plays | 2–3 | Low–med | Dropped (#22): the Room Helper (row 8) brings any app's audio in |
+| 4 | AirPods head tracking | Swift helper with `CMHeadphoneMotionManager` streams yaw/pitch/roll over a localhost WebSocket | 3–5 | Medium | Not built (#24); webcam tracking covers the demo |
+| 5 | Collab rooms | Shared scene + avatar positions in SpacetimeDB; voices over a small WebRTC mesh; each remote voice gets a PannerNode at that person's avatar | 6–10 | Med–high | Not built |
+| 6 | Moss preference memory | Convex stores accepted task/time preferences; Moss retrieves relevant memories and live voice context for Gemini. Explicit remember, corrections and forgetting preserve manual edits. See above | 3–5 | Medium | **Built (#68, #139)**; automatic feedback suggestions later |
+| 7 | Visual polish | Per-object pulse from its `AnalyserNode`; lighting per room preset | 2 | Low | Partly built: hover outline and labels (#134); prop pulse on events open (#80) |
 | 8 | App audio in the room (Spotify) | Swift helper detects which apps are playing, taps one with a Core Audio process tap, and streams it to the browser, where it becomes a live, visualized sound object | 6–10 | High | **Built (#26–#28)**; see "App audio in the room" |
 | 9 | Meeting speaker separation | Diarization only says who spoke when; separating overlapping voices needs a model like Meta's [SAM Audio](https://ai.meta.com/samaudio/) on a GPU | 10+ | High | Skip |
 
@@ -357,12 +361,12 @@ Aim for the Cal Hacks judged prizes plus four or five sponsor tracks where the s
 | Cal Hacks Most Technically Advanced | NuPhy Air60 HE each | Strong | HRTF engine + head tracking + agent loop, explained in one architecture slide |
 | Cal Hacks People-First Social Impact | Apple Watch SE 3 each | Strong | Frame it for students in loud dorms, shared housing, and people with ADHD or noise sensitivity |
 | Cal Hacks 1st / 2nd / 3rd Overall | $3,600 + laptop each / Switch 2 each / smart glasses each | Strong | Everything above, demoed cleanly |
-| Anthropic (anchor sponsor) | Not on Devpost yet; last year's Best Use of Claude was a tungsten cube + $5,000 credits ([12.0 prizes](https://live.calhacks.io/prizes)) | Reassess | The current scene agent uses Gemini; reassess eligibility against this year's rules before targeting this track |
-| Moss | AirPods Max or Pro (listed at $996) | Strong if implemented | Recall a user's task/time preferences during a voice command, then generate the matching environment; demonstrate a correction and later recall. Moss provides retrieval, with actual voice latency measured end to end ([sessions](https://docs.moss.dev/docs/integrate/sessions)) |
-| Cartesia | Listed at $1,516 (prize item TBD) | Strong | Ink-2 voice commands ("make it rain harder") and Sonic spoken break cues placed as a "coach" object in the room |
-| SpacetimeDB (anchor sponsor) | Special prize for the most impressive use ([their blog](https://spacetimedb.com/blog/spacetime-at-calhacks)); amount not posted | Strong if collab | Shared scene + live avatar positions for collab rooms; the CEO runs a workshop |
-| Meta: Bringing People Closer Together with AI | Invite to Round 2 at Menlo Park, travel covered | Strong if collab | Spatial-audio study rooms where friends sit at different spots |
-| Convex | Teenage Engineering EP-133 K.O. II + ESP32 display (listed at $1,308) | Medium | Saved rooms (#51) and a shared cache of generated sounds in Convex file storage (#53); see "Saved sounds and saved rooms". Personalization on top. Pick this *or* SpacetimeDB |
+| Anthropic (anchor sponsor) | Not on Devpost yet; last year's Best Use of Claude was a tungsten cube + $5,000 credits ([12.0 prizes](https://live.calhacks.io/prizes)) | Strong | A Claude managed agent is the world director: it plans the room, paints it with pxl and composes chirp audio in Anthropic's sandbox |
+| Moss | AirPods Max or Pro (listed at $996) | Strong (built, #68) | Recall a user's task/time preferences during a voice command, then generate the matching environment; demonstrate a correction and later recall. Moss provides retrieval, with actual voice latency measured end to end ([sessions](https://docs.moss.dev/docs/integrate/sessions)) |
+| Cartesia | Listed at $1,516 (prize item TBD) | Strong (built) | Ink-2 push-to-talk and "Hey agent" commands ("make it rain harder"), Sonic spoken replies. The "coach" object was not built |
+| SpacetimeDB (anchor sponsor) | Special prize for the most impressive use ([their blog](https://spacetimedb.com/blog/spacetime-at-calhacks)); amount not posted | Not built | Shared scene + live avatar positions for collab rooms; the CEO runs a workshop |
+| Meta: Bringing People Closer Together with AI | Invite to Round 2 at Menlo Park, travel covered | Not built | Spatial-audio study rooms where friends sit at different spots |
+| Convex | Teenage Engineering EP-133 K.O. II + ESP32 display (listed at $1,308) | Strong (built) | Saved rooms (#51), Moss preference records (#68) and kept Claude worlds with their art and sounds (#112); see "Saved sounds and saved rooms" |
 | Fetch.ai | $1,500 / $1,000 / $500 | Medium | Wrap the environment agent as an Agentverse agent; last year required Agentverse registration + chat protocol |
 | Microsoft: Built for the Real World | $3,800 + Surface laptop each | Medium | Real-world framing and a usable deployed link; criteria not posted |
 | Figma: Best Design / Most Creative | $1,000 each (gift cards + recruiter session) | Medium | Design the room UI in Figma first and show it |
@@ -374,7 +378,7 @@ Not a fit: Hyphenate (finance), Visa (shopping), Capital One, CRS, Coinbase, Api
 
 **Two bundles to choose from**
 
-- **Solo-room bundle (lower risk):** Cal Hacks prizes, Moss, Cartesia, Convex, Figma, GoDaddy. Reassess the Anthropic track after the switch to Gemini.
+- **Solo-room bundle (lower risk):** Cal Hacks prizes, Anthropic, Moss, Cartesia, Convex, Figma, GoDaddy. **This is the one we built.**
 - **Collab bundle (higher ceiling):** same, but swap Convex for SpacetimeDB and add Meta.
 
 ## Execution plan
@@ -396,7 +400,7 @@ If a gate slips by more than two hours, cut the next phase's lowest-priority fea
 
 Three people? Give head tracking to A and the sponsor integrations plus Devpost to C.
 
-**Our team (3 coders):** A — Audio is @leeandyg (also head tracking and the Swift helper), B — 3D and UI is @coinleftt, C — AI is @OakleySun (also voice and sponsor integrations). Assignments live on the GitHub issues.
+**Our team (3 coders + 1):** A — Audio is @leeandyg (also head tracking, the Swift helper and kept Claude worlds), B — 3D and UI is @coinleftt (also the Claude world director and the self-hosted worker), C — AI is @OakleySun (Gemini path, voice, Moss memory, saved rooms and the captured demo rooms), D — Devpost, video and demo kit is @dinara-usonova. Assignments live on the GitHub issues.
 
 ### First-hour checklist
 
@@ -413,17 +417,19 @@ Three people? Give head tracking to A and the sponsor integrations plus Devpost 
 
 The demo wins or loses on the moment a judge turns their head and the rain stays where it was. Bring two pairs of closed headphones and a splitter so judges hear it themselves.
 
-**One-line pitch:** Noise-cancelling headphones delete the world. We let you design a better one, and an agent keeps it tuned while you work.
+**One-line pitch:** Noise-cancelling headphones delete the world. We let you describe a better one, and Claude builds it around you.
 
 ### 3-minute demo script
 
-1. **0:00–0:20 Problem.** Play 5 seconds of a loud dorm or the hackathon floor. "This is where you're trying to study."
-2. **0:20–0:50 Generate.** Say or type "rainy Tokyo café, I'm writing an essay." Objects pop into the room as the agent places them.
-3. **0:50–1:20 Move.** Drag the rain to the left. Then turn your head: the sounds stay fixed in the room.
-4. **1:20–1:50 Edit.** "Push the chatter farther away and add a fireplace." The agent edits; your manual placement survives. Once memory ships, use this slot for "Use my usual evening reading setup," recalling a previously saved preference through Moss; keep the original edit as the fallback.
-5. **1:50–2:20 Adapt.** Trigger a noise spike; the agent thickens the masking bed. The Pomodoro ends; the coach object speaks a break cue and the room shifts.
-6. **2:20–2:45 Lecture.** Drop a lecture tab into the room; it sits front-center and everything else ducks.
-7. **2:45–3:00 Close.** One architecture slide naming the sponsor tech, then the pitch line.
+Rewritten at the freeze to use only what's built. A live Claude world takes a few minutes, so generate it during setup in a second tab and keep that tab open (**Load room** works too once #152 is verified on production); type a prompt live only to show the loading mosaic.
+
+1. **0:00–0:20 Problem.** Headphones on the judge. Play 5 seconds of the hackathon floor. "This is where you're trying to study. Noise-cancelling deletes it; we replace it."
+2. **0:20–0:50 Hear the room.** Click **Rainy café**. Drag the rain from left to right: the judge hears it move. Click the cup clinks to mute them.
+3. **0:50–1:10 Turn your head.** Tick **Head tracking** and turn: the rain stays by the window. Then turn the view with the arrows: only the picture turns, because the sound is anchored to the room, not the screen.
+4. **1:10–1:50 Claude builds a world.** Type a new place to show the loading mosaic, then switch to the tab with the world generated during setup. "A Claude managed agent planned this, painted every surface and prop with pxl, and composed a sound with chirp only where our 38-sound library had nothing that fits."
+5. **1:50–2:20 Edit by voice.** "Hey agent, make the rain quieter and add a fireplace": that sound changes, and the source you dragged stays put. If Moss keys are live, "Set up my usual coding environment" recalls a saved preference. Typed edits are the fallback.
+6. **2:20–2:40 Your music in the room.** Play Spotify with the Room Helper running: it appears as a speaker; drag it behind you.
+7. **2:40–3:00 Close.** One architecture slide (Claude agent → one scene JSON → room view and HRTF engine; Convex, Cartesia, Moss, MediaPipe, Swift helper), then the pitch line.
 
 ### How it maps to the judging criteria
 
@@ -439,12 +445,14 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 
 | Risk | Fallback |
 | --- | --- |
-| Venue Wi-Fi dies | The pack works offline, and generated sounds fall back to the closest pack sound. Play the demo prompts once before judging so their generated sounds are cached (in Convex once the sound cache is built, which warms every machine; until then only the browser that played them); keep a "demo mode" with recorded agent responses |
+| Venue Wi-Fi dies | The four captured demo rooms and the sound pack load with no provider calls; run `npm run dev` locally so the page doesn't depend on hosting. `?demo` replays recorded agent edits |
 | Agent returns bad JSON or is slow | Validate with zod; if the Claude agent errors or runs past 5 minutes, Gemini builds the standard room; if that fails, the offline preset or recorded edit loads, labeled "Offline" (#110). Pre-generate the demo worlds: live Claude worlds take minutes |
 | Moss memory or voice service is unavailable | Keep typed commands and local presets usable. Label exact task/time recall from Convex as a fallback; unknown usual setups leave the room unchanged |
 | Spatial effect feels weak to judges | Exaggerate distances, use mono sources, open with a sound moving hard left to right |
 | Head tracking jitters | Smooth with a lerp or One Euro filter; add a recenter button |
-| Browser blocks audio on load | Gate the app behind an "Enter room" click that resumes the `AudioContext` |
+| Browser blocks audio on load | Submitting a prompt or picking a demo room is the user gesture that starts audio (no Enter-room overlay) |
+| Save room fails for painted rooms (#152) | Until the fix is verified on production, demo from the captured rooms and a world generated during setup in a tab kept open |
+| Room Helper can't connect on the live site | Turn uBlock off for the site and allow Chrome's local network prompt; use the Spotify desktop app, not the web player |
 | Too many sources stutter | Cap at about 12 active HRTF panners; mix distant beds into one stereo layer |
 | Scope creep | Feature freeze Sunday 3:00am; after that only bug fixes, video and slides |
 

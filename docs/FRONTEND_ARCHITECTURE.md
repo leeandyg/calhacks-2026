@@ -4,7 +4,7 @@
 
 ## Modular room state
 
-The original app contains `RoomScene`, `RotationArrows` and one `PromptBar`. The latter owns its text in React state and uses the border-beam component; it sends prompts to `POST /api/scene` and applies the reply to the shared scene store (`src/scene/store.ts`). The single canonical scene retains room/listener/objects/session data. `room.grid` stores integer columns, rows and wallHeight plus a Square/Rectangle mode. There is no competing room.size or adjustable metric segment size.
+The original app contains `RoomScene` (with the view-only `BearAvatar` listener at the center), `RotationArrows`, the `AssetsPanel` and one `PromptBar`. The latter owns its text in React state and uses the border-beam component; it sends prompts to `POST /api/scene` and applies the reply to the shared scene store (`src/scene/store.ts`). The single canonical scene retains room/listener/objects/session data. `room.grid` stores integer columns, rows and wallHeight plus a Square/Rectangle mode. There is no competing room.size or adjustable metric segment size.
 
 The default is 10 columns by 10 rows, wallHeight 7, calibrated to the supplied visual reference. Width/depth/height are derived in fixed block units. Square constrains only the two floor axes; height is independent. Rectangle supports unequal floor axes. Arbitrary floor masks and nonrectangular custom shapes are rejected.
 
@@ -24,7 +24,7 @@ flowchart TD
   Window --> Wall
   Tap[Click / tap] --> Mute[set_muted]
   Mute --> Scene
-  Button[Rotate right only] --> View[Manual quarter-turn state]
+  Button[Left / right arrows] --> View[Manual quarter-turn state]
   View --> Group[Complete room transform]
   Floor --> Group
   Wall --> Group
@@ -53,7 +53,7 @@ Floor objects snap their entire footprint's starting cell, not just their center
 
 Mouse and touch share pointer capture and a 6px click/drag threshold. A click toggles muted without changing volume; a drag snaps to grid cells without muting. Escape, cancellation, lost capture, blur, unmount and source removal restore/cancel safely.
 
-**There is no automatic rotation.** No edge dwell controller, timeout, automatic-turn action or post-turn drag rebasing remains. Holding any edge leaves orientation unchanged. The sole rotate button is disabled during gestures; after release it rotates the room by exactly 90° using a finite 720ms cubic ease.
+**There is no automatic rotation.** No edge dwell controller, timeout, automatic-turn action or post-turn drag rebasing remains. Holding any edge leaves orientation unchanged. The two arrow buttons are disabled during gestures; after release each rotates the room by exactly 90° in its direction using a finite 720ms cubic ease.
 
 ## Camera and visibility
 
@@ -63,7 +63,7 @@ Near-wall transparency uses world-space normals/centers relative to that camera.
 
 ## Frontend-only scope
 
-Every non-structural model is a sound source or its essential support. Sources use rain/fan/birds/speaker geometry, gray fading on mute and no text labels. Listener/session data remains in the contract without extra visible UI. The audio engine (`src/audio/`) and sound resolver subscribe to the same scene store; muted sources are silent but keep their volume.
+Every non-structural model is a sound source or its essential support, except the Berkeley bear listener avatar. Sources show their generated sprite (or rain/fan/birds/speaker geometry when there is none), gray fading on mute, and a name label and outline only on hover. The Assets panel lists each source with volume, hide and delete. Session data remains in the contract without extra visible UI. The audio engine (`src/audio/`) and sound resolver subscribe to the same scene store; muted sources are silent but keep their volume.
 
 ## Verification
 
