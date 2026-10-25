@@ -40,7 +40,7 @@ then, the helper waits at its first capture.
 
 ## Protocol
 
-`ws://127.0.0.1:47800`, loopback only. Only pages from `localhost`, `127.0.0.1` or the project's
+`ws://127.0.0.1:47800`, loopback only. Only pages from `localhost`, `127.0.0.1`, `roomto.study` or the project's
 Vercel domains may connect.
 
 | Direction | Message |
