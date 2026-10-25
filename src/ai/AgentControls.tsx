@@ -8,6 +8,7 @@ import { playReadyCue, prepareVoice, speakReply, startVoice, type VoiceSession }
 import { duckSoundscape } from '../audio/ducking.js';
 import { FloatingVoice, useFloatingVoice } from './FloatingVoice.js';
 import { wakeCommand } from './wakePhrase.js';
+import { PixelIcon } from '../ui/PixelIcon.js';
 
 type Props = { portals?: { microphone: HTMLElement | null; settings: HTMLElement | null }; disabled: boolean; demoMode: boolean; refresh: number;
   onContext: (context: AgentContext | undefined) => void;
@@ -263,7 +264,7 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, onContext, onC
   const microphone = <button type="button" className={portals ? 'prompt-mic' : undefined} aria-label={voiceLabel}
     title={voiceLabel} aria-pressed={voice === "listening"} aria-keyshortcuts="Control+Shift+Space"
     disabled={idle && (locked || !token || !availability.configured)} onPointerEnter={warm} onFocus={warm} onClick={activate}>
-    {portals ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg> : voiceLabel}
+    {portals ? <PixelIcon name="mic" size={24}/> : voiceLabel}
   </button>;
   const controls = <div className="agent-controls">
     <div className="agent-activation">

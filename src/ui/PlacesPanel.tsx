@@ -43,7 +43,7 @@ const NewPlaceButton = ({ onClick }: { onClick: () => void }) => (
 function PlacesView({ hasScene, target, children }: Pick<Props, "hasScene" | "target"> & { children: ReactNode }) {
   if (!target) return null;
   return createPortal(hasScene
-    ? <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={24} className="assets-beam places-beam">
+    ? <BorderBeam size="md" colorVariant="mono" strength={0.7} theme="dark" borderRadius={0} className="assets-beam places-beam">
         <section className="places-panel" aria-label="Visited places">
           <h2 className="assets-title">Visited places</h2>
           {children}

@@ -72,6 +72,8 @@ A persistent pixel-art Berkeley golden bear wearing the supplied silver/black he
 
 **As built:** a fixed 10 × 10 × 7 block room with an isometric orthographic camera, pixelated on one shared grid (see [LAYOUT.md](LAYOUT.md)). Each sound object is a prop (a Claude or Gemini sprite, or stock geometry) with a name label and outline on hover. Drag by raycasting the pointer onto the floor; click to mute. Two arrows turn the view (never the listener). The listener is the bear avatar above. The Assets panel lists each source with volume, hide and delete.
 
+**Control styling (#176):** the prompt, sidebars and floating voice window use square 8-bit controls, block icons, bevel borders, square switches/slider thumbs and a locally bundled Pixelify Sans font. Small status/help text stays in system sans-serif for readability. Existing placement, voice and scene behavior stays the same; see LAYOUT for responsive and keyboard states.
+
 ### 4. The AI that builds and edits the room
 
 **Captured demo rooms:** bundle a rainy café, beach, cyberpunk city and Zen garden in `public/demo/`, each
