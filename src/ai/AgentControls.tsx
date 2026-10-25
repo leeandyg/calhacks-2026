@@ -201,6 +201,19 @@ export function VoiceAgentControls({ disabled, demoMode, refresh, learnedPrefere
         if (mounted.current) { if (!quiet) setError(message); setVoice("idle"); }
       }, () => { if (mounted.current && controller.current === current) setVoice("finishing"); }, {
         automatic: auto, duck: !fromWake || wakeArmed.current,
+        acceptTurn: fromWake ? (text) => {
+          if (!wakeEnabled.current || current.signal.aborted || controller.current !== current) return false;
+          const command = wakeCommand(text);
+          if (!wakeArmed.current && command === undefined) {
+            releaseWake(); if (detected) setHeard(''); detected = false; return false;
+          }
+          if (command !== undefined) detectedWake();
+          if (!(command ?? text).trim()) {
+            wakeArmed.current = true; setArmed(true); setHeard('');
+            return false;
+          }
+          return true;
+        } : undefined,
         onPartial: (text) => {
           if (!mounted.current || controller.current !== current) return;
           if (!fromWake) { setHeard(text); return; }

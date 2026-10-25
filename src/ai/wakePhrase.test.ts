@@ -12,4 +12,14 @@ describe('explicit voice activation', () => {
     expect(wakeCommand(' Hey agent! ')).toBe('');
     expect(wakeCommand('hello')).toBeUndefined();
   });
+  it.each([
+    ['Hey agents, mute the rain', 'mute the rain'], ['Okay, um, hey agent. Make it rainier.', 'Make it rainier.'],
+    ['Hey Asian, turn the fan down', 'turn the fan down'], ['Hey aging mute rain', 'mute rain'],
+    ['Agent, add a fireplace', 'add a fireplace'], ['A gent, mute the birds', 'mute the birds'], ['Hay agent!', ''],
+  ])('accepts common transcriptions of the wake phrase: %s', (text, command) => {
+    expect(wakeCommand(text)).toBe(command);
+  });
+  it.each(['a gentle breeze please', 'agency work', 'Asian food is great'])('still ignores lookalikes: %s', text => {
+    expect(wakeCommand(text)).toBeUndefined();
+  });
 });
