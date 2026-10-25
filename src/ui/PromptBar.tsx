@@ -134,7 +134,14 @@ export function PromptBar({ hasScene, onSceneReady }: { hasScene: boolean; onSce
           : response.kind === 'create' ? store.setScene(response.scene)
           : response.ops.length ? store.applyOps(response.ops) : { ok: true as const };
         if (!result.ok) throw new Error(`The room could not apply that change: ${result.error}`);
-        if (!response.managed && !DEMO_MODE && !reply.notice && store.scene.room.art) paintSprites(store.scene.room.art, useSceneStore.getState().scene.objects);
+        const active = useSceneStore.getState().scene;
+        if (!response.managed && !DEMO_MODE && active.room.art) {
+          // Gemini/offline fallback notices must not strand new audible sources
+          // without artwork inside a captured or Claude-generated environment.
+          const ids = response.kind === 'edit' ? new Set(response.ops.flatMap(op => op.op === 'add' ? [op.object.id] : [])) : undefined;
+          const additions = active.objects.filter(object => !ids || ids.has(object.id));
+          paintSprites(active.room.art, additions);
+        }
       }
       if (response) onSceneReady();
       lastCommand.current = { prompt, change: response ? commandChange(undoBefore, useSceneStore.getState().scene) : undefined };
