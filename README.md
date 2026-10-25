@@ -4,6 +4,13 @@ CalHacks 13.0 project. Describe a place, and Claude builds it as a pixel-art roo
 
 Live: https://calhacks-2026.vercel.app
 
+## How we use Convex
+
+Convex Auth gives each browser a private anonymous session; Visited places are saved with mutations and update live through `useQuery`.
+Claude worlds' art and sounds are copied into Convex file storage by an action, so reloads and saved places reopen them.
+Task preferences ("coding" → a saved room) are Convex records read by the voice/memory API.
+Details, file references and the build log: [hackathon.md](hackathon.md).
+
 See [the blueprint](./AI%20Spatial%20Soundscape%20—%20CalHacks%2013.0%20Blueprint.md) for the plan, scene contract, and team split.
 
 ## What it does
