@@ -7,10 +7,10 @@ import { preloadPackSound } from '../audio/AudioEngine.js';
 import { loadManifest } from '../audio/manifest.js';
 
 export const capturedDemos = [
-  { id: 'cafe', label: 'Rainy café' },
+  { id: 'cafe', label: 'Rainy Café' },
   { id: 'beach', label: 'Beach' },
-  { id: 'cyberpunk', label: 'Cyberpunk city' },
-  { id: 'zen', label: 'Zen garden' },
+  { id: 'cyberpunk', label: 'Cyberpunk City' },
+  { id: 'zen', label: 'Zen Garden' },
 ] as const;
 export type CapturedDemoId = typeof capturedDemos[number]['id'];
 const loaded = new Map<CapturedDemoId, Promise<Scene>>();

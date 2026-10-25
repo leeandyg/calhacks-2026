@@ -5,6 +5,10 @@ export async function createFixtureRoom(page) {
   const reply = route => route.fulfill({ json: { kind: 'create', scene } });
   const noArt = route => route.fulfill({ json: { error: 'Use stock geometry for this test' } });
   await page.route('**/api/scene', reply);
+  // A configured anonymous session can route typed prompts through the memory endpoint.
+  // Keep geometry suites on the same stubbed scene rather than starting a paid live world.
+  await page.route('**/api/agent', route => route.request().postDataJSON()?.action
+    ? route.fulfill({ json: { preferences: [] } }) : reply(route));
   await page.route('**/api/environment', noArt);
   await page.getByLabel('Prompt', { exact: true }).fill('Create the test room');
   await page.getByRole('button', { name: 'Send', exact: true }).click();

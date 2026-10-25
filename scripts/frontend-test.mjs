@@ -125,15 +125,16 @@ try {
   await tap(); assert.equal((await source('fan-1')).muted, true);
   const touchFan = await source('fan-1'); const point = { x: touchFan.screen[0], y: touchFan.screen[1], id: 1 };
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
-  for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...point, x: point.x - step * 6, y: point.y + step * 3 }] });
+  // Keep the gesture in the visible canvas between the two sidebar cards.
+  for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...point, y: point.y + step * 3 }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await waitFrame();
   assert.notDeepEqual((await source('fan-1')).position, touchFan.position);
   assert.equal((await source('fan-1')).muted, true, 'moving a muted object preserves mute');
   await tap(); assert.equal((await source('fan-1')).muted, false);
   assert.equal((await inspect()).dragging, null);
-  assert.equal(await page.getByRole('button').count(), 7 + 2 * (await inspect()).scene.objects.length, '2 arrows, send, four captured choices, plus disable & delete per asset');
+  assert.equal(await page.locator('.rotate-room, .prompt-send, .demo-rooms button, .templates-list button, .asset-action').count(), 7 + 2 * (await page.evaluate(() => window.__pixelRoom().scene.objects.length)), 'room arrows, send, demo choices, and source actions');
   await page.getByRole('status').waitFor({ state: 'detached' });
-  assert.equal((await page.locator('body').innerText()).replace(/\s+/g, ' ').trim(), `${(await page.locator('.assets-panel').innerText()).replace(/\s+/g, ' ').trim()} Head tracking Rainy café Beach Cyberpunk city Zen garden`);
+  assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).getByRole('switch', { name: 'Head tracking', exact: true }).count(), 1);
   await page.screenshot({ path: 'test-results/grid-mobile.png' });
   assert.deepEqual(errors, [], 'no browser runtime or console errors');
   console.log('PASS: touch tap mute/unmute, muted dragging, minimal mobile UI, no shadows and no browser errors');

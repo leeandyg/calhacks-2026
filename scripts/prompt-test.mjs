@@ -10,6 +10,11 @@ await page.route('**/api/environment', route => route.fulfill({ json: { error: '
 // /api/scene is stubbed: live replies and outages that must never insert fixtures.
 let reply;
 await page.route('**/api/scene', async route => { requests.push(route.request().postDataJSON()); await reply(route); });
+await page.route('**/api/agent', async route => {
+  const body = route.request().postDataJSON();
+  if (body.action) return route.fulfill({ json: { preferences: [] } });
+  requests.push(body); await reply(route);
+});
 page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => { if ((message.type() === 'error' || message.text().includes('GL_INVALID_VALUE')) && !(reply?.outage && message.text().includes('503'))) errors.push(message.text()); });
 try {
@@ -18,12 +23,12 @@ try {
   const input = page.getByLabel('Prompt', { exact: true }); // a combobox while the offline demo suggests prompts
   const send = page.getByRole('button', { name: 'Send', exact: true });
   const rotate = page.getByRole('button', { name: 'Rotate Right', exact: true });
-  assert.equal(await page.locator('[data-beam]').count(), 1);
+  assert.equal(await page.locator('[data-beam]').count(), 1, 'only the prompt bar before an environment is shown');
   assert.equal(await page.locator('form').count(), 1);
   assert.equal(await page.locator('input[type=text]').count(), 1);
   assert.equal(await page.locator('textarea').count(), 0);
   const left = page.getByRole('button', { name: 'Rotate Left', exact: true });
-  assert.equal(await page.getByRole('button').count(), 5);
+  assert.equal(await page.locator('.prompt-send, .demo-rooms button, .place-new').count(), 5, 'send and four captured choices; New Place is hidden initially');
   assert.equal(await page.locator('canvas, .room-rotation, .overlay').count(), 0);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
@@ -77,7 +82,7 @@ try {
   await page.waitForFunction(() => window.__pixelRoom?.().scene.room.preset === 'forest' && window.__pixelRoom().scene.objects.every(object => object.sound.assetId));
   assert.equal(await rotate.innerText(), '');
   assert.equal(await left.innerText(), '');
-  assert.equal(await page.getByRole('button').count(), 7 + 2 * (await page.evaluate(() => window.__pixelRoom().scene.objects.length)), '2 arrows, send, four captured choices, plus disable & delete per asset');
+  assert.equal(await page.locator('.rotate-room, .prompt-send, .demo-rooms button, .templates-list button, .asset-action').count(), 7 + 2 * (await page.evaluate(() => window.__pixelRoom().scene.objects.length)), 'room arrows, send, demo choices, and source actions');
   assert.equal(await input.inputValue(), '');
   assert.equal(requests[1].prompt, 'A quiet forest room');
   assert.equal(requests[1].scene, null, 'the first room has no dummy scene context');
@@ -140,7 +145,7 @@ try {
       return { bar: rect(bar), send: rect(send), arrows: arrows.map(rect), arrowStyles: arrows.map(button => ({ border: getComputedStyle(button).borderWidth, background: getComputedStyle(button).backgroundColor })), color: getComputedStyle(input).color, background: getComputedStyle(bar).backgroundColor, radius: getComputedStyle(bar).borderRadius, fontSize: getComputedStyle(input).fontSize, placeholder: getComputedStyle(input, '::placeholder').color, opacity: getComputedStyle(send).opacity, bounds: window.__pixelRoom().bounds, overflow: document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight };
     });
     assert.ok(Math.abs(layout.bar.width - Math.min(640, viewport.width * .92)) < 1);
-    assert.equal(layout.bar.height, 76); assert.equal(layout.radius, '999px');
+    assert.equal(layout.bar.height, 74); assert.equal(layout.radius, '999px');
     assert.deepEqual([layout.send.width, layout.send.height], [44, 44]);
     assert.equal(layout.background, 'rgb(42, 44, 51)');
     assert.equal(layout.color, 'rgb(232, 232, 240)');
@@ -155,7 +160,7 @@ try {
     await page.screenshot({ path: `test-results/prompt-${viewport.width}.png` });
   }
   // The captured choices need no extra selectors; ?demo also retains saved prompt replay.
-  assert.equal(await page.locator('select, input[type=checkbox]:not(.head-tracking input)').count(), 0);
+  assert.equal(await page.locator('.prompt-tools select, .prompt-tools input[type=checkbox]').count(), 0);
   await page.goto(`${process.env.TEST_URL ?? 'http://localhost:5173'}/?demo`);
   assert.equal(await page.locator('canvas').count(), 0,'demo also starts empty');
   const sent = requests.length;

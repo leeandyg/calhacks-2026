@@ -1,10 +1,12 @@
+import { isBearSpeaker, bearGround } from '../scene/speakerStack.js';
+import { portalSurface } from './portalSurface.js';
 import { eventIsPlaying } from '../audio/activity.js';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Color, DoubleSide, Group, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
 import { useSceneStore } from '../scene/store.js';
 import { useRoomStore } from './useRoomStore.js';
-import { getModelId, gridFootprint, groundHeight, isWallMountedArt, WALL_ROTATIONS } from '../scene/layout.js';
+import { getModelId, gridFootprint, WALL_ROTATIONS } from '../scene/layout.js';
 import { getRoomConfig } from './roomConfig.js';
 import type { SoundObject } from '../scene/scene.js';
 import { useSourceDrag } from './useSourceDrag.js';
@@ -115,7 +117,7 @@ function Source({ object }: { object: SoundObject }) {
     if (state.hoveredObjectId === object.id) state.setHovered(null);
     document.body.style.cursor = '';
   }}>
-    {art?.status === 'ready' && layout ? <PaintedProp art={art} object={object} layout={layout}/> : !stockFallback || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
+    {art?.status === 'ready' && layout ? <PaintedProp art={art} object={object} layout={layout}/> : !stockFallback || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={isBearSpeaker(object, room) && object.position[1] - bearGround(room) > object.scale + 0.01 ? 0.75 : height}/>}
   </group>;
 }
 
@@ -134,6 +136,6 @@ export function SoundObjects() {
   const visible = objects.filter(object => !hidden.includes(object.id));
   return <group name="sound-objects">
     {visible.map(object => <Source key={object.id} object={object}/>)}
-    {visible.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} position={room.art && !isWallMountedArt(object) ? [object.position[0], groundHeight(object.position, room), object.position[2]] : object.position} scale={object.scale} preset={preset}/>)}
+    {visible.map(object => <SpawnPortal key={`portal-${object.id}`} id={object.id} {...portalSurface(object, room)} scale={object.scale} preset={preset}/>)}
   </group>;
 }

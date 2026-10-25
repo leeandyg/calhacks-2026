@@ -39,7 +39,7 @@ async function send(prompt) {
 try {
   await mkdir('test-results', { recursive: true });
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}`);
-  await page.getByRole('button', { name: 'Rainy café', exact: true }).click();
+  await page.getByRole('button', { name: 'Rainy Café', exact: true }).click();
   await page.waitForFunction(() => window.__pixelRoom?.().scene.room.art === 'demo-cafe' && !window.__spawnBusy);
   await page.evaluate(() => {
     const state = window.sceneStore.getState(), object = state.scene.objects[0];

@@ -1,3 +1,4 @@
+import { bearSpeakers, bearGround, isBearSpeaker, getBearDragPosition } from '../scene/speakerStack.js';
 import { useEffect, useRef } from 'react';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { Plane, Raycaster, Vector2, Vector3, type Group } from 'three';
@@ -14,10 +15,11 @@ interface Gesture {
   startX: number; startY: number;
   offset: Vector3;
   original: SoundObject;
+  supports: SoundObject[];
   moved: boolean;
 }
 export function useSourceDrag(id: string, group: RefObject<Group | null>) {
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
   const active = useRef<Gesture | null>(null);
   const ray = useRef(new Raycaster());
   const pointer = useRef(new Vector2());
@@ -30,6 +32,22 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
     if (!ray.current.ray.intersectPlane(floor.current, point.current) || !group.current?.parent) return null;
     return group.current.parent.worldToLocal(point.current);
   };
+  const overBear = (x: number, y: number) => {
+    const avatar = scene.getObjectByName('listener-avatar');
+    if (!avatar?.visible) return false;
+    const bounds = gl.domElement.getBoundingClientRect();
+    const origin = avatar.getWorldPosition(new Vector3());
+    const up = new Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    const right = new Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    const project = (point: Vector3) => {
+      point.project(camera);
+      return [bounds.left + (point.x + 1) * bounds.width / 2, bounds.top + (1 - point.y) * bounds.height / 2];
+    };
+    const bottom = project(origin.clone().addScaledVector(up, -0.02 * avatar.scale.y));
+    const top = project(origin.clone().addScaledVector(up, 0.98 * avatar.scale.y));
+    const edge = project(origin.clone().addScaledVector(right, avatar.scale.x / 2));
+    return y >= top[1] && y <= bottom[1] && Math.abs(x - bottom[0]) <= Math.abs(edge[0] - bottom[0]);
+  };
   const finish = (mode: 'drop' | 'cancel') => {
     const gesture = active.current;
     if (!gesture) return;
@@ -38,7 +56,7 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
     const store = useSceneStore.getState();
     const object = store.scene.objects.find(object => object.id === id);
     if (object) {
-      if (mode === 'cancel' && gesture.moved) store.applyOps([{ op: 'move', id, position: gesture.original.position, wall: gesture.original.wall }]);
+      if (mode === 'cancel' && gesture.moved) store.applyOps([gesture.original, ...gesture.supports.filter(source => source.id !== id)].filter(source => store.scene.objects.some(current => current.id === source.id)).map(source => ({ op: 'move' as const, id: source.id, position: source.position, wall: source.wall })));
       if (mode === 'drop' && !gesture.moved) store.applyOps([{ op: 'set_muted', id, muted: !object.muted }]);
     }
     const state = useRoomStore.getState();
@@ -61,8 +79,8 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
       const object = store.scene.objects.find(object => object.id === id);
       const hit = getFloorPoint(event.clientX, event.clientY);
       if (!object || !hit) return;
-      const raw: Position = [hit.x - gesture.offset.x, gesture.original.position[1], hit.z - gesture.offset.z];
-      const placement = dragPlacement(object, raw, store.scene.room.grid);
+      const raw: Position = [hit.x - gesture.offset.x, (isBearSpeaker(gesture.original, store.scene.room) ? bearGround(store.scene.room) + 0.75 * object.scale : gesture.original.position[1]), hit.z - gesture.offset.z];
+      const placement = getBearDragPosition(object, overBear(event.clientX, event.clientY) ? [0, raw[1], 0] : raw, store.scene) ?? dragPlacement(object, raw, store.scene.room.grid);
       store.applyOps([{ op: 'move', id, position: placement.position, wall: placement.wall }]);
     };
     const up = (event: PointerEvent) => {
@@ -95,7 +113,7 @@ export function useSourceDrag(id: string, group: RefObject<Group | null>) {
     const object = useSceneStore.getState().scene.objects.find(object => object.id === id);
     const hit = getFloorPoint(event.clientX, event.clientY);
     if (!object || !hit) return;
-    active.current = { pointerId: event.pointerId, pointerType: event.pointerType, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, original: object, moved: false, offset: hit.clone().sub(new Vector3(...object.position)) };
+    active.current = { pointerId: event.pointerId, pointerType: event.pointerType, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, original: object, supports: bearSpeakers(useSceneStore.getState().scene), moved: false, offset: hit.clone().sub(new Vector3(...object.position)) };
     state.selectObject(id); state.setDragging(id);
     gl.domElement.setPointerCapture(event.pointerId);
     gl.domElement.style.cursor = 'grabbing'; document.body.style.cursor = 'grabbing';

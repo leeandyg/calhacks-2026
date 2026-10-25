@@ -38,7 +38,7 @@ await page.addInitScript(() => {
 });
 try {
   await mkdir('test-results', { recursive: true });
-  const rooms = [['cafe', 'Rainy café'], ['beach', 'Beach'], ['cyberpunk', 'Cyberpunk city'], ['zen', 'Zen garden']];
+  const rooms = [['cafe', 'Rainy Café'], ['beach', 'Beach'], ['cyberpunk', 'Cyberpunk City'], ['zen', 'Zen Garden']];
   for (const [id] of rooms) {
     const root = `public/demo/${id}`;
     const scene = JSON.parse(await readFile(`${root}/scene.json`, 'utf8'));
@@ -141,12 +141,12 @@ try {
     await page.getByRole('button', { name: label, exact: true }).click();
     await page.waitForFunction(id => window.sceneStore.getState().scene.room.art === `demo-${id}` && !window.__spawnBusy, id);
     await page.screenshot({ path: `test-results/captured-${id}-mobile.png` });
-    const rect = await page.getByRole('group', { name: 'Preloaded demo rooms' }).boundingBox();
+    const rect = await page.getByRole('region', { name: 'Templates', exact: true }).boundingBox();
     assert.ok(rect.x >= 0 && rect.x + rect.width <= 391 && rect.y + rect.height <= 844);
   }
   await page.reload();
   assert.equal(await page.locator('canvas').count(), 0, 'preloading never creates a room');
-  await page.getByRole('button', { name: 'Rainy café', exact: true }).click();
+  await page.getByRole('button', { name: 'Rainy Café', exact: true }).click();
   await page.waitForFunction(() => window.sceneStore.getState().scene.room.art === 'demo-cafe');
   assert.deepEqual(apiCalls, []); assert.deepEqual(errors, []);
   console.log('PASS reload, mobile controls, manual edits and zero generation/cloud dependencies');

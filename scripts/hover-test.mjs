@@ -86,14 +86,14 @@ try {
   await page.waitForFunction(() => !window.__pixelRoom().rotating);
   console.log('PASS stock outlines, labels, leave, click mute, drag, removal and rotation');
 
-  await page.getByRole('button', { name: 'Rainy café', exact: true }).click();
+  await page.getByRole('button', { name: 'Rainy Café', exact: true }).click();
   await page.waitForFunction(() => window.sceneStore.getState().scene.room.art === 'demo-cafe' && !window.__spawnBusy && window.__pixelRoom().objects.every(object => object.artFrame >= 0));
   await page.evaluate(() => window.sceneStore.getState().applyOps(window.sceneStore.getState().scene.objects.map(object => ({ op: 'set_muted', id: object.id, muted: true }))));
   for (const object of (await inspect()).objects) await outline(object.id, object.id);
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await hover((await inspect()).objects[0].id);
-  await page.getByRole('button', { name: 'Cyberpunk city', exact: true }).click();
+  await page.getByRole('button', { name: 'Cyberpunk City', exact: true }).click();
   await page.waitForFunction(() => window.sceneStore.getState().scene.room.art === 'demo-cyberpunk' && !window.__spawnBusy);
   const cyberpunk = (await inspect()).scene;
   await hover('demo-cyberpunk-source-2');

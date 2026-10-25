@@ -97,11 +97,12 @@ export function SpawnController() {
   return null;
 }
 
-// A pixel portal (concentric rings + dark core), billboarded to the camera, opening then closing.
+// A pixel portal (concentric rings + dark core), aligned to its supporting surface, opening then closing.
 // Rendered among the sources so the whole-room pixel pass and palette map it like everything else.
-export function SpawnPortal({ id, position, scale, preset }: {
+export function SpawnPortal({ id, position, rotation, scale, preset }: {
   id: string;
   position: [number, number, number];
+  rotation: [number, number, number];
   scale: number;
   preset: RoomPreset;
 }) {
@@ -110,7 +111,7 @@ export function SpawnPortal({ id, position, scale, preset }: {
   const envId = useSceneStore(state => state.scene.room.art);
   const palette = useArtStore(state => envId ? state.envs[envId]?.colors : undefined);
   const colors = palette?.length ? { core: palette[0], mid: palette[Math.floor(palette.length / 2)], rim: palette[palette.length - 1] } : portalColors(preset);
-  useFrame(({ clock, camera }) => {
+  useFrame(({ clock }) => {
     const g = group.current;
     if (!g) return;
     const start = schedule.current.get(id);
@@ -118,7 +119,6 @@ export function SpawnPortal({ id, position, scale, preset }: {
     const t = waiting ? PORTAL_OPEN : start === undefined ? undefined : clock.elapsedTime - start;
     if (t === undefined || t > SPAWN_TOTAL) { g.visible = false; return; }
     g.visible = true;
-    g.quaternion.copy(camera.quaternion); // billboard toward the iso camera
     const open = easeOutBack(clamp01(t / PORTAL_OPEN));
     const closing = waiting ? 0 : clamp01((t - PORTAL_CLOSE_START) / PORTAL_CLOSE_SPAN);
     const s = open * (1 + closing * 0.35) * (waiting ? 1 + Math.sin(clock.elapsedTime * 3) * 0.04 : 1);
@@ -130,7 +130,7 @@ export function SpawnPortal({ id, position, scale, preset }: {
     });
   });
   return (
-    <group ref={group} name={`portal-${id}`} position={position} visible={false}>
+    <group ref={group} name={`portal-${id}`} position={position} rotation={rotation} visible={false}>
       <mesh position={[0, 0, 0]}>
         <circleGeometry args={[0.46, 28]} />
         <meshBasicMaterial color={colors.core} transparent opacity={0} side={DoubleSide} depthWrite={false} />

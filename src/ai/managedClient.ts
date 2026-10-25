@@ -12,6 +12,8 @@ const RESTORE_TIMEOUT_MS = 10_000;
 
 let sessionToken: string | undefined;
 export function currentAgentSession(): string | undefined { return sessionToken; }
+/** Forget the current agent conversation so a New Place starts a fresh world (#91). */
+export function resetManagedSession(): void { sessionToken = undefined; }
 
 /** One durable managed run can span many short API/SSE connections. */
 export async function followManagedRun(token: string, scene: Scene | null, progress?: (message: string) => void, signal?: AbortSignal, budgetMs = 12 * 60 * 1000, partial?: (result: ManagedResult, part: WorldPart) => void, mode: AgentMode = 'cloud'): Promise<ManagedResult> {
@@ -120,7 +122,7 @@ export function installManagedAssets(assets: ManagedAssets, scene: Scene) {
   const { environment, envId } = assets;
   if (!environment && !useArtStore.getState().envs[envId]) addEnvironment({ id: envId, concept: 'Environment is being painted', shell: '#969aa3', colors: [], terrain: scene.room.terrain ?? [], textures: {}, managed: true });
   if (environment) {
-    addEnvironment({ id: envId, concept: environment.concept, shell: environment.shell, colors: environment.colors,
+    addEnvironment({ id: envId, title: environment.title, concept: environment.concept, shell: environment.shell, colors: environment.colors,
       terrain: environment.terrain ?? Array.from({ length: scene.room.grid.rows }, () => Array(scene.room.grid.columns).fill(0)),
       openAir: environment.openAir,
       textures: Object.fromEntries(Object.entries(environment.textures ?? {}).map(([surface, image]) => [surface, image.url])),
