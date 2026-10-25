@@ -15,9 +15,13 @@ swift build -c release
 .build/release/room-helper
 ```
 
-Leave it running, then open the room (`npm run dev`, or the live site) in Chrome and click
-**Enter room**. The helper prints `browser connected`, and an app joins about 3 s after it starts
-playing. Stop it with Ctrl+C; any tapped app plays normally again.
+Leave it running, then open the room (`npm run dev`, or the live site) in Chrome and create a
+room. The helper prints `browser connected`, and an app joins about 3 s after it starts playing.
+Stop it with Ctrl+C; any tapped app plays normally again.
+
+**Live site:** Chrome asks once to let the page reach this device's local network; allow it (site
+settings, left of the URL). uBlock Origin's "Block Outsider Intrusion into LAN" list also blocks the
+connection, so turn uBlock off for the site. Pages on `localhost` need neither.
 
 **Permission:** the first capture asks to record system audio, attributed to the app you
 launched the helper from (Terminal, iTerm or VS Code). Allow it, or turn it on later in System

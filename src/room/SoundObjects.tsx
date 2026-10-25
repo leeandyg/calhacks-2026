@@ -90,7 +90,7 @@ function Source({ object }: { object: SoundObject }) {
   const height = object.position[1] / object.scale;
   const footprint = gridFootprint(object);
   return <group ref={group} name={`sound-${object.id}`} position={object.position} rotation={[0, rotation, 0]} scale={object.scale} userData={{ model, muted: object.muted, wall: object.wall }} onPointerDown={startGesture} onPointerOver={event => { event.stopPropagation(); if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = 'grab'; }} onPointerOut={() => { if (!useRoomStore.getState().draggingObjectId) document.body.style.cursor = ''; }}>
-    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : managed || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
+    {art?.status === 'ready' ? <PaintedProp art={art} object={object}/> : (managed && object.kind !== 'live') || art?.status === 'painting' ? null : model === 'rain' ? <RainWindow width={footprint.columns / object.scale} height={footprint.height / object.scale} muted={object.muted}/> : model === 'fan' ? <FanModel height={height} muted={object.muted}/> : model === 'birds' ? <BirdsModel height={height} muted={object.muted}/> : <SpeakerModel height={height}/>}
   </group>;
 }
 
