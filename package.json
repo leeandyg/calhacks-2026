@@ -46,7 +46,8 @@
     "check:managed": "node scripts/check-managed-live.mjs",
     "test:props": "node scripts/prop-placement-test.mjs",
     "test:parallel": "node scripts/parallel-world-test.mjs",
-    "test:loading": "node scripts/generation-loading-test.mjs"
+    "test:loading": "node scripts/generation-loading-test.mjs",
+    "test:task-memory": "node scripts/task-memory-test.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

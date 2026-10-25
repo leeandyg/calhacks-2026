@@ -41,22 +41,27 @@ async function search(owner: string, preferences: Preference[], query: string, t
     { cachePath: join(tmpdir(), "soundscape-moss") });
   try {
     let synced = true;
+    let cloudIssue: string | undefined;
     const name = memoryIndexName(owner);
     const memory = await client.session(name);
-    const loaded = await memory.loadIndex(name);
+    let loaded = 0;
+    try { loaded = await memory.loadIndex(name); }
+    catch (error) { synced = false; cloudIssue = (error as { code?: string }).code === "UNAUTHORIZED" ? "UNAUTHORIZED" : "unavailable"; }
     const changed = await reconcile(memory, preferences);
-    if (changed) {
-      if (preferences.length) {
-        const job = await memory.pushIndex();
-        const until = Date.now() + 4_000;
-        let status = job.status;
-        while (status !== "completed" && status !== "failed" && Date.now() < until) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
-          status = (await client.getJobStatus(job.jobId)).status;
+    if (changed && !cloudIssue) {
+      try {
+        if (preferences.length) {
+          const job = await memory.pushIndex();
+          const until = Date.now() + 4_000;
+          let status = job.status;
+          while (status !== "completed" && status !== "failed" && Date.now() < until) {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            status = (await client.getJobStatus(job.jobId)).status;
+          }
+          synced = status === "completed";
         }
-        synced = status === "completed";
-      }
-      else if (loaded) await client.deleteIndex(name);
+        else if (loaded) await client.deleteIndex(name);
+      } catch (error) { synced = false; cloudIssue = (error as { code?: string }).code === "UNAUTHORIZED" ? "UNAUTHORIZED" : "unavailable"; }
     }
     const filter = { field: "timeBucket", condition: { $in: timeBucket === "any" ? ["any"] : [timeBucket, "any"] } };
     const matches = preferences.length ? await memory.query(query, { topK: 3, filter }) : { docs: [] };
@@ -66,8 +71,8 @@ async function search(owner: string, preferences: Preference[], query: string, t
     const live = await client.session(`turn-${randomUUID()}`);
     if (turns.length) await live.addDocs(turns.map((text, index) => ({ id: String(index), text })));
     const context = turns.length ? (await live.query(query, { topK: 2 })).docs.map((doc) => doc.text) : [];
-    return { preferences: recalled, recentContext: context, synced,
-      notice: synced ? "Moss memory ready." : "Moss recall is ready for this request; cloud index sync is pending." };
+    return { preferences: recalled, recentContext: context, synced, source: "moss" as const,
+      notice: synced ? "Moss memory ready." : `Moss semantic memory is active; preferences are kept in Convex. Moss cloud snapshot sync is ${cloudIssue ?? "pending"}.` };
   } finally { await client.close(); }
 }
 
@@ -77,7 +82,7 @@ export async function retrieveMemory(owner: string, preferences: Preference[], p
     try { return await deadline(search(owner, preferences, `${task}: ${prompt}`, timeBucket, turns), 8_000); }
     catch { /* Exact, authenticated records remain usable during retrieval outages. */ }
   }
-  return { preferences: exactPreferences(preferences, task, timeBucket), recentContext: [],
+  return { preferences: exactPreferences(preferences, task, timeBucket), recentContext: [], source: "convex" as const,
     notice: "Moss semantic recall is unavailable. Using saved task/time matches when available." };
 }
 
@@ -85,6 +90,6 @@ export async function syncMemory(owner: string, preferences: Preference[]) {
   if (!mossConfigured()) return "Convex memory updated. Moss search sync is pending configuration.";
   try {
     const result = await deadline(search(owner, preferences, "environment preferences", "any", []), 8_000);
-    return result.synced ? "Moss memory synced." : "Convex memory updated. Moss cloud index sync is pending; exact task/time recall still works.";
+    return result.synced ? "Moss memory synced." : result.notice;
   } catch { return "Convex memory updated. Moss search sync is pending; exact task/time recall still works."; }
 }

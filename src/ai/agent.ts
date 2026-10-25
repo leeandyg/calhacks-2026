@@ -3,10 +3,11 @@ import { CLAUDE_BUDGET_MS, fallbackScene, requestScene } from "./client.js";
 import type { ManagedResult } from './world.js';
 import type { WorldPart } from './managedClient.js';
 import { currentAgentSession, followManagedRun } from "./managedClient.js";
-import { localContext, type Preference, type TimeBucket } from "./preferences.js";
+import { localContext, type MemoryInfo, type Preference, type TimeBucket } from "./preferences.js";
 
 export type AgentContext = { token: string; task: string; timeBucket: TimeBucket | "auto"; turns: string[] };
-export type AgentReply = { response?: Awaited<ReturnType<typeof requestScene>>; message?: string; notice?: string; recalled?: string[] };
+export type AgentReply = { response?: Awaited<ReturnType<typeof requestScene>>; message?: string; notice?: string; recalled?: string[];
+  memory?: MemoryInfo; remembered?: { task: string; timeBucket: TimeBucket } };
 export type CommandOptions = { signal?: AbortSignal; onProgress?: (phase: "understanding" | "updating", message?: string) => void; correction?: string };
 class AgentError extends Error { constructor(message: string, readonly status: number) { super(message); } }
 export function memoryCommand(prompt: string) { return /^(?:remember|forget|save (?:this|my) preference)\b/i.test(prompt.trim()); }

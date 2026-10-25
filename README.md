@@ -286,26 +286,33 @@ This feature also needs the existing authenticated Convex connection. Push the n
 `preferences` backend functions with `npx convex dev --once` on your configured
 development project; this does not require a new production deployment.
 
-Under **Environment memory**, choose a task and a local time bucket. Tune the room,
+Under **Environment memory**, choose a task and a time bucket (**Any time** is the default). Tune the room,
 optionally describe what you like, and click **Remember this room**. Saving the same
 task/time replaces the preference, so you can teach it a correction. Click **Use my
-usual setup** to generate an environment from those preferences, and **Forget** to
+usual setup** to restore the saved environment without generating new artwork, and **Forget** to
 remove a memory. **Current local time** uses the browser's timezone; explicit
 morning/evening choices are useful when testing the demo.
 
 You can also type or say **“Remember this for coding in the morning”**, then later
 **“Set up my usual coding environment in the morning”** or **“Forget my coding
 morning preference.”** Remember commands save the current room and the supplied
-preference notes; they do not edit the room. Manual changes become lasting preferences
-only when you explicitly remember the result. The automatic mic-noise/Pomodoro
+preference notes; they do not edit the room. A task/place request such as **“I am going to code,
+bring me to the river”** learns the coding preference only after the requested room is ready.
+Saying **“I am going to code”** later recalls that snapshot through Moss. Task aliases such as
+code/programming map to coding. Without an explicit time, a learned association applies at any time;
+manual task/time selections override words in preference notes. Unrelated edits are not auto-saved.
+The automatic mic-noise/Pomodoro
 agent (#20) and automatic feedback suggestions remain separate work.
 
-Convex stores the user's preference records; Moss reconciles a per-user persistent
-index and searches it alongside a temporary index of recent spoken commands. A
+Convex stores the user's preference records; Moss reconciles a per-user semantic
+index and searches it alongside a temporary index of recent spoken commands. If Moss cloud
+snapshots are unavailable, the server rebuilds its local Moss index from authenticated Convex
+records and still uses Moss semantic retrieval. The controls report active Moss search and
+cloud-sync pending states separately; a rejected snapshot never counts as successful cloud sync. A
 fresh Convex check excludes deleted or superseded search results. During a Moss
 outage, exact task/time matches still work and the UI labels semantic recall as
-unavailable. If scene AI is down, an explicit request for a usual setup can restore
-its exact task/time snapshot; unrelated edits never use that replacement fallback.
+unavailable. Task starts and explicit usual-setup requests restore their saved snapshot directly;
+unrelated edits never use that replacement path.
 Requests for an unknown “usual setup” keep the room unchanged. Ordinary
 typed prompts and local presets continue if memory or voice cannot connect. Offline
 demo mode makes no voice or memory calls. Delayed scene replacements are discarded
@@ -318,6 +325,8 @@ To use the configured cloud development backend explicitly, append `-- --cloud-d
 this creates separate anonymous test identities and removes their test preference records.
 With Moss credentials configured, `npm run check:moss` verifies real semantic recall,
 persistence and filtered reload, then deletes its isolated test index.
+`npm run test:task-memory` checks first-prompt task/place learning, deferred saving, snapshot
+recall and manual controls with AI/Moss mocked and an isolated anonymous Convex session.
 
 ## Sound pack
 

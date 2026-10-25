@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { api } from "../convex/_generated/api.js";
 import type { Id } from "../convex/_generated/dataModel.js";
-import { commandContext, exactPreferences, preferenceExample, PreferenceInput, TimeBucket } from "../src/ai/preferences.js";
+import { commandContext, exactPreferences, isTaskRecall, normalizeTask, preferenceExample, PreferenceInput, TimeBucket } from "../src/ai/preferences.js";
 import { Scene } from "../src/scene/scene.js";
 import { sceneResponse } from "./scene.js";
 import { authenticatedMemory, privateJson } from "./_lib/auth.js";
-import { deadline, syncMemory, retrieveMemory } from "./_lib/moss.js";
+import { deadline, syncMemory, retrieveMemory, mossConfigured } from "./_lib/moss.js";
 
 const AgentRequest = z.object({
   action: z.enum(["turn", "remember", "forget", "list"]).default("turn"),
@@ -23,11 +23,13 @@ export async function POST(request: Request): Promise<Response> {
   try { auth = await deadline(authenticatedMemory(request), 5_000); }
   catch { return privateJson({ error: "Memory could not authenticate. Check your saved-rooms connection." }, 401); }
   const data = parsed.data;
-  const context = commandContext(data.prompt, data.task || data.scene?.session?.task || "", data.timeBucket);
+  const inferred = commandContext(data.prompt, data.task || data.scene?.session?.task || "", data.timeBucket);
+  const context = data.action === "remember" ? { task: normalizeTask(data.task) || inferred.task, timeBucket: data.timeBucket } : inferred;
   const action = data.action === "turn" && /^(?:remember|save (?:this|my) preference)\b/i.test(data.prompt) ? "remember"
     : data.action === "turn" && /^forget\b/i.test(data.prompt) ? "forget" : data.action;
   try {
-    if (action === "list") return privateJson({ preferences: auth.preferences });
+    if (action === "list") return privateJson({ preferences: auth.preferences,
+      memory: { provider: mossConfigured() ? "moss" : "convex", status: mossConfigured() ? "configured" : "unconfigured" } });
     if (action === "remember") {
       const preference = PreferenceInput.safeParse({ ...context, timezone: data.timezone, scene: data.scene,
         summary: data.prompt || `I like this room for ${context.task} in the ${context.timeBucket}.` });
@@ -35,7 +37,8 @@ export async function POST(request: Request): Promise<Response> {
       await deadline(auth.client.mutation(api.preferences.save, { preference: preference.data }), 5_000);
       const latest = await auth.client.query(api.preferences.context, {});
       const notice = await syncMemory(latest.owner, latest.preferences as typeof auth.preferences);
-      return privateJson({ message: `Remembered your ${context.task} preference (${context.timeBucket}).`, notice });
+      return privateJson({ message: `Remembered your ${context.task} preference (${context.timeBucket}).`, notice,
+        remembered: context, memory: { provider: notice.startsWith("Moss memory") || notice.startsWith("Moss semantic") ? "moss" : "convex", status: notice === "Moss memory synced." ? "synced" : "pending" } });
     }
     if (action === "forget") {
       const records = data.id ? auth.preferences.filter((item) => item._id === data.id)
@@ -51,9 +54,17 @@ export async function POST(request: Request): Promise<Response> {
     const fresh = await auth.client.query(api.preferences.context, {});
     memory.preferences = memory.preferences.filter((item) => fresh.preferences.some((record) =>
       record._id === item._id && record.updatedAt === item.updatedAt));
-    const usual = /\b(?:usual|remembered|saved setup)\b/i.test(data.prompt);
+    const taskRecall = isTaskRecall(data.prompt);
+    const declinedRecall = /\b(?:don['’]t|do not|never)\s+(?:use|restore|load|set\s+up|bring\s+back)\b/i.test(data.prompt);
+    const usual = !declinedRecall && (/\b(?:use|restore|load|set\s+up|bring\s+back)\s+(?:(?:my|the|a)\s+)?(?:usual|remembered|saved)\b/i.test(data.prompt) || taskRecall);
     if (usual && !memory.preferences.length) {
       return privateJson({ error: "No saved preference matches this task and time yet. Choose the task/time you saved or remember a room first." }, 400);
+    }
+    if (usual) {
+      const saved = exactPreferences(memory.preferences, context.task, context.timeBucket)[0] ?? (!taskRecall ? memory.preferences[0] : undefined);
+      if (!saved) return privateJson({ error: `No saved ${context.task} environment matches this time yet.` }, 400);
+      return privateJson({ kind: "create", scene: saved.scene, message: `Restored your ${context.task} environment.`,
+        notice: memory.notice, recalled: [`${saved.task} (${saved.timeBucket})`] });
     }
     // Starting or continuing a Claude session makes up to two Anthropic calls of up to 20 s each
     // (server/managedAgent.ts); after auth (5 s) and Moss (8 s) this still fits the 60 s function limit.
@@ -62,13 +73,6 @@ export async function POST(request: Request): Promise<Response> {
       ...context, preferences: memory.preferences.map(preferenceExample), recentContext: memory.recentContext,
     }), 40_000).catch(() => privateJson({ error: "Scene AI took too long to respond." }, 504));
     const body = await response.json();
-    // An explicit request for a saved setup can restore its validated snapshot if AI is down.
-    // Other edits must never fall back to replacing the user's room.
-    const saved = exactPreferences(memory.preferences, context.task, context.timeBucket)[0];
-    if (!response.ok && usual && saved) return privateJson({ kind: "create", scene: { ...saved.scene,
-      room: { ...saved.scene.room, grid: data.scene?.room.grid ?? saved.scene.room.grid,
-        openings: data.scene?.room.openings ?? saved.scene.room.openings } },
-      notice: "Scene AI is unavailable. Restored your saved task/time room.", recalled: [`${saved.task} (${saved.timeBucket})`] });
     return privateJson({ ...body, notice: memory.notice,
       recalled: memory.preferences.map(({ task, timeBucket }) => `${task} (${timeBucket})`) }, response.status);
   } catch {

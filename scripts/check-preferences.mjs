@@ -77,7 +77,7 @@ try {
       }, body: JSON.stringify({ prompt: "Use my usual setup", task: "exam preparation", timeBucket: "morning", scene: cafe }) }));
       assert.equal(recalled.status, 200); const response = await recalled.json();
       assert.equal(response.kind, "create"); assert.deepEqual(response.scene, cafe);
-      assert.match(response.notice, /AI is unavailable/);
+      assert.match(response.message, /Restored your exam preparation environment/);
     } finally {
       if (previousGeminiKey !== undefined) process.env.GEMINI_API_KEY = previousGeminiKey;
     }
