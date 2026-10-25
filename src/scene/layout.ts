@@ -37,7 +37,10 @@ export function isWallMountedArt(object: SoundObject): boolean {
   return Boolean(object.wall) && (model === 'rain' || model === 'birds');
 }
 export function placeInRoom(object: SoundObject, room: Scene['room']): SoundObject {
-  const placed = placeObject(object, room.grid);
+  // For generated art, a rain hint without an explicit wall can be a stream or weather source.
+  // Use the standing footprint so the stock window's automatic mounting cannot hide it.
+  const source = room.art && !object.wall && getModelId(object) === 'rain' ? { ...object, model: 'speaker' as const } : object;
+  const placed = placeObject(source, room.grid);
   if (room.art && isWallMountedArt(placed)) {
     // Painted wall props are planes growing out of the actual inner wall face, not the
     // thick stock model's floor footprint. Audio receives this same mounted position.
