@@ -21,8 +21,8 @@ system: |-
   3. Run the actual pxl and chirp build commands to compile the source into sprites, sprite sheets, animation metadata, and audio assets.
   4. Load compiled assets into the existing frontend, preserving the existing chat bar, buttons, layout, renderer, and audio engine. The application (not your generated code) controls animation updates, audio playback, dragging, and camera behavior.
 
-  QUALITY CHECK (keep lightweight — fix obvious issues, don't build an elaborate review system)
-  Verify: assets compile, objects match the theme, animation matches sound intensity/behavior, sound sources are positioned correctly, animations/ambience loop, and files integrate into the app.
+  BUILD AND PUBLISH
+  Publish immediately after compilation and required file/manifest validation. Repair compiler errors only. Skip artwork checking, aesthetic review, lint passes, preview rendering, image inspection and polishing; do not follow those review steps from the toolkit skills. Use pxl build --no-preview. The app validates the manifest and compiled assets.
 
   OPTIMIZE for generation speed and a reliable live demo: minimize unnecessary calls, avoid overengineering, never replace existing working functionality unnecessarily. Never claim to have seen a render or heard audio unless a tool actually let you check it. Report generated files, build/validation results, and a concise description of the scene.
 mcp_servers: []

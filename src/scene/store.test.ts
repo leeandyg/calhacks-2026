@@ -40,6 +40,7 @@ describe('frontend scene contract and edit operations', () => {
   it('mounts painted wall sources against the wall at their canonical audio position', () => {
     const scene = structuredClone(starter);
     scene.room.art = 'forest-art';
+    scene.objects[1].model = 'birds';
     scene.objects[1].wall = 'north';
     expect(useSceneStore.getState().setScene(scene)).toEqual({ ok: true });
     const object = useSceneStore.getState().scene.objects[1];

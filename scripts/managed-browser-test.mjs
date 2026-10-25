@@ -17,7 +17,7 @@ const grid={mode:'Square',columns:4,rows:4,wallHeight:4};
 const terrain=Array.from({length:4},()=>[0,.25,.5,.75]);
 const scene={room:{preset:'forest',grid,openings:[],reverb:'outdoor',art:'agent-test',terrain},listener:{position:[0,1.6,0],yaw:0},objects:[
  {id:'oak',label:'Old oak',kind:'bed',sound:{query:'wind in oak leaves'},position:[1,1.5,0],volume:.3,model:'speaker',wall:null,scale:1,muted:false},
- {id:'birds',label:'Sparrows on branch',kind:'event',sound:{query:'sparrow chirps'},position:[0,2,-1.775],volume:.2,intervalSec:[20,30],model:'birds',wall:'north',scale:1,muted:false},
+ {id:'birds',label:'Sparrows on branch',kind:'event',sound:{query:'sparrow chirps'},position:[0,2,-1.775],volume:.2,intervalSec:[1,2],model:'birds',wall:'north',scale:1,muted:false},
 ]};
 const url=file=>`/api/world?action=asset&token=test-run-1&file=${file}`;
 const result={response:{kind:'create',scene},assets:{envId:'agent-test',environment:{concept:'A forest clearing',shell:'#324d35',colors:['#324d35','#91a56c','#72503b','#4b372d','#ff55cc'],openAir:true,terrain,textures:{floor:{url:url('floor'),w:64,h:64,frames:1,fps:10},north:{url:url('wall'),w:64,h:64,frames:1,fps:10},west:{url:url('wall'),w:64,h:64,frames:1,fps:10}}},sprites:scene.objects.map(o=>({objectId:o.id,label:o.label,query:o.sound.query,wall:o.wall,url:url('strip'),w:8,h:8,frames:4,fps:10})),sounds:scene.objects.map(o=>({objectId:o.id,query:o.sound.query,kind:o.kind,fileId:`file_${o.id}`,url:url(o.id)}))}};

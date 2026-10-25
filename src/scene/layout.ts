@@ -31,9 +31,14 @@ export function groundHeight(position: Position, room: Pick<Scene['room'], 'grid
   const row = Math.max(0, Math.min(room.grid.rows - 1, Math.floor(position[2] + room.grid.rows / 2)));
   return room.terrain?.[row]?.[column] ?? 0;
 }
+/** Wall contact does not turn a standing tree/fan/speaker into a wall painting. */
+export function isWallMountedArt(object: SoundObject): boolean {
+  const model = getModelId(object);
+  return Boolean(object.wall) && (model === 'rain' || model === 'birds');
+}
 export function placeInRoom(object: SoundObject, room: Scene['room']): SoundObject {
   const placed = placeObject(object, room.grid);
-  if (room.art && placed.wall) {
+  if (room.art && isWallMountedArt(placed)) {
     // Painted wall props are planes growing out of the actual inner wall face, not the
     // thick stock model's floor footprint. Audio receives this same mounted position.
     const position: Position = [...placed.position];
@@ -45,7 +50,7 @@ export function placeInRoom(object: SoundObject, room: Scene['room']): SoundObje
     return position.every((value, i) => value === object.position[i]) && placed.scale === object.scale && placed.wall === object.wall ? object : { ...placed, position };
   }
   const minimum = groundHeight(placed.position, room) + 0.75 * placed.scale;
-  if (!room.terrain || placed.wall || placed.position[1] >= minimum) return placed;
+  if (!room.terrain || (room.art ? isWallMountedArt(placed) : placed.wall) || placed.position[1] >= minimum) return placed;
   return { ...placed, position: [placed.position[0], Math.ceil(minimum * 2) / 2, placed.position[2]] };
 }
 export function getModelId(object: Pick<SoundObject, 'model' | 'sound'>): ModelId {

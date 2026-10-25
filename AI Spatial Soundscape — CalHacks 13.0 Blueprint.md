@@ -153,7 +153,9 @@ review in the #76 PR. PNGs never enter scene JSON or Gemini scene requests.
 
 Art code executes with pxl's platform-independent core in QuickJS/WASM in a separate process,
 without host APIs, with memory and wall-clock limits. Gemini receives pxl's skill/reference,
-render failures, lint findings and a preview when time allows (at most three painting calls).
+compilation and contract failures for repair (at most three painting calls). Publish the first valid
+build immediately; no artwork review, image inspection or aesthetic refinement pass runs. The
+self-hosted director follows the same build-and-publish policy, skipping toolkit preview/lint steps.
 The routes have separate Vercel duration budgets (120 seconds environment, 90 seconds sprite),
 and use a bounded warm-instance cache keyed by the description and art context. This cache is
 not durable across server instances. See README “Live environment art” for setup and checks.

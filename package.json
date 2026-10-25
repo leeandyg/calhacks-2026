@@ -31,7 +31,8 @@
     "test:art": "node scripts/art-pipeline-test.mjs",
     "postinstall": "node scripts/build-pxl-sandbox.mjs",
     "test:managed": "node scripts/managed-browser-test.mjs",
-    "check:managed": "node scripts/check-managed-live.mjs"
+    "check:managed": "node scripts/check-managed-live.mjs",
+    "test:props": "node scripts/prop-placement-test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",

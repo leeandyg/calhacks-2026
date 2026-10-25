@@ -195,7 +195,7 @@ Set manifest.turn=${turn}. In every file field use only the generated file's bas
             const reason = event.stop_reason?.type;
             send(reason && reason !== 'end_turn' ? { type: 'error', error: reason === 'budget_reached' ? 'The agent reached its session budget.' : 'The agent is waiting for tool permission in its execution environment.' } : { type: 'complete' });
           } else if (event.type === 'agent.tool_use' || event.type === 'agent.message' || event.type === 'span.model_request_start') {
-            send({ type: 'progress', id: event.id, message: event.type === 'span.model_request_start' ? 'Claude is planning your environment…' : event.name === 'read' ? 'Choosing materials, motion and sounds…' : 'Creating and checking artwork and audio…' });
+            send({ type: 'progress', id: event.id, message: event.type === 'span.model_request_start' ? 'Claude is planning your environment…' : event.name === 'read' ? 'Choosing materials, motion and sounds…' : 'Creating artwork and audio…' });
           }
         };
         try {
