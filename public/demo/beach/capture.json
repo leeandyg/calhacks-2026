@@ -22,9 +22,9 @@
     }
   ],
   "reviewNotes": "Three curated sources, two beds plus one quieter distant random event. Initial source placements tuned for the demo.",
-  "backgroundUpdatedAt": "2026-10-25T03:38:44.274Z",
-  "backgroundPrompt": "Repaint a beautiful realistic tropical beach in crisp refined pixel art: broad blue-turquoise ocean, a LOW consistent distant horizon (lower third of the wall), warm soft golden-hour sky with a few shaped clouds and distant rocky headlands, subtle wave foam and water highlights. Keep the walls architectural flat elevations, not giant concentric rainbow stripes. Paint flat pale warm sand on the floor with gentle ripples and a small turquoise water edge near north. Terrain MUST be entirely 0, retain the existing flat floor. Keep muted teal/sand/coral/gold colors compatible with the existing palm and seagull icons. No palm, gull, waves prop, trees, furniture, text or separate decorative objects painted onto surfaces; the three existing sound icons stay separate. Material shading and clean coherent shapes, no random noisy speckle.",
-  "backgroundArtwork": "Gemini/pxl",
+  "backgroundUpdatedAt": "2026-10-25T04:15:59.573Z",
+  "backgroundPrompt": "Paint ONE continuous, horizontally wrapping tropical coastline panorama and its sandy floor in polished pixel art.\nDefine ONLY a sprite named '_panorama' at 640x112 and a sprite named 'floor' at 160x160.\nOur trusted exporter stamps consecutive 160px slices into north, east, south, west wall textures.\nAll four views belong to one place, time of day and palette; do not design independent panels.\nUse the SAME perfectly level ocean horizon at y=60 across the entire 640px width.\nSky occupies y=0..59, turquoise ocean y=60..93, a thin pale foam edge near y=94,\nand warm sand y=96..111. All four corners must wrap seamlessly, including x=639 to x=0.\nSky: soft blue upper sky warming to peach/cream near the horizon, a few elegant connected clouds,\none small warm sun around x=70,y=34, soft atmospheric distance. Ocean: muted teal depth bands,\nsubtle irregular horizontal wavelets and restrained highlights, no giant alternating rainbow stripes.\nKeep the far coastline minimal, low and coherent. Broad clean shapes, deliberate fine detail,\n3-4 shades per material, sparse texture, no noisy dithering or confetti. A convincing calm beach.\nThe floor is pale warm sand with subtle wind ripples; its outermost 2px match the panorama's bottom\n2px uniformly so every wall meets the same sand. No separate shoreline on only one floor edge.\nNo palms, gulls, props, signage, boats, objects, text or cast shadows: existing source icons remain.\nUse a cohesive palette compatible with the original turquoise water, beige palm trunk, green fronds\nand ivory gull. Shell is a readable warm sand midtone. Fully opaque surfaces, flat ground.\nReuse pxl parts and a few short shape loops, not per-pixel drawing loops. The renderer supports\na 640px INTERNAL part; only the five small output slices are exported. Do not create wall outputs.",
+  "backgroundArtwork": "Gemini/pxl: one continuous panorama",
   "preserved": {
     "sceneSha256": "56ababfa515585cc187aac48946a9e245510beb6f138c90f28b4ad4a8f09e04f",
     "spritesSha256": "2b35c7ec8e6f9dceff59ef857eb04b3c7dc2d299bd2166de5cc6f8645e787dcb",
@@ -37,5 +37,19 @@
       "sound-2.mp3": "a7afb40826355572a294d2c7f02e7b43068f1ab570c6cf500b7604c304f714a1",
       "sound-3.mp3": "767703ec8f117306912d03e1216a818fa70195dbcbde5457002e6f13dc20c144"
     }
+  },
+  "panorama": {
+    "file": "/demo/beach/panorama.png",
+    "wallOrder": [
+      "north",
+      "east",
+      "south",
+      "west"
+    ],
+    "width": 640,
+    "height": 112,
+    "panelWidth": 160,
+    "horizon": 60,
+    "sandStart": 110
   }
 }

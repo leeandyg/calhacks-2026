@@ -80,6 +80,11 @@ Use `node scripts/capture-demo.mjs --staging cafe zen` to recapture rooms into i
 `.convex/demo-staging/public/demo/` while keeping the current bundles available. Review the staged
 scene, sound mix and artwork before copying it into `public/demo/`. The refreshed beach records
 hashes of its preserved scene, source icons and sound files/bindings; `test:captured` verifies them.
+For a coherent beach repaint, run `node scripts/repaint-beach.mjs`. It paints one continuous
+640×112 panorama, cuts it in north/east/south/west order, matches corner pixels and the sandy
+floor edges, and preserves the existing scene, sounds and source art. Review all four room
+orientations before accepting it. `--reuse` reapplies the last staged result without another
+provider call; prior backgrounds are backed up under ignored `.convex/beach-panorama/`.
 
 Run `npm run dev` locally before disconnecting from the internet, open
 http://localhost:5173/?demo and submit a preset or recorded prompt. The app and sound pack are served

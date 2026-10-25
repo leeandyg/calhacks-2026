@@ -3,6 +3,12 @@ import { readFile, mkdir, stat } from 'node:fs/promises';
 import { chromium, expect } from '@playwright/test';
 import { createServer } from 'vite';
 import { createHash } from 'node:crypto';
+const { decodePng } = await import(new URL('node/png.js', import.meta.resolve('pxl-pixelart')).href);
+function pixels(bytes) {
+  const { w, h, rgba } = decodePng(bytes), data = new Uint32Array(w * h);
+  for (let i = 0; i < data.length; i++) data[i] = ((rgba[i * 4] << 24) | (rgba[i * 4 + 1] << 16) | (rgba[i * 4 + 2] << 8) | rgba[i * 4 + 3]) >>> 0;
+  return { w, h, data };
+}
 
 // Real bundled media and real Web Audio; no AI or cloud requests.
 process.env.VITE_CONVEX_URL = '';
@@ -45,6 +51,26 @@ try {
       for (const [file, digest] of Object.entries(capture.preserved.files))
         assert.equal(hash(await readFile(`${root}/assets/${file}`)), digest, `background repaint preserves ${file}`);
     }
+    if (capture.panorama) {
+      const panorama = pixels(await readFile(`public${capture.panorama.file}`));
+      const order = capture.panorama.wallOrder;
+      const panels = await Promise.all(order.map(wall => readFile(`public${assets.environment.textures[wall].url}`).then(pixels)));
+      const floor = pixels(await readFile(`public${assets.environment.textures.floor.url}`));
+      assert.equal(panorama.w, 640); assert.equal(panorama.h, 112);
+      for (const [index, panel] of panels.entries()) for (let y = 0; y < panel.h; y++) {
+        const next = panels[(index + 1) % panels.length];
+        assert.equal(panel.data[y * panel.w + panel.w - 1], next.data[y * panel.w], 'every wall corner has matching colors at the same height');
+        for (let x = 0; x < panel.w; x++)
+          assert.equal(panel.data[y * panel.w + x], panorama.data[y * panorama.w + index * panel.w + x], 'walls are consecutive slices of one panorama');
+      }
+      const sand = panels[0].data[(panels[0].h - 1) * panels[0].w];
+      for (const panel of panels) assert.ok(panel.data.slice(-panel.w * 2).every(color => color === sand));
+      for (let i = 0; i < floor.w; i++) {
+        assert.equal(floor.data[i], sand); assert.equal(floor.data[(floor.h - 1) * floor.w + i], sand);
+        assert.equal(floor.data[i * floor.w], sand); assert.equal(floor.data[i * floor.w + floor.w - 1], sand);
+      }
+      console.log('PASS Beach panorama: all four corner seams, cyclic wrap, shared composition and floor joins');
+    }
     assert.equal(scene.objects.length, 3);
     assert.equal(scene.objects.filter(object => object.kind === 'bed').length, 2);
     assert.equal(scene.objects.filter(object => object.kind === 'event').length, 1);
@@ -71,6 +97,11 @@ try {
     await expect.poll(() => page.evaluate(id => window.demoSources.filter(source => source.started && !source.stopped && source.room !== `demo-${id}`).length, id)).toBe(0);
     await page.waitForFunction(id => window.demoSources.some(source => source.room === `demo-${id}` && !source.loop && source.started), id);
     await page.screenshot({ path: `test-results/captured-${id}-desktop.png` });
+    if (id === 'beach') for (let orientation = 0; orientation < 4; orientation++) {
+      await page.screenshot({ path: `test-results/beach-cohesion-${orientation}.png` });
+      await page.getByRole('button', { name: 'Rotate Right', exact: true }).click();
+      await page.waitForFunction(() => !window.__pixelRoom().rotating);
+    }
     const levels = await page.evaluate(async id => {
       const assets = await fetch(`/demo/${id}/assets.json`).then(response => response.json());
       const context = new OfflineAudioContext(1, 1, 44100);
