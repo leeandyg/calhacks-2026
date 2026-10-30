@@ -4,6 +4,13 @@ CalHacks 13.0 project. Describe a place, and Claude builds it as a pixel-art roo
 
 Live: https://calhacks-2026.vercel.app
 
+## Why
+
+We built it for people with ADHD. Many focus better with background noise or music than in silence, but a single
+noise track or playlist gets tuned out or turns into a distraction. roomto.study lets you build the place where you
+focus best and hear it around you: steady sounds like rain or a fan sit close to mask distractions, and occasional
+ones like a cup clink stay quieter and farther away. You can change it by voice without leaving your work.
+
 ## How we use Convex
 
 Convex Auth gives each browser a private anonymous session; Visited places are saved with mutations and update live through `useQuery`.

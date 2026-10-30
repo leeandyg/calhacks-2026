@@ -6,6 +6,8 @@ Oct 23, 2026 · @andy
 
 Build a **browser app** (React + React Three Fiber for the room, Web Audio API with HRTF panners for the sound) where an **LLM emits a scene as JSON** that both the 3D view and the audio engine read. Drag-to-move works on that same JSON, so manual edits and AI edits are the same operation.
 
+**Who it's for:** people with ADHD, many of whom focus better with background noise or music than in silence. The room gives them the place where they focus best, with steady sounds close to mask distractions and occasional ones quieter and farther away.
+
 Your instinct on order is right: **3D room with draggable spatial audio first, AI second.** But design the scene JSON on hour one so the AI can slot in without a rewrite.
 
 **Status at the Sunday 3am freeze** (details in each section):
@@ -438,7 +440,7 @@ The demo wins or loses on the moment a judge turns their head and the rain stays
 
 Rewritten at the freeze to use only what's built. A live Claude world takes a few minutes, so generate it during setup in a second tab and keep that tab open (**Load room** works too once #152 is verified on production); type a prompt live only to show the loading mosaic.
 
-1. **0:00–0:20 Problem.** Headphones on the judge. Play 5 seconds of the hackathon floor. "This is where you're trying to study. Noise-cancelling deletes it; we replace it."
+1. **0:00–0:20 Problem.** Headphones on the judge. Play 5 seconds of the hackathon floor. "If you have ADHD, silence doesn't help you focus, and neither does this. Noise-cancelling deletes it; we replace it with the place where you focus best."
 2. **0:20–0:50 Hear the room.** Click **Rainy café**. Drag the rain from left to right: the judge hears it move. Click the cup clinks to mute them.
 3. **0:50–1:10 Turn your head.** Tick **Head tracking** and turn: the rain stays by the window. Then turn the view with the arrows: only the picture turns, because the sound is anchored to the room, not the screen.
 4. **1:10–1:50 Claude builds a world.** Type a new place to show the loading mosaic, then switch to the tab with the world generated during setup. "A Claude managed agent planned this, painted every surface and prop with pxl, and composed a sound with chirp only where our 38-sound library had nothing that fits."
@@ -450,7 +452,7 @@ Rewritten at the freeze to use only what's built. A live Claude world takes a fe
 
 | Criterion | How you score it |
 | --- | --- |
-| Application | Name the user (students in loud shared spaces) and the moment of use (a 50-minute focus block) |
+| Application | Name the user (people with ADHD who focus better with background sound) and the moment of use (a 50-minute focus block) |
 | Intentionality | Placement rules grounded in masking: steady sounds close and wide, intermittent ones far |
 | Functionality | A rehearsed live demo plus the required Devpost video for async sponsor judging |
 | Creativity | The room as an editable, agent-managed object, not a playlist |
