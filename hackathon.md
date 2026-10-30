@@ -3,7 +3,7 @@
 - **Project:** roomto.study
 - **Event:** Cal Hacks 13.0
 - **What it does:** Turns a described place into a pixel-art room whose props are spatial (HRTF) sound sources you can drag, mute, save and recall by voice.
-- **Live app:** https://calhacks-2026.vercel.app
+- **Live app:** https://roomto.study
 - **Repo:** https://github.com/leeandyg/calhacks-2026
 - **Frontend:** Vercel
 - **Convex deployment:** https://nautical-dogfish-530.convex.cloud

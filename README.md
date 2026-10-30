@@ -2,7 +2,7 @@
 
 CalHacks 13.0 project. Describe a place, and Claude builds it as a pixel-art room whose props are spatial sound sources. You hear each one from where it sits (binaural, over headphones), drag it to move its sound, and change the room by typing or talking. Wear headphones.
 
-Live: https://calhacks-2026.vercel.app
+Live: https://roomto.study (also at https://calhacks-2026.vercel.app)
 
 ## Why
 
@@ -215,7 +215,7 @@ invite, then run `npx convex login` and `npx convex dev --configure existing --t
 --project calhacks-2026`. That gives you your own cloud dev deployment in `.env.local`. Run
 `npm run convex:auth` once for it.
 
-**Production** (`nautical-dogfish-530`) is what https://calhacks-2026.vercel.app uses:
+**Production** (`nautical-dogfish-530`) is what https://roomto.study uses:
 Vercel's Production environment has its public `VITE_CONVEX_URL`. Its `JWT_PRIVATE_KEY` and
 `JWKS` are set (`npm run convex:auth -- --prod`); the setup script generates them without
 printing them and preserves existing keys. Vercel builds with `scripts/vercel-build.mjs`
